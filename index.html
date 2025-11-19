@@ -1,0 +1,33 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      .newtag {
+        color: #ff0000;
+        font-size: small;
+        font-weight: normal;
+      }
+      a:visited {
+        color: #0000ff;
+      }
+    </style>
+    <!-- start of "normal person" blocker -->
+<div id="d0082e1c-16cc-4a7e-b920-d2b5bf8c3ce1" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%;background-color:#ffffff;z-index:2147483649;">Validating authentication state. Login at the <a href="/">home page</a></div>
+<script>
+  try {
+    if (!localStorage.getItem("userIsValidated")) {
+      window.location.replace("/")
+    } else {
+      document.getElementById("d0082e1c-16cc-4a7e-b920-d2b5bf8c3ce1").remove()
+    }
+  } catch (e) {
+    window.location.replace("/")
+  }
+</script>
+<!-- end of "normal person" blocker -->
+  </head>
+  <body>
+    <h1><a href="https://forms.gle/aR7bQ4U1szfQNqKn9">Request a game</a></h1>
+  </body>
+</html>
