@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Red Dead Redemption 2 - Wild West Showdown</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background: linear-gradient(to bottom, #8B7355, #D2B48C);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            position: relative;
+            background: #2F1B0C;
+            border: 8px solid #654321;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+
+        canvas {
+            display: block;
+            background: #C19A6B;
+        }
+
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            color: #FFF;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px #000;
+            pointer-events: none;
+        }
+
+        #health {
+            background: #8B0000;
+            height: 25px;
+            border: 2px solid #000;
+            margin-top: 5px;
+            position: relative;
+        }
+
+        #healthBar {
+            background: #DC143C;
+            height: 100%;
+            transition: width 0.3s;
+        }
+
+        #ammo {
+            margin-top: 8px;
+        }
+
+        #mission {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 15px;
+            border: 2px solid #8B4513;
+            border-radius: 5px;
+        }
+
+        #gameOver, #victory {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            padding: 40px;
+            border: 4px solid #8B4513;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+            pointer-events: all;
+        }
+
+        button {
+            background: #8B4513;
+            color: #FFF;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-family: 'Georgia', serif;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background: #A0522D;
+        }
+
+        #intro {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #FFF;
+            text-align: center;
+            padding: 30px;
+            pointer-events: all;
+        }
+
+        h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: #DAA520;
+        }
+
+        h2 {
+            font-size: 28px;
+            margin-bottom: 15px;
+            color: #DAA520;
+        }
+
+        .controls {
+            margin: 20px 0;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="900" height="600"></canvas>
+        <div id="ui">
+            <div>Score: <span id="score">0</span></div>
+            <div id="health">
+                <div id="healthBar" style="width: 100%"></div>
+            </div>
+            <div id="ammo">Ammo: <span id="ammoCount">30</span> / ∞</div>
+            <div id="mission">
+                <div>Mission: <span id="missionName">Survive the Outlaws</span></div>
+                <div>Wave: <span id="wave">1</span></div>
+            </div>
+        </div>
+
+        <div id="intro">
+            <h1>RED DEAD REDEMPTION 2</h1>
+            <h2>Wild West Showdown</h2>
+            <p style="max-width: 600px; margin: 20px 0;">
+                The year is 1899. You're a lone gunslinger facing waves of ruthless outlaws 
+                in the untamed American frontier. Survive the onslaught and become a legend.
+            </p>
+            <div class="controls">
+                <strong>CONTROLS:</strong><br>
+                WASD - Move<br>
+                Mouse - Aim<br>
+                Left Click - Shoot<br>
+                R - Reload
+            </div>
+            <button onclick="startGame()">START GAME</button>
+        </div>
+
+        <div id="gameOver">
+            <h2>YOU DIED</h2>
+            <p>Final Score: <span id="finalScore">0</span></p>
+            <p>Wave Reached: <span id="finalWave">1</span></p>
+            <button onclick="restartGame()">TRY AGAIN</button>
+        </div>
+
+        <div id="victory">
+            <h2>MISSION COMPLETE</h2>
+            <p>Final Score: <span id="victoryScore">0</span></p>
+            <button onclick="restartGame()">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Game state
+        let gameActive = false;
+        let score = 0;
+        let wave = 1;
+        let enemiesKilled = 0;
+
+        // Player
+        const player = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 15,
+            speed: 4,
+            health: 100,
+            maxHealth: 100,
+            angle: 0,
+            ammo: 30,
+            maxAmmo: 30,
+            reloading: false,
+            reloadTime: 0
+        };
+
+        // Input
+        const keys = {};
+        let mouseX = 0;
+        let mouseY = 0;
+
+        // Arrays
+        let bullets = [];
+        let enemies = [];
+        let particles = [];
+
+        // Wave system
+        let enemiesPerWave = 5;
+        let spawnTimer = 0;
+        let spawnDelay = 120;
+
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if (e.key.toLowerCase() === 'r' && gameActive) {
+                reload();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        });
+
+        canvas.addEventListener('click', () => {
+            if (gameActive && !player.reloading && player.ammo > 0) {
+                shoot();
+            }
+        });
+
+        function startGame() {
+            document.getElementById('intro').style.display = 'none';
+            gameActive = true;
+            gameLoop();
+        }
+
+        function restartGame() {
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('victory').style.display = 'none';
+            
+            // Reset everything
+            player.x = canvas.width / 2;
+            player.y = canvas.height / 2;
+            player.health = player.maxHealth;
+            player.ammo = player.maxAmmo;
+            player.reloading = false;
+            score = 0;
+            wave = 1;
+            enemiesKilled = 0;
+            enemiesPerWave = 5;
+            bullets = [];
+            enemies = [];
+            particles = [];
+            
+            gameActive = true;
+            updateUI();
+        }
+
+        function shoot() {
+            player.ammo--;
+            
+            const angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+            bullets.push({
+                x: player.x,
+                y: player.y,
+                vx: Math.cos(angle) * 10,
+                vy: Math.sin(angle) * 10,
+                radius: 4
+            });
+
+            // Recoil particles
+            for (let i = 0; i < 3; i++) {
+                particles.push({
+                    x: player.x,
+                    y: player.y,
+                    vx: Math.cos(angle) * -2 + (Math.random() - 0.5) * 2,
+                    vy: Math.sin(angle) * -2 + (Math.random() - 0.5) * 2,
+                    life: 20,
+                    maxLife: 20,
+                    color: '#FFD700'
+                });
+            }
+
+            updateUI();
+
+            if (player.ammo <= 0) {
+                reload();
+            }
+        }
+
+        function reload() {
+            if (!player.reloading && player.ammo < player.maxAmmo) {
+                player.reloading = true;
+                player.reloadTime = 90;
+            }
+        }
+
+        function spawnEnemy() {
+            const side = Math.floor(Math.random() * 4);
+            let x, y;
+
+            switch(side) {
+                case 0: x = Math.random() * canvas.width; y = -20; break;
+                case 1: x = canvas.width + 20; y = Math.random() * canvas.height; break;
+                case 2: x = Math.random() * canvas.width; y = canvas.height + 20; break;
+                case 3: x = -20; y = Math.random() * canvas.height; break;
+            }
+
+            enemies.push({
+                x: x,
+                y: y,
+                radius: 12,
+                speed: 1 + wave * 0.2,
+                health: 2 + Math.floor(wave / 3),
+                maxHealth: 2 + Math.floor(wave / 3),
+                angle: 0
+            });
+        }
+
+        function update() {
+            if (!gameActive) return;
+
+            // Player movement
+            let dx = 0;
+            let dy = 0;
+            if (keys['w']) dy -= 1;
+            if (keys['s']) dy += 1;
+            if (keys['a']) dx -= 1;
+            if (keys['d']) dx += 1;
+
+            if (dx !== 0 || dy !== 0) {
+                const magnitude = Math.sqrt(dx * dx + dy * dy);
+                dx /= magnitude;
+                dy /= magnitude;
+            }
+
+            player.x += dx * player.speed;
+            player.y += dy * player.speed;
+
+            // Keep player in bounds
+            player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
+            player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
+
+            // Player angle
+            player.angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+
+            // Reload
+            if (player.reloading) {
+                player.reloadTime--;
+                if (player.reloadTime <= 0) {
+                    player.ammo = player.maxAmmo;
+                    player.reloading = false;
+                    updateUI();
+                }
+            }
+
+            // Update bullets
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                bullet.x += bullet.vx;
+                bullet.y += bullet.vy;
+
+                if (bullet.x < 0 || bullet.x > canvas.width || 
+                    bullet.y < 0 || bullet.y > canvas.height) {
+                    bullets.splice(i, 1);
+                }
+            }
+
+            // Spawn enemies
+            spawnTimer++;
+            if (enemies.length < enemiesPerWave && spawnTimer > spawnDelay) {
+                spawnEnemy();
+                spawnTimer = 0;
+            }
+
+            // Update enemies
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                const angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+                enemy.angle = angle;
+                enemy.x += Math.cos(angle) * enemy.speed;
+                enemy.y += Math.sin(angle) * enemy.speed;
+
+                // Check collision with player
+                const dist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
+                if (dist < player.radius + enemy.radius) {
+                    player.health -= 0.5;
+                    updateUI();
+                    
+                    if (player.health <= 0) {
+                        gameOver();
+                        return;
+                    }
+                }
+
+                // Check collision with bullets
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    const bullet = bullets[j];
+                    const bulletDist = Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y);
+                    
+                    if (bulletDist < enemy.radius + bullet.radius) {
+                        bullets.splice(j, 1);
+                        enemy.health--;
+
+                        // Hit particles
+                        for (let k = 0; k < 5; k++) {
+                            particles.push({
+                                x: enemy.x,
+                                y: enemy.y,
+                                vx: (Math.random() - 0.5) * 4,
+                                vy: (Math.random() - 0.5) * 4,
+                                life: 30,
+                                maxLife: 30,
+                                color: '#DC143C'
+                            });
+                        }
+
+                        if (enemy.health <= 0) {
+                            enemies.splice(i, 1);
+                            score += 10 * wave;
+                            enemiesKilled++;
+                            updateUI();
+
+                            // Death particles
+                            for (let k = 0; k < 10; k++) {
+                                particles.push({
+                                    x: enemy.x,
+                                    y: enemy.y,
+                                    vx: (Math.random() - 0.5) * 6,
+                                    vy: (Math.random() - 0.5) * 6,
+                                    life: 40,
+                                    maxLife: 40,
+                                    color: '#8B4513'
+                                });
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // Update particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vx *= 0.95;
+                p.vy *= 0.95;
+                p.life--;
+
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            // Check wave completion
+            if (enemies.length === 0 && enemiesKilled >= enemiesPerWave) {
+                nextWave();
+            }
+        }
+
+        function nextWave() {
+            wave++;
+            enemiesKilled = 0;
+            enemiesPerWave += 3;
+            spawnTimer = 0;
+            
+            // Heal player slightly
+            player.health = Math.min(player.maxHealth, player.health + 20);
+            
+            updateUI();
+
+            if (wave > 10) {
+                victory();
+            }
+        }
+
+        function draw() {
+            // Background
+            ctx.fillStyle = '#C19A6B';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Ground texture
+            ctx.strokeStyle = '#A0826D';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.height; i += 20) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(canvas.width, i);
+                ctx.stroke();
+            }
+            for (let i = 0; i < canvas.width; i += 20) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, canvas.height);
+                ctx.stroke();
+            }
+
+            // Particles
+            particles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life / p.maxLife;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+
+            // Bullets
+            ctx.fillStyle = '#FFD700';
+            bullets.forEach(bullet => {
+                ctx.beginPath();
+                ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Enemies (outlaws)
+            enemies.forEach(enemy => {
+                // Shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath();
+                ctx.ellipse(enemy.x, enemy.y + 5, enemy.radius, enemy.radius / 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Body
+                ctx.fillStyle = '#2F1B0C';
+                ctx.beginPath();
+                ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Hat
+                ctx.fillStyle = '#654321';
+                ctx.beginPath();
+                ctx.arc(enemy.x, enemy.y - 10, enemy.radius * 0.8, Math.PI, Math.PI * 2);
+                ctx.fill();
+
+                // Gun
+                ctx.strokeStyle = '#4A4A4A';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(enemy.x, enemy.y);
+                ctx.lineTo(enemy.x + Math.cos(enemy.angle) * 15, enemy.y + Math.sin(enemy.angle) * 15);
+                ctx.stroke();
+
+                // Health bar
+                if (enemy.health < enemy.maxHealth) {
+                    ctx.fillStyle = '#8B0000';
+                    ctx.fillRect(enemy.x - 15, enemy.y - 25, 30, 4);
+                    ctx.fillStyle = '#DC143C';
+                    ctx.fillRect(enemy.x - 15, enemy.y - 25, 30 * (enemy.health / enemy.maxHealth), 4);
+                }
+            });
+
+            // Player (gunslinger)
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(player.x, player.y + 5, player.radius, player.radius / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Body
+            ctx.fillStyle = '#1E90FF';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Hat
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y - 12, player.radius * 0.9, Math.PI, Math.PI * 2);
+            ctx.fill();
+
+            // Gun
+            ctx.strokeStyle = '#696969';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y);
+            ctx.lineTo(player.x + Math.cos(player.angle) * 20, player.y + Math.sin(player.angle) * 20);
+            ctx.stroke();
+
+            // Reload indicator
+            if (player.reloading) {
+                ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                ctx.font = '14px Georgia';
+                ctx.textAlign = 'center';
+                ctx.fillText('RELOADING...', player.x, player.y - 30);
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('wave').textContent = wave;
+            document.getElementById('ammoCount').textContent = player.ammo;
+            document.getElementById('healthBar').style.width = (player.health / player.maxHealth * 100) + '%';
+        }
+
+        function gameOver() {
+            gameActive = false;
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalWave').textContent = wave;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        function victory() {
+            gameActive = false;
+            document.getElementById('victoryScore').textContent = score;
+            document.getElementById('victory').style.display = 'block';
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+    </script>
+</body>
+</html>
