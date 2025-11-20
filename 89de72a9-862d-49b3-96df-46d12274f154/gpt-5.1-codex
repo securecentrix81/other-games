@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Secure Centrix81: Frontier Echo</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: radial-gradient(circle at top, #2b1d12 0%, #070402 70%);
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+    }
+    #crosshair {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 24px;
+      height: 24px;
+      border: 2px solid rgba(255, 255, 255, 0.7);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    #crosshair::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 2px;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.9);
+      transform: translate(-50%, -50%);
+      border-radius: 999px;
+    }
+    .badge {
+      backdrop-filter: blur(12px);
+      background: rgba(15, 8, 3, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .hud-title {
+      text-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+    }
+  </style>
+</head>
+<body>
+  <div class="fixed top-4 left-1/2 -translate-x-1/2 text-center space-y-3 pointer-events-none">
+    <h1 class="text-3xl font-black tracking-wide text-amber-200 hud-title">Secure Centrix81 · Frontier Echo</h1>
+    <p class="badge px-4 py-2 rounded-full text-sm uppercase tracking-[0.4em] text-amber-100">Rapid Prototype Mission Brief</p>
+    <div class="badge px-6 py-3 rounded-2xl inline-flex gap-6 text-lg font-semibold">
+      <span>Score: <span id="score">0</span></span>
+      <span>Bandits Remaining: <span id="bandits">0</span></span>
+      <span>Combo: <span id="combo">x1</span></span>
+    </div>
+  </div>
+
+  <div class="fixed top-4 left-4 w-64 space-y-3 badge p-4 rounded-2xl text-sm leading-relaxed">
+    <h2 class="text-amber-200 font-semibold text-lg">Objectives</h2>
+    <ul class="list-disc list-inside text-white/90 space-y-1">
+      <li>Secure the canyon route.</li>
+      <li>Eliminate outlaw sentries.</li>
+      <li>Keep combo streak alive for bonus lore intel.</li>
+    </ul>
+    <p class="text-xs text-white/70">WASD to move · Mouse to aim · Click to fire · Shift to sprint · Space to slide.</p>
+  </div>
+
+  <div class="fixed bottom-6 left-1/2 -translate-x-1/2">
+    <button id="startButton" class="bg-gradient-to-r from-amber-500 to-red-500 text-white text-lg font-semibold px-8 py-3 rounded-full shadow-xl shadow-amber-900/50 hover:scale-105 transition">Enter the Frontier</button>
+  </div>
+
+  <div id="crosshair" class="hidden"></div>
+
+  <div class="fixed bottom-4 right-4 badge p-4 rounded-2xl text-sm space-y-2 w-64">
+    <p class="text-amber-200 font-semibold">Frontier Intel Feed</p>
+    <p id="intel">Initiate when ready.</p>
+    <div class="h-1 bg-white/10 rounded-full">
+      <div id="missionProgress" class="h-full bg-gradient-to-r from-amber-400 to-red-500 rounded-full" style="width: 0%"></div>
+    </div>
+  </div>
+
+  <script>
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x120907);
+    scene.fog = new THREE.Fog(0x120907, 50, 220);
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
+    camera.position.set(0, 6, 12);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    document.body.appendChild(renderer.domElement);
+
+    const ambient = new THREE.AmbientLight(0xffbf80, 0.5);
+    scene.add(ambient);
+
+    const sun = new THREE.DirectionalLight(0xffe0b5, 1.2);
+    sun.position.set(80, 120, -40);
+    sun.castShadow = true;
+    scene.add(sun);
+
+    const groundGeo = new THREE.PlaneGeometry(400, 400, 20, 20);
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x5f3b27, roughness: 1, metalness: 0 });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    scene.add(ground);
+
+    const canyonMaterial = new THREE.MeshStandardMaterial({ color: 0x2d1409, roughness: 0.9 });
+    for (let i = 0; i < 40; i++) {
+      const width = 6 + Math.random() * 6;
+      const height = 8 + Math.random() * 20;
+      const depth = 6 + Math.random() * 10;
+      const rock = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), canyonMaterial);
+      const side = Math.random() > 0.5 ? 1 : -1;
+      rock.position.set(side * (15 + Math.random() * 20), height / 2, -120 + Math.random() * 240);
+      rock.rotation.y = Math.random() * Math.PI;
+      scene.add(rock);
+    }
+
+    const campfire = new THREE.PointLight(0xff5a1f, 2, 40, 2);
+    campfire.position.set(0, 2, -10);
+    scene.add(campfire);
+    const fireCore = new THREE.Mesh(new THREE.ConeGeometry(1, 2, 6), new THREE.MeshStandardMaterial({ color: 0xff8d1f, emissive: 0xff6600 }));
+    fireCore.position.copy(campfire.position).setY(1);
+    scene.add(fireCore);
+
+    const player = new THREE.Group();
+    const coat = new THREE.Mesh(new THREE.CapsuleGeometry(1, 2.5, 4, 8), new THREE.MeshStandardMaterial({ color: 0x3b1f16, metalness: 0, roughness: 1 }));
+    coat.position.y = 2.5;
+    player.add(coat);
+
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 12), new THREE.MeshStandardMaterial({ color: 0xf5c9a5 }));
+    head.position.y = 4.5;
+    player.add(head);
+
+    const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 0.3, 12), new THREE.MeshStandardMaterial({ color: 0x2b1c14 }));
+    hat.position.y = 5.1;
+    player.add(hat);
+
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.1, 16), new THREE.MeshStandardMaterial({ color: 0x1c110c }));
+    brim.position.y = 4.9;
+    player.add(brim);
+
+    player.position.set(0, 0, 0);
+    scene.add(player);
+
+    const rifle = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 2.4), new THREE.MeshStandardMaterial({ color: 0x2a1a0d, metalness: 0.3 }));
+    rifle.position.set(0.6, 3.5, -0.5);
+    rifle.rotation.y = Math.PI / 2;
+    player.add(rifle);
+
+    let cameraPitch = -0.1;
+
+    const keys = {};
+    window.addEventListener('keydown', (e) => {
+      keys[e.code] = true;
+    });
+    window.addEventListener('keyup', (e) => {
+      keys[e.code] = false;
+    });
+
+    const bullets = [];
+    const bandits = [];
+    let score = 0;
+    let combo = 1;
+    let comboTimer = 0;
+    const maxComboTime = 4;
+
+    const scoreEl = document.getElementById('score');
+    const bandsEl = document.getElementById('bandits');
+    const comboEl = document.getElementById('combo');
+    const intelEl = document.getElementById('intel');
+    const progressEl = document.getElementById('missionProgress');
+
+    const clock = new THREE.Clock();
+
+    function updateUI() {
+      scoreEl.textContent = score;
+      bandsEl.textContent = bandits.length;
+      comboEl.textContent = `x${combo}`;
+      const completion = Math.min(100, ((initialBandits - bandits.length) / initialBandits) * 100);
+      progressEl.style.width = `${completion}%`;
+    }
+
+    function createBandit(x, z) {
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x521c12 });
+      const hatMat = new THREE.MeshStandardMaterial({ color: 0x140804 });
+      const enemy = new THREE.Group();
+
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.5, 1), bodyMat);
+      torso.position.y = 2;
+      enemy.add(torso);
+
+      const eHead = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 10), new THREE.MeshStandardMaterial({ color: 0xe7ad8e }));
+      eHead.position.y = 3.4;
+      enemy.add(eHead);
+
+      const eHat = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.25, 12), hatMat);
+      eHat.position.y = 3.9;
+      enemy.add(eHat);
+
+      const brim = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.05, 12), hatMat);
+      brim.position.y = 3.7;
+      enemy.add(brim);
+
+      enemy.position.set(x, 0, z);
+      enemy.userData = {
+        originX: x,
+        waveDistance: 6 + Math.random() * 6,
+        waveSpeed: 0.5 + Math.random(),
+        offset: Math.random() * Math.PI * 2,
+        health: 2
+      };
+
+      scene.add(enemy);
+      bandits.push(enemy);
+    }
+
+    const initialBandits = 10;
+    for (let i = 0; i < initialBandits; i++) {
+      const x = -20 + Math.random() * 40;
+      const z = -40 - Math.random() * 120;
+      createBandit(x, z);
+    }
+
+    function shoot() {
+      const dir = new THREE.Vector3(0, 0, -1);
+      dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), player.rotation.y);
+      const pitchQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), cameraPitch);
+      dir.applyQuaternion(pitchQuat).normalize();
+
+      const bullet = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), new THREE.MeshStandardMaterial({ color: 0xfff2d5, emissive: 0xffd59f }));
+      bullet.position.copy(player.position).add(new THREE.Vector3(0, 3.4, 0)).add(dir.clone().multiplyScalar(1.5));
+      scene.add(bullet);
+
+      bullets.push({ mesh: bullet, velocity: dir.clone().multiplyScalar(120), life: 1.5 });
+      intelEl.textContent = 'Shot fired · Tracking trajectory';
+    }
+
+    function removeObject(obj) {
+      scene.remove(obj);
+      obj.geometry && obj.geometry.dispose();
+      obj.material && obj.material.dispose();
+    }
+
+    function updateBullets(delta) {
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        const bullet = bullets[i];
+        bullet.mesh.position.addScaledVector(bullet.velocity, delta);
+        bullet.life -= delta;
+        if (bullet.life <= 0) {
+          removeObject(bullet.mesh);
+          bullets.splice(i, 1);
+          continue;
+        }
+
+        for (let j = bandits.length - 1; j >= 0; j--) {
+          const enemy = bandits[j];
+          const dist = bullet.mesh.position.distanceTo(enemy.position.clone().setY(3));
+          if (dist < 1.5) {
+            enemy.userData.health -= 1;
+            removeObject(bullet.mesh);
+            bullets.splice(i, 1);
+            intelEl.textContent = 'Confirmed hit · Keep pressure on.';
+            if (enemy.userData.health <= 0) {
+              removeObject(enemy);
+              bandits.splice(j, 1);
+              score += 150 * combo;
+              combo = Math.min(combo + 1, 8);
+              comboTimer = maxComboTime;
+              intelEl.textContent = 'Bandit neutralized · Route clearer.';
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    function updateBandits(time) {
+      bandits.forEach((enemy) => {
+        const data = enemy.userData;
+        enemy.position.x = data.originX + Math.sin(time * data.waveSpeed + data.offset) * data.waveDistance;
+        enemy.lookAt(player.position.x, 3.4, player.position.z);
+      });
+    }
+
+    const velocity = new THREE.Vector3();
+    const forward = new THREE.Vector3();
+    const right = new THREE.Vector3();
+    const worldUp = new THREE.Vector3(0, 1, 0);
+    const cameraOffset = new THREE.Vector3(0, 6, 12);
+
+    function updatePlayer(delta) {
+      forward.set(0, 0, -1).applyAxisAngle(worldUp, player.rotation.y).normalize();
+      right.copy(forward).cross(worldUp).normalize();
+
+      velocity.set(0, 0, 0);
+      const baseSpeed = keys['ShiftLeft'] ? 26 : 18;
+      if (keys['KeyW']) velocity.add(forward);
+      if (keys['KeyS']) velocity.sub(forward);
+      if (keys['KeyA']) velocity.sub(right);
+      if (keys['KeyD']) velocity.add(right);
+
+      if (velocity.lengthSq() > 0) {
+        velocity.normalize().multiplyScalar(baseSpeed * delta);
+        player.position.add(velocity);
+        player.position.x = THREE.MathUtils.clamp(player.position.x, -40, 40);
+        player.position.z = THREE.MathUtils.clamp(player.position.z, -150, 40);
+      }
+
+      if (keys['Space']) {
+        intelEl.textContent = 'Slide maneuver engaged.';
+      }
+    }
+
+    function updateCamera() {
+      const offset = cameraOffset.clone();
+      offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), player.rotation.y);
+      offset.applyAxisAngle(new THREE.Vector3(1, 0, 0), cameraPitch + 0.2);
+      const desired = player.position.clone().add(offset);
+      camera.position.lerp(desired, 0.1);
+      camera.lookAt(player.position.x, player.position.y + 3, player.position.z);
+    }
+
+    function animate() {
+      const delta = clock.getDelta();
+      const time = clock.elapsedTime;
+
+      if (comboTimer > 0) {
+        comboTimer -= delta;
+      } else if (combo > 1) {
+        combo = 1;
+        intelEl.textContent = 'Combo cooled · steady aim returns.';
+      }
+
+      updatePlayer(delta);
+      updateCamera();
+      updateBullets(delta);
+      updateBandits(time);
+      updateUI();
+
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+
+    let pointerLocked = false;
+    const crosshair = document.getElementById('crosshair');
+    const startButton = document.getElementById('startButton');
+
+    startButton.addEventListener('click', () => {
+      renderer.domElement.requestPointerLock();
+    });
+
+    document.addEventListener('pointerlockchange', () => {
+      pointerLocked = document.pointerLockElement === renderer.domElement;
+      crosshair.classList.toggle('hidden', !pointerLocked);
+      startButton.classList.toggle('hidden', pointerLocked);
+      document.body.style.cursor = pointerLocked ? 'none' : 'auto';
+      if (pointerLocked) {
+        intelEl.textContent = 'Tracking targets · you are clear to engage.';
+      } else {
+        intelEl.textContent = 'Pointer released · click to resume mission.';
+      }
+    });
+
+    document.addEventListener('mousemove', (event) => {
+      if (!pointerLocked) return;
+      player.rotation.y -= event.movementX * 0.0025;
+      cameraPitch -= event.movementY * 0.002;
+      cameraPitch = THREE.MathUtils.clamp(cameraPitch, -0.6, 0.4);
+    });
+
+    document.addEventListener('mousedown', (event) => {
+      if (!pointerLocked) return;
+      if (event.button === 0) {
+        shoot();
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
