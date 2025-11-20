@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Red Frontier: 1899 - Western Shooter Prototype</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+    canvas {
+      image-rendering: crisp-edges;
+      image-rendering: pixelated;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center">
+  <header class="mt-4 text-center">
+    <h1 class="text-3xl sm:text-4xl font-bold tracking-wide text-amber-400 drop-shadow">
+      Red Frontier: 1899
+    </h1>
+    <p class="mt-2 max-w-xl text-sm text-slate-200 px-4">
+      A small browser prototype inspired by cinematic western adventures. Ride into a hand-drawn 2D shootout across the fading American frontier.
+    </p>
+  </header>
+
+  <main class="flex-1 w-full flex flex-col items-center justify-center py-4">
+    <div class="relative border border-amber-700/60 rounded-xl shadow-lg overflow-hidden bg-gradient-to-b from-slate-900 to-slate-950 max-w-4xl w-[95vw] aspect-[16/9]">
+      <canvas id="gameCanvas" class="w-full h-full block bg-gradient-to-b from-amber-900/40 via-amber-900/60 to-slate-900"></canvas>
+
+      <!-- HUD overlay -->
+      <div id="hud" class="pointer-events-none absolute inset-0">
+        <div class="flex justify-between px-3 pt-2 text-[10px] sm:text-xs md:text-sm">
+          <div class="space-y-0.5">
+            <div id="missionTitle" class="font-semibold text-amber-300 drop-shadow"></div>
+            <div id="missionObjective" class="text-slate-100"></div>
+          </div>
+          <div class="text-right text-slate-200">
+            <div id="waveInfo"></div>
+            <div id="ammoInfo"></div>
+          </div>
+        </div>
+        <div class="absolute left-0 right-0 bottom-2 px-3 flex items-center gap-2 text-[10px] sm:text-xs">
+          <div class="flex-1 h-2.5 bg-slate-800/80 rounded-full overflow-hidden">
+            <div id="healthBar" class="h-full bg-red-500 transition-[width] duration-150" style="width:100%"></div>
+          </div>
+          <div id="healthText" class="text-slate-100 whitespace-nowrap"></div>
+        </div>
+      </div>
+
+      <!-- Center message -->
+      <div id="centerOverlay" class="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div class="bg-black/70 border border-amber-500/80 rounded-lg px-4 py-3 max-w-md text-center shadow-lg mx-4">
+          <h2 id="centerTitle" class="text-lg sm:text-xl font-semibold text-amber-300 mb-1"></h2>
+          <p id="centerBody" class="text-xs sm:text-sm text-slate-100 whitespace-pre-line"></p>
+          <p id="centerHint" class="mt-3 text-[10px] sm:text-xs text-amber-200 uppercase tracking-wide"></p>
+        </div>
+      </div>
+
+      <!-- Corner controls hint -->
+      <div class="pointer-events-none absolute bottom-2 left-2 text-[9px] sm:text-[10px] text-slate-300/90 bg-black/40 rounded px-2 py-1">
+        Move: WASD / Arrows · Aim: Mouse · Shoot: Left Click · Interact / Continue: Space or E
+      </div>
+    </div>
+  </main>
+
+  <footer class="py-3 text-[10px] sm:text-xs text-slate-400 text-center px-4">
+    This is a fan-made browser prototype inspired by classic western action games. No assets or trademarks from any commercial title are used.
+  </footer>
+
+  <script>
+    (function () {
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+
+      const WORLD_WIDTH = 960;
+      const WORLD_HEIGHT = 540;
+      canvas.width = WORLD_WIDTH;
+      canvas.height = WORLD_HEIGHT;
+
+      const missionTitleEl = document.getElementById('missionTitle');
+      const missionObjectiveEl = document.getElementById('missionObjective');
+      const waveInfoEl = document.getElementById('waveInfo');
+      const ammoInfoEl = document.getElementById('ammoInfo');
+      const healthBarEl = document.getElementById('healthBar');
+      const healthTextEl = document.getElementById('healthText');
+      const centerOverlayEl = document.getElementById('centerOverlay');
+      const centerTitleEl = document.getElementById('centerTitle');
+      const centerBodyEl = document.getElementById('centerBody');
+      const centerHintEl = document.getElementById('centerHint');
+
+      const keys = {};
+      const mouse = {
+        x: WORLD_WIDTH / 2,
+        y: WORLD_HEIGHT / 2,
+        down: false
+      };
+
+      const player = {
+        x: WORLD_WIDTH / 2,
+        y: WORLD_HEIGHT * 0.7,
+        radius: 14,
+        speed: 220,
+        maxHp: 100,
+        hp: 100,
+        shootDelay: 0.28,
+        shootCooldown: 0
+      };
+
+      let enemies = [];
+      let bullets = [];
+
+      const missionData = [
+        {
+          id: 1,
+          name: 'Ride Out From Camp',
+          description:
+            '1899. Your gang is camped in the mountain snow. A rival band of outlaws has tracked you down.\nDrive them off before they overrun the camp.',
+          waves: [4, 4],
+          enemyConfig: { hp: 55, speed: 90, canShoot: false }
+        },
+        {
+          id: 2,
+          name: 'Main Street Standoff',
+          description:
+            'Down in a muddy frontier town, a rival posse blocks the main street.\nWalk tall, keep your head, and clear the road.',
+          waves: [5, 5, 4],
+          enemyConfig: { hp: 70, speed: 110, canShoot: true }
+        },
+        {
+          id: 3,
+          name: 'The Last Light of the West',
+          description:
+            'On the outskirts at high noon, the gang\'s leader waits.\nOne last duel before the age of outlaws ends.',
+          boss: true
+        }
+      ];
+
+      const game = {
+        state: 'title', // 'title','missionIntro','playing','missionComplete','gameOver','epilogue'
+        missionIndex: -1,
+        currentMission: null,
+        time: 0
+      };
+
+      function setCenterOverlay(title, body, hint) {
+        centerOverlayEl.style.display = 'flex';
+        centerTitleEl.textContent = title || '';
+        centerBodyEl.textContent = body || '';
+        centerHintEl.textContent = hint || '';
+      }
+
+      function hideCenterOverlay() {
+        centerOverlayEl.style.display = 'none';
+      }
+
+      function startTitle() {
+        game.state = 'title';
+        game.currentMission = null;
+        enemies = [];
+        bullets = [];
+        player.hp = player.maxHp;
+        player.x = WORLD_WIDTH / 2;
+        player.y = WORLD_HEIGHT * 0.7;
+        setCenterOverlay(
+          'Red Frontier: 1899',
+          'A tiny top-down shooter prototype inspired by open-world western adventures.\n\nRide through three short missions at the end of the outlaw age.',
+          'Press SPACE or click inside the window to ride out'
+        );
+        updateHud();
+      }
+
+      function startMission(index) {
+        const data = missionData[index];
+        if (!data) {
+          showEpilogue();
+          return;
+        }
+        const mission = {
+          id: data.id,
+          name: data.name,
+          description: data.description,
+          boss: !!data.boss,
+          waves: data.waves ? data.waves.slice() : null,
+          totalWaves: data.boss ? 1 : data.waves.length,
+          enemyConfig: data.enemyConfig ? Object.assign({}, data.enemyConfig) : null,
+          currentWaveIndex: 0,
+          kills: 0,
+          totalKillsRequired: data.boss ? 1 : data.waves.reduce((a, b) => a + b, 0),
+          started: false,
+          completed: false
+        };
+        game.currentMission = mission;
+        enemies = [];
+        bullets = [];
+        player.hp = player.maxHp;
+        player.x = WORLD_WIDTH / 2;
+        player.y = WORLD_HEIGHT * 0.7;
+        game.state = 'missionIntro';
+        const body =
+          mission.description +
+          '\n\nMove with WASD / arrows, aim with the mouse, shoot with left click.';
+        setCenterOverlay(
+          mission.name,
+          body,
+          'Press SPACE or E to begin the mission'
+        );
+        updateHud();
+      }
+
+      function startNextMission() {
+        if (game.missionIndex >= missionData.length - 1) {
+          showEpilogue();
+          return;
+        }
+        game.missionIndex++;
+        startMission(game.missionIndex);
+      }
+
+      function showEpilogue() {
+        game.state = 'epilogue';
+        game.currentMission = null;
+        enemies = [];
+        bullets = [];
+        setCenterOverlay(
+          'Epilogue: The Turn of the Century',
+          '1899 draws to a close. Railroads and lawmen carve across the land.\n\nYour story here is short, but the frontier lives on whenever you ride back into these missions.',
+          'Press SPACE to ride again from the beginning'
+        );
+        updateHud();
+      }
+
+      function beginMissionCombat() {
+        const mission = game.currentMission;
+        if (!mission || mission.started) return;
+        mission.started = true;
+        game.state = 'playing';
+        hideCenterOverlay();
+        spawnWave();
+        updateHud();
+      }
+
+      function spawnWave() {
+        const mission = game.currentMission;
+        if (!mission) return;
+        if (mission.boss) {
+          spawnBoss();
+          return;
+        }
+        if (mission.currentWaveIndex >= mission.waves.length) return;
+        const count = mission.waves[mission.currentWaveIndex];
+        for (let i = 0; i < count; i++) {
+          spawnBandit(mission.enemyConfig);
+        }
+      }
+
+      function spawnBandit(config) {
+        const edge = Math.floor(Math.random() * 4); // 0=left,1=right,2=top,3=bottom
+        const margin = 40;
+        let x, y;
+        if (edge === 0) {
+          x = margin;
+          y = Math.random() * (WORLD_HEIGHT - 2 * margin) + margin;
+        } else if (edge === 1) {
+          x = WORLD_WIDTH - margin;
+          y = Math.random() * (WORLD_HEIGHT - 2 * margin) + margin;
+        } else if (edge === 2) {
+          x = Math.random() * (WORLD_WIDTH - 2 * margin) + margin;
+          y = margin;
+        } else {
+          x = Math.random() * (WORLD_WIDTH - 2 * margin) + margin;
+          y = WORLD_HEIGHT - margin;
+        }
+
+        const bandit = {
+          type: 'bandit',
+          x: x,
+          y: y,
+          radius: 13,
+          color: '#fb923c',
+          maxHp: config && config.hp ? config.hp : 50,
+          hp: config && config.hp ? config.hp : 50,
+          speed: config && config.speed ? config.speed : 90,
+          canShoot: !!(config && config.canShoot),
+          shootCooldown: 1 + Math.random() * 1.5
+        };
+        enemies.push(bandit);
+      }
+
+      function spawnBoss() {
+        const boss = {
+          type: 'boss',
+          x: WORLD_WIDTH / 2,
+          y: WORLD_HEIGHT * 0.3,
+          radius: 18,
+          color: '#f97373',
+          maxHp: 220,
+          hp: 220,
+          speed: 80,
+          canShoot: true,
+          shootCooldown: 1.3
+        };
+        enemies.push(boss);
+      }
+
+      function fireBullet(from, targetX, targetY, speed, damage, owner) {
+        const dx = targetX - from.x;
+        const dy = targetY - from.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const vx = (dx / len) * speed;
+        const vy = (dy / len) * speed;
+        bullets.push({
+          x: from.x,
+          y: from.y,
+          vx: vx,
+          vy: vy,
+          radius: owner === 'player' ? 3 : 3,
+          owner: owner,
+          damage: damage,
+          life: 1.5
+        });
+      }
+
+      function completeMission() {
+        const mission = game.currentMission;
+        if (!mission || mission.completed) return;
+        mission.completed = true;
+        game.state = 'missionComplete';
+        let title = 'Mission Complete';
+        if (game.missionIndex === missionData.length - 1) {
+          title = 'Final Mission Complete';
+        }
+        const body =
+          'You survived the firefight with ' +
+          Math.max(0, Math.round(player.hp)) +
+          ' health remaining.\n\nTake a breath, reload, and prepare for what comes next.';
+        setCenterOverlay(title, body, 'Press SPACE or E to continue');
+        updateHud();
+      }
+
+      function failMission() {
+        game.state = 'gameOver';
+        const mission = game.currentMission;
+        const body =
+          (mission
+            ? 'You were cut down during "' + mission.name + '".'
+            : 'You were cut down on the frontier.') +
+          '\n\nIn this prototype, death is only the end of this try.';
+        setCenterOverlay('You Fell in 1899', body, 'Press R to retry this mission');
+        updateHud();
+      }
+
+      function restartMission() {
+        if (game.missionIndex < 0 || game.missionIndex >= missionData.length) {
+          startTitle();
+        } else {
+          startMission(game.missionIndex);
+        }
+      }
+
+      function handleAdvance() {
+        if (game.state === 'title') {
+          game.missionIndex = -1;
+          startNextMission();
+        } else if (game.state === 'missionIntro') {
+          beginMissionCombat();
+        } else if (game.state === 'missionComplete') {
+          startNextMission();
+        } else if (game.state === 'epilogue') {
+          game.missionIndex = -1;
+          startNextMission();
+        }
+      }
+
+      function handleRestart() {
+        if (game.state === 'gameOver') {
+          restartMission();
+        }
+      }
+
+      window.addEventListener('keydown', function (e) {
+        const key = e.key.toLowerCase();
+        keys[key] = true;
+        if (
+          ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(
+            key
+          ) ||
+          e.code === 'Space'
+        ) {
+          e.preventDefault();
+        }
+        if (e.code === 'Space' || key === 'e') {
+          handleAdvance();
+        }
+        if (e.code === 'KeyR') {
+          handleRestart();
+        }
+      });
+
+      window.addEventListener('keyup', function (e) {
+        const key = e.key.toLowerCase();
+        keys[key] = false;
+      });
+
+      canvas.addEventListener('mousedown', function (e) {
+        mouse.down = true;
+        updateMousePosition(e);
+        if (game.state === 'title') {
+          handleAdvance();
+        } else if (game.state === 'missionIntro') {
+          beginMissionCombat();
+        }
+      });
+
+      window.addEventListener('mouseup', function () {
+        mouse.down = false;
+      });
+
+      canvas.addEventListener('mousemove', updateMousePosition);
+
+      function updateMousePosition(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        mouse.x = (e.clientX - rect.left) * scaleX;
+        mouse.y = (e.clientY - rect.top) * scaleY;
+      }
+
+      function updateHud() {
+        const mission = game.currentMission;
+        if (missionTitleEl) {
+          missionTitleEl.textContent = mission ? mission.name : 'Free Frontier';
+        }
+        if (missionObjectiveEl) {
+          let text = '';
+          if (!mission) {
+            if (game.state === 'title') text = 'Prototype title screen';
+          } else if (game.state === 'missionIntro') {
+            text = 'Get ready to ride.';
+          } else if (game.state === 'playing') {
+            if (mission.boss) {
+              text = 'Win the duel. Stay in motion and watch the bullets.';
+            } else {
+              const currentWave = mission.currentWaveIndex + 1;
+              text =
+                'Wave ' +
+                currentWave +
+                ' of ' +
+                mission.totalWaves +
+                ' · Enemies ' +
+                mission.kills +
+                ' / ' +
+                mission.totalKillsRequired;
+            }
+          } else if (game.state === 'missionComplete') {
+            text = 'Mission accomplished.';
+          } else if (game.state === 'gameOver') {
+            text = 'Mission failed.';
+          } else if (game.state === 'epilogue') {
+            text = 'The outlaw age is almost over.';
+          }
+          missionObjectiveEl.textContent = text;
+        }
+        if (waveInfoEl) {
+          if (mission) {
+            waveInfoEl.textContent = mission.boss
+              ? 'Boss duel'
+              : 'Waves: ' + mission.totalWaves;
+          } else {
+            waveInfoEl.textContent = '';
+          }
+        }
+        if (ammoInfoEl) {
+          ammoInfoEl.textContent = 'Revolver: ∞ rounds';
+        }
+        if (healthBarEl && healthTextEl) {
+          const hp = Math.max(0, player.hp);
+          const percent = (hp / player.maxHp) * 100;
+          healthBarEl.style.width = percent + '%';
+          healthTextEl.textContent = 'Health: ' + Math.round(hp) + ' / ' + player.maxHp;
+        }
+      }
+
+      function update(dt) {
+        game.time += dt;
+        if (game.state === 'playing') {
+          handlePlayerMovement(dt);
+          handleShooting(dt);
+          updateBullets(dt);
+          updateEnemies(dt);
+          checkMissionProgress();
+        }
+        updateHud();
+      }
+
+      function handlePlayerMovement(dt) {
+        let moveX = 0;
+        let moveY = 0;
+        if (keys['w'] || keys['arrowup']) moveY -= 1;
+        if (keys['s'] || keys['arrowdown']) moveY += 1;
+        if (keys['a'] || keys['arrowleft']) moveX -= 1;
+        if (keys['d'] || keys['arrowright']) moveX += 1;
+        const len = Math.hypot(moveX, moveY);
+        if (len > 0) {
+          moveX /= len;
+          moveY /= len;
+          player.x += moveX * player.speed * dt;
+          player.y += moveY * player.speed * dt;
+          player.x = Math.max(player.radius + 8, Math.min(WORLD_WIDTH - player.radius - 8, player.x));
+          player.y = Math.max(player.radius + 8, Math.min(WORLD_HEIGHT - player.radius - 8, player.y));
+        }
+      }
+
+      function handleShooting(dt) {
+        player.shootCooldown -= dt;
+        if (mouse.down && player.shootCooldown <= 0) {
+          const dx = mouse.x - player.x;
+          const dy = mouse.y - player.y;
+          const dirLen = Math.hypot(dx, dy);
+          if (dirLen > 4) {
+            fireBullet(player, mouse.x, mouse.y, 550, 40, 'player');
+            player.shootCooldown = player.shootDelay;
+          }
+        }
+      }
+
+      function updateBullets(dt) {
+        for (let i = bullets.length - 1; i >= 0; i--) {
+          const b = bullets[i];
+          b.x += b.vx * dt;
+          b.y += b.vy * dt;
+          b.life -= dt;
+          if (
+            b.x < -20 ||
+            b.x > WORLD_WIDTH + 20 ||
+            b.y < -20 ||
+            b.y > WORLD_HEIGHT + 20 ||
+            b.life <= 0
+          ) {
+            bullets.splice(i, 1);
+            continue;
+          }
+          if (b.owner === 'player') {
+            let hit = false;
+            for (let j = enemies.length - 1; j >= 0; j--) {
+              const eObj = enemies[j];
+              const dx = eObj.x - b.x;
+              const dy = eObj.y - b.y;
+              const dist = Math.hypot(dx, dy);
+              if (dist < eObj.radius + b.radius) {
+                eObj.hp -= b.damage;
+                hit = true;
+                if (eObj.hp <= 0) {
+                  const mission = game.currentMission;
+                  enemies.splice(j, 1);
+                  if (mission) {
+                    mission.kills += 1;
+                  }
+                }
+                break;
+              }
+            }
+            if (hit) {
+              bullets.splice(i, 1);
+            }
+          } else if (b.owner === 'enemy') {
+            const dx = player.x - b.x;
+            const dy = player.y - b.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < player.radius + b.radius) {
+              player.hp -= b.damage;
+              bullets.splice(i, 1);
+              if (player.hp <= 0) {
+                player.hp = 0;
+                failMission();
+              }
+            }
+          }
+        }
+      }
+
+      function updateEnemies(dt) {
+        for (let i = enemies.length - 1; i >= 0; i--) {
+          const eObj = enemies[i];
+          const dx = player.x - eObj.x;
+          const dy = player.y - eObj.y;
+          const dist = Math.hypot(dx, dy) || 1;
+
+          if (eObj.type === 'boss') {
+            const desiredDist = 170;
+            const diff = dist - desiredDist;
+            if (Math.abs(diff) > 15) {
+              const toward = diff > 0 ? 1 : -1;
+              eObj.x += (dx / dist) * eObj.speed * dt * toward;
+              eObj.y += (dy / dist) * eObj.speed * dt * toward;
+            } else {
+              eObj.x += (-dy / dist) * eObj.speed * dt * 0.8;
+              eObj.y += (dx / dist) * eObj.speed * dt * 0.8;
+            }
+          } else {
+            eObj.x += (dx / dist) * eObj.speed * dt;
+            eObj.y += (dy / dist) * eObj.speed * dt;
+          }
+
+          eObj.x = Math.max(eObj.radius + 4, Math.min(WORLD_WIDTH - eObj.radius - 4, eObj.x));
+          eObj.y = Math.max(eObj.radius + 4, Math.min(WORLD_HEIGHT - eObj.radius - 4, eObj.y));
+
+          if (dist < eObj.radius + player.radius - 2) {
+            player.hp -= 25 * dt;
+            if (player.hp <= 0) {
+              player.hp = 0;
+              failMission();
+            }
+          }
+
+          if (eObj.canShoot) {
+            eObj.shootCooldown -= dt;
+            if (eObj.shootCooldown <= 0) {
+              if (dist < 360) {
+                const bulletSpeed = eObj.type === 'boss' ? 420 : 360;
+                const damage = eObj.type === 'boss' ? 24 : 18;
+                fireBullet(eObj, player.x, player.y, bulletSpeed, damage, 'enemy');
+              }
+              const base = eObj.type === 'boss' ? 0.6 : 1.4;
+              const range = eObj.type === 'boss' ? 0.8 : 1.4;
+              eObj.shootCooldown = base + Math.random() * range;
+            }
+          }
+        }
+      }
+
+      function checkMissionProgress() {
+        const mission = game.currentMission;
+        if (!mission || mission.completed) return;
+        if (mission.boss) {
+          if (mission.kills >= 1 || enemies.length === 0) {
+            mission.kills = 1;
+            enemies = [];
+            completeMission();
+          }
+        } else {
+          if (enemies.length === 0) {
+            if (mission.currentWaveIndex < mission.waves.length - 1) {
+              mission.currentWaveIndex++;
+              spawnWave();
+            } else {
+              completeMission();
+            }
+          }
+        }
+      }
+
+      function drawBackground() {
+        const gradient = ctx.createLinearGradient(0, 0, 0, WORLD_HEIGHT);
+        gradient.addColorStop(0, '#431407');
+        gradient.addColorStop(0.45, '#78350f');
+        gradient.addColorStop(1, '#1e293b');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+
+        ctx.fillStyle = 'rgba(248, 250, 252, 0.04)';
+        for (let i = 0; i < 12; i++) {
+          const y = (i / 12) * WORLD_HEIGHT;
+          ctx.fillRect(0, y, WORLD_WIDTH, 1);
+        }
+      }
+
+      function drawEnvironment() {
+        const mission = game.currentMission;
+        const id = mission ? mission.id : 0;
+        ctx.save();
+        if (id === 1 || id === 0) {
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(90, 120, 80, 40);
+          ctx.fillRect(WORLD_WIDTH - 200, 140, 90, 36);
+
+          ctx.fillStyle = '#dc2626';
+          ctx.beginPath();
+          ctx.arc(WORLD_WIDTH / 2, WORLD_HEIGHT * 0.55, 14, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#7f1d1d';
+          ctx.beginPath();
+          ctx.arc(WORLD_WIDTH / 2, WORLD_HEIGHT * 0.55, 8, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (id === 2) {
+          ctx.fillStyle = '#1f2937';
+          ctx.fillRect(40, 90, 80, 180);
+          ctx.fillRect(150, 70, 80, 210);
+          ctx.fillRect(WORLD_WIDTH - 170, 80, 90, 200);
+          ctx.fillRect(WORLD_WIDTH - 280, 100, 90, 190);
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+          ctx.fillRect(WORLD_WIDTH / 2 - 90, 0, 180, WORLD_HEIGHT);
+        } else if (id === 3) {
+          ctx.fillStyle = '#0f172a';
+          ctx.beginPath();
+          ctx.arc(140, 130, 36, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(WORLD_WIDTH - 180, 110, 42, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(WORLD_WIDTH / 2, 120, 50, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      function drawPlayer() {
+        ctx.save();
+        ctx.translate(player.x, player.y);
+        const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x) || 0;
+        ctx.rotate(angle);
+
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath();
+        ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#92400e';
+        ctx.beginPath();
+        ctx.ellipse(-2, 4, player.radius * 0.9, player.radius * 0.7, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#78350f';
+        ctx.beginPath();
+        ctx.ellipse(0, -2, player.radius * 1.1, player.radius * 0.55, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#451a03';
+        ctx.beginPath();
+        ctx.ellipse(0, -4, player.radius * 0.55, player.radius * 0.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(player.radius * 0.2, 0);
+        ctx.lineTo(player.radius + 8, 0);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      function drawEnemies() {
+        for (let i = 0; i < enemies.length; i++) {
+          const eObj = enemies[i];
+          ctx.save();
+          ctx.translate(eObj.x, eObj.y);
+          const angle = Math.atan2(player.y - eObj.y, player.x - eObj.x) || 0;
+          ctx.rotate(angle);
+
+          ctx.fillStyle = eObj.type === 'boss' ? '#f97373' : '#fb923c';
+          ctx.beginPath();
+          ctx.arc(0, 0, eObj.radius, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = eObj.type === 'boss' ? '#7f1d1d' : '#7c2d12';
+          ctx.beginPath();
+          ctx.ellipse(-2, 3, eObj.radius * 0.9, eObj.radius * 0.6, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#0f172a';
+          ctx.beginPath();
+          ctx.ellipse(0, -2, eObj.radius * 1.05, eObj.radius * 0.55, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#1f2937';
+          ctx.beginPath();
+          ctx.ellipse(0, -4, eObj.radius * 0.5, eObj.radius * 0.6, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = '#e5e7eb';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(eObj.radius * 0.1, 0);
+          ctx.lineTo(eObj.radius + 6, 0);
+          ctx.stroke();
+
+          ctx.restore();
+
+          const hpRatio = Math.max(0, eObj.hp) / eObj.maxHp;
+          const barWidth = eObj.radius * 2;
+          const barHeight = 3;
+          const leftX = eObj.x - barWidth / 2;
+          const y = eObj.y - eObj.radius - 8;
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+          ctx.fillRect(leftX, y, barWidth, barHeight);
+          ctx.fillStyle = eObj.type === 'boss' ? '#ef4444' : '#f97316';
+          ctx.fillRect(leftX, y, barWidth * hpRatio, barHeight);
+        }
+      }
+
+      function drawBullets() {
+        for (let i = 0; i < bullets.length; i++) {
+          const b = bullets[i];
+          ctx.fillStyle = b.owner === 'player' ? '#e5e7eb' : '#f97373';
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      function drawVignette() {
+        const gradient = ctx.createRadialGradient(
+          WORLD_WIDTH / 2,
+          WORLD_HEIGHT * 0.55,
+          WORLD_HEIGHT * 0.1,
+          WORLD_WIDTH / 2,
+          WORLD_HEIGHT * 0.55,
+          WORLD_HEIGHT * 0.7
+        );
+        gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        gradient.addColorStop(1, 'rgba(15, 23, 42, 0.85)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+      }
+
+      function draw() {
+        drawBackground();
+        drawEnvironment();
+        drawBullets();
+        drawEnemies();
+        drawPlayer();
+        drawVignette();
+      }
+
+      let lastTime = performance.now();
+      function loop(now) {
+        const dt = Math.min(0.033, (now - lastTime) / 1000);
+        lastTime = now;
+        update(dt);
+        draw();
+        requestAnimationFrame(loop);
+      }
+
+      startTitle();
+      requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>
