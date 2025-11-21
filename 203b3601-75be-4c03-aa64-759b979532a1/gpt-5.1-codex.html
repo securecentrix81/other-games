@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Secure Centrix81 - Grade Escape Prototype</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Space Grotesk', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: radial-gradient(circle at top, #0f172a 0%, #030712 70%);
+      color: #f8fafc;
+      overflow: hidden;
+    }
+
+    #viewer {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+
+    #viewer canvas {
+      display: block;
+    }
+
+    #ui {
+      position: fixed;
+      top: 1.5rem;
+      left: 1.5rem;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    #storyCard {
+      pointer-events: none;
+    }
+
+    #overlayMessage {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: clamp(2rem, 6vw, 4rem);
+      font-weight: 700;
+      color: #ffffff;
+      text-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
+      opacity: 0;
+      transition: opacity 0.6s ease;
+      pointer-events: none;
+      z-index: 20;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body>
+  <div id="viewer"></div>
+
+  <div id="ui" class="max-w-md space-y-4 rounded-3xl border border-white/10 bg-slate-900/70 p-5 shadow-2xl backdrop-blur">
+    <div class="space-y-1">
+      <p class="text-xs uppercase tracking-[0.3em] text-cyan-300/80">Secure Centrix81</p>
+      <h1 class="text-2xl font-semibold text-cyan-100">Grade Escape Prototype</h1>
+      <p class="text-sm text-slate-200">Guide Saharsh as he scrambles to stabilize his classes while sneaking into the Secure Centrix terminal.</p>
+    </div>
+    <div class="grid grid-cols-3 gap-2 text-center text-xs font-semibold">
+      <div class="rounded-2xl bg-white/5 p-3">
+        <p class="text-slate-400 text-[0.65rem]">Semester Clock</p>
+        <p id="timer" class="text-amber-300 text-xl">75s</p>
+      </div>
+      <div class="rounded-2xl bg-white/5 p-3">
+        <p class="text-slate-400 text-[0.65rem]">Study Pylons</p>
+        <p id="pylons" class="text-sky-300 text-xl">0/3</p>
+      </div>
+      <div class="rounded-2xl bg-white/5 p-3">
+        <p class="text-slate-400 text-[0.65rem]">Secure Centrix</p>
+        <p id="consoleState" class="text-rose-300 text-xl">Locked</p>
+      </div>
+    </div>
+    <div class="rounded-2xl bg-white/5 p-4 space-y-2">
+      <p class="text-xs font-semibold text-slate-300">Controls</p>
+      <ul class="list-disc list-inside text-[0.75rem] text-slate-300 space-y-1">
+        <li>WASD &mdash; glide across the campus quad</li>
+        <li>Shift &mdash; panic dash</li>
+        <li>Space &mdash; study/interact</li>
+      </ul>
+    </div>
+    <div class="rounded-2xl bg-white/5 p-4 space-y-2">
+      <p class="text-xs font-semibold text-slate-300">Classes on Life Support</p>
+      <div id="modules" class="space-y-1"></div>
+    </div>
+    <p id="statusMessage" class="text-sm font-semibold text-emerald-300">Booting up the semester...</p>
+  </div>
+
+  <div id="storyCard" class="pointer-events-none fixed bottom-6 right-6 max-w-sm rounded-3xl border border-white/10 bg-slate-900/60 p-5 text-sm text-slate-200 shadow-2xl backdrop-blur">
+    <p class="font-semibold text-sky-200">Mission Brief</p>
+    <p>Stabilize the glowing pylons to pull Saharsh's grades out of freefall, then jack into the Secure Centrix console before the semester implodes.</p>
+    <div class="mt-2 text-xs text-slate-400">Avoid the drifting burnout orbs &mdash; they sap your morale! (Just kidding, but they do look menacing.)</div>
+  </div>
+
+  <div id="overlayMessage"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script>
+    const timerEl = document.getElementById('timer');
+    const pylonsEl = document.getElementById('pylons');
+    const consoleEl = document.getElementById('consoleState');
+    const statusEl = document.getElementById('statusMessage');
+    const modulesEl = document.getElementById('modules');
+    const overlayMessage = document.getElementById('overlayMessage');
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x030712);
+    scene.fog = new THREE.Fog(0x020617, 18, 45);
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 5, 10);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.getElementById('viewer').appendChild(renderer.domElement);
+
+    const ambient = new THREE.AmbientLight(0xbcd7ff, 0.6);
+    scene.add(ambient);
+
+    const dirLight = new THREE.DirectionalLight(0x7dd3fc, 0.9);
+    dirLight.position.set(5, 10, 4);
+    scene.add(dirLight);
+
+    const rimLight = new THREE.PointLight(0xf97316, 0.8, 30);
+    rimLight.position.set(-6, 6, -6);
+    scene.add(rimLight);
+
+    const groundGeo = new THREE.CircleGeometry(22, 72);
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x0b1222, roughness: 0.95, metalness: 0.05 });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    scene.add(ground);
+
+    const grid = new THREE.GridHelper(40, 60, 0x1d4ed8, 0x0f172a);
+    grid.rotation.y = Math.PI / 4;
+    scene.add(grid);
+
+    const playerGroup = new THREE.Group();
+    playerGroup.position.set(0, 0.4, 6);
+
+    const body = new THREE.Mesh(
+      new THREE.SphereGeometry(0.45, 32, 32),
+      new THREE.MeshStandardMaterial({ color: 0xf97316, emissive: 0x1f2937, roughness: 0.4 })
+    );
+    playerGroup.add(body);
+
+    const visor = new THREE.Mesh(
+      new THREE.TorusGeometry(0.48, 0.07, 12, 48),
+      new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0ea5e9 })
+    );
+    visor.rotation.x = Math.PI / 2;
+    playerGroup.add(visor);
+
+    const portraitMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95 });
+    const portrait = new THREE.Mesh(new THREE.PlaneGeometry(1, 1.35), portraitMat);
+    portrait.position.set(0, 1.1, 0);
+    playerGroup.add(portrait);
+
+    const loader = new THREE.TextureLoader();
+    loader.load(
+      'https://asset-cdn.schoology.com/system/files/imagecache/profile_big/pictures/picture-c0b09cdead19788fb0f8be0d53b5c572_68c34cd700b90.jpg',
+      texture => {
+        portraitMat.map = texture;
+        portraitMat.needsUpdate = true;
+      }
+    );
+
+    scene.add(playerGroup);
+
+    const consoleGroup = new THREE.Group();
+    const consoleBase = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.9, 1.2, 0.3, 48),
+      new THREE.MeshStandardMaterial({ color: 0x1e1b4b, metalness: 0.6, roughness: 0.2 })
+    );
+    consoleBase.position.y = 0.15;
+    consoleGroup.add(consoleBase);
+
+    const consoleScreen = new THREE.Mesh(
+      new THREE.BoxGeometry(1.8, 1.1, 0.12),
+      new THREE.MeshStandardMaterial({ color: 0x60a5fa, emissive: 0x3b82f6, metalness: 0.9 })
+    );
+    consoleScreen.position.set(0, 1, 0);
+    consoleGroup.add(consoleScreen);
+
+    const halo = new THREE.Mesh(
+      new THREE.TorusGeometry(1.25, 0.05, 16, 64),
+      new THREE.MeshStandardMaterial({ color: 0xfcd34d, emissive: 0xf59e0b })
+    );
+    halo.rotation.x = Math.PI / 2;
+    halo.position.y = 0.5;
+    consoleGroup.add(halo);
+
+    consoleGroup.position.set(0, 0, -8);
+    scene.add(consoleGroup);
+
+    const nodeData = [
+      { position: new THREE.Vector3(-5, 0, -1), color: 0x22d3ee, label: 'Cybernetics' },
+      { position: new THREE.Vector3(5, 0, 0), color: 0xf472b6, label: 'Quantum Essays' },
+      { position: new THREE.Vector3(0, 0, 5), color: 0x34d399, label: 'Discrete Riddles' }
+    ];
+
+    const pylons = [];
+    const moduleEntries = [];
+
+    nodeData.forEach(data => {
+      const geo = new THREE.CylinderGeometry(0.6, 0.8, 1.4, 6);
+      const mat = new THREE.MeshStandardMaterial({ color: data.color, emissive: data.color, emissiveIntensity: 0.4, metalness: 0.3, roughness: 0.3 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.copy(data.position);
+      mesh.position.y = 0.7;
+      mesh.castShadow = false;
+      mesh.receiveShadow = false;
+      mesh.userData.baseY = mesh.position.y;
+      scene.add(mesh);
+
+      const topOrb = new THREE.Mesh(
+        new THREE.SphereGeometry(0.35, 24, 24),
+        new THREE.MeshStandardMaterial({ color: data.color, emissive: data.color, emissiveIntensity: 0.7 })
+      );
+      topOrb.position.set(0, 0.9, 0);
+      mesh.add(topOrb);
+
+      const moduleRow = document.createElement('div');
+      moduleRow.className = 'flex justify-between rounded-2xl bg-black/20 px-3 py-2 text-xs font-semibold text-rose-300';
+      const labelSpan = document.createElement('span');
+      labelSpan.textContent = data.label;
+      const statusSpan = document.createElement('span');
+      statusSpan.textContent = 'Failing';
+      moduleRow.append(labelSpan, statusSpan);
+      modulesEl.appendChild(moduleRow);
+
+      pylons.push({ mesh, topOrb, activated: false, moduleRow, statusSpan });
+    });
+
+    const distractions = [];
+    for (let i = 0; i < 8; i++) {
+      const orb = new THREE.Mesh(
+        new THREE.SphereGeometry(0.22, 16, 16),
+        new THREE.MeshStandardMaterial({ color: 0x818cf8, emissive: 0x6366f1 })
+      );
+      scene.add(orb);
+      distractions.push({
+        mesh: orb,
+        radius: 6 + Math.random() * 4,
+        speed: 0.15 + Math.random() * 0.25,
+        vertical: Math.random() * 0.6 + 0.2,
+        offset: Math.random() * Math.PI * 2
+      });
+    }
+
+    const particles = [];
+    const particleGeo = new THREE.SphereGeometry(0.06, 6, 6);
+
+    function spawnBurst(origin, tint = 0xffffff, count = 20) {
+      for (let i = 0; i < count; i++) {
+        const mat = new THREE.MeshBasicMaterial({ color: tint });
+        const mesh = new THREE.Mesh(particleGeo, mat);
+        mesh.position.copy(origin);
+        const velocity = new THREE.Vector3(
+          (Math.random() - 0.5) * 2,
+          Math.random() * 2,
+          (Math.random() - 0.5) * 2
+        );
+        particles.push({ mesh, velocity, life: 1.2 });
+        scene.add(mesh);
+      }
+    }
+
+    const keys = {};
+    let pendingInteraction = false;
+
+    document.addEventListener('keydown', event => {
+      if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft', 'ShiftRight'].includes(event.code)) {
+        keys[event.code] = true;
+      }
+      if (event.code === 'Space') {
+        event.preventDefault();
+        pendingInteraction = true;
+      }
+    });
+
+    document.addEventListener('keyup', event => {
+      if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft', 'ShiftRight'].includes(event.code)) {
+        keys[event.code] = false;
+      }
+    });
+
+    const state = {
+      timer: 75,
+      nodesUnlocked: 0,
+      totalNodes: pylons.length,
+      consoleUnlocked: false,
+      gameOver: false,
+      message: 'Booting up the semester...'
+    };
+
+    function setStatus(text, tone = 'neutral') {
+      statusEl.textContent = text;
+      statusEl.className = 'text-sm font-semibold';
+      if (tone === 'alert') statusEl.classList.add('text-rose-300');
+      else if (tone === 'success') statusEl.classList.add('text-emerald-300');
+      else statusEl.classList.add('text-cyan-200');
+    }
+
+    function updateUI() {
+      timerEl.textContent = `${state.timer}s`;
+      pylonsEl.textContent = `${state.nodesUnlocked}/${state.totalNodes}`;
+      consoleEl.textContent = state.consoleUnlocked ? 'Unlocked' : 'Locked';
+      consoleEl.className = `text-xl ${state.consoleUnlocked ? 'text-emerald-300' : 'text-rose-300'}`;
+    }
+
+    updateUI();
+
+    const semesterInterval = setInterval(() => {
+      if (state.gameOver) return;
+      state.timer = Math.max(0, state.timer - 1);
+      if (state.timer === 0) {
+        state.gameOver = true;
+        setStatus('Saharsh faceplants academically. Secure Centrix denied.', 'alert');
+        overlayMessage.textContent = 'Academic Probation!';
+        overlayMessage.style.opacity = 1;
+      }
+      updateUI();
+    }, 1000);
+
+    function handleInteraction() {
+      if (state.gameOver) return;
+      let interacted = false;
+
+      pylons.forEach(pylon => {
+        if (!pylon.activated) {
+          const distance = playerGroup.position.distanceTo(pylon.mesh.position);
+          if (distance < 1.5) {
+            pylon.activated = true;
+            pylon.mesh.material.color.set(0x4ade80);
+            pylon.mesh.material.emissive.set(0x22c55e);
+            pylon.statusSpan.textContent = 'Stabilized';
+            pylon.moduleRow.classList.remove('text-rose-300');
+            pylon.moduleRow.classList.add('text-emerald-300');
+            state.nodesUnlocked += 1;
+            setStatus(`Locked in ${state.nodesUnlocked}/${state.totalNodes} classes!`, 'success');
+            spawnBurst(pylon.mesh.position.clone().add(new THREE.Vector3(0, 0.7, 0)), 0x22c55e, 12);
+            interacted = true;
+          }
+        }
+      });
+
+      if (state.nodesUnlocked === state.totalNodes && !state.consoleUnlocked) {
+        state.consoleUnlocked = true;
+        setStatus('Terminal unlocked! Hustle to Secure Centrix before faculty notices.', 'success');
+        spawnBurst(consoleGroup.position.clone().add(new THREE.Vector3(0, 1, 0)), 0x60a5fa, 30);
+      }
+
+      const consoleDistance = playerGroup.position.distanceTo(consoleGroup.position);
+      if (consoleDistance < 1.8 && state.consoleUnlocked) {
+        state.gameOver = true;
+        setStatus('Secure Centrix session achieved without raising alarms!', 'success');
+        overlayMessage.textContent = 'Secure Centrix Online!';
+        overlayMessage.style.opacity = 1;
+        spawnBurst(consoleGroup.position.clone().add(new THREE.Vector3(0, 1.3, 0)), 0xfbbf24, 50);
+      } else if (consoleDistance < 1.8 && !state.consoleUnlocked) {
+        setStatus('Console is encrypted until all pylons sync.', 'alert');
+        interacted = true;
+      }
+
+      if (!interacted && !state.gameOver) {
+        setStatus('Nothing to interact with right here.', 'neutral');
+      }
+    }
+
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      const elapsed = clock.elapsedTime;
+
+      if (!state.gameOver) {
+        const direction = new THREE.Vector3(
+          (keys['KeyD'] ? 1 : 0) - (keys['KeyA'] ? 1 : 0),
+          0,
+          (keys['KeyS'] ? 1 : 0) - (keys['KeyW'] ? 1 : 0)
+        );
+
+        if (direction.lengthSq() > 0) {
+          direction.normalize();
+          const dash = keys['ShiftLeft'] || keys['ShiftRight'];
+          const moveSpeed = dash ? 6 : 3.8;
+          const moveVector = direction.clone().multiplyScalar(moveSpeed * delta);
+          playerGroup.position.add(moveVector);
+          const targetAngle = Math.atan2(direction.x, -direction.z);
+          playerGroup.rotation.y = THREE.MathUtils.lerp(playerGroup.rotation.y, targetAngle, 0.2);
+        }
+
+        const flat = new THREE.Vector2(playerGroup.position.x, playerGroup.position.z);
+        const boundary = 10;
+        if (flat.length() > boundary) {
+          flat.setLength(boundary);
+          playerGroup.position.x = flat.x;
+          playerGroup.position.z = flat.y;
+        }
+
+        visor.rotation.y += delta * 3;
+        body.position.y = 0.4 + Math.sin(elapsed * 5) * 0.03;
+
+        if (pendingInteraction) {
+          handleInteraction();
+          pendingInteraction = false;
+        }
+      }
+
+      pylons.forEach((pylon, index) => {
+        const float = Math.sin(elapsed * 1.2 + index) * 0.2;
+        pylon.mesh.position.y = pylon.mesh.userData.baseY + (pylon.activated ? 0.05 : float);
+        pylon.topOrb.rotation.y += delta * (pylon.activated ? 5 : 1);
+      });
+
+      distractions.forEach((orb, idx) => {
+        const angle = elapsed * orb.speed + orb.offset;
+        orb.mesh.position.set(
+          Math.cos(angle) * orb.radius,
+          1 + Math.sin(elapsed * 2 + idx) * orb.vertical,
+          Math.sin(angle) * orb.radius
+        );
+      });
+
+      particles.forEach((particle, i) => {
+        particle.life -= delta;
+        particle.mesh.position.add(particle.velocity.clone().multiplyScalar(delta));
+        particle.mesh.material.opacity = Math.max(0, particle.life);
+        particle.mesh.material.transparent = true;
+        if (particle.life <= 0) {
+          scene.remove(particle.mesh);
+          particles.splice(i, 1);
+        }
+      });
+
+      halo.rotation.z += delta * (state.consoleUnlocked ? 1.5 : 0.4);
+      consoleScreen.material.emissiveIntensity = state.consoleUnlocked ? 1.5 : 0.6;
+
+      const desiredCamPos = playerGroup.position.clone().add(new THREE.Vector3(0, 5, 8));
+      camera.position.lerp(desiredCamPos, 0.1);
+      camera.lookAt(playerGroup.position.clone().add(new THREE.Vector3(0, 1, 0)));
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
