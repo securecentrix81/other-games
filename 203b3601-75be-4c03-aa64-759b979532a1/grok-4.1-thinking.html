@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Secure Centrix81 - Saharsh Failing Classes Edition</title>
+    <style>
+        body { margin:0; overflow:hidden; background:#000; }
+        #blocker { position:absolute; inset:0; background:rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; color:#fff; font-family:Arial, sans-serif; text-align:center; }
+        #instructions { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.7); color:#fff; padding:15px; border-radius:10px; font-family:Arial, sans-serif; }
+        #hud { position:absolute; bottom:20px; left:20px; background:rgba(0,0,0,0.7); color:#ff3333; padding:10px; border-radius:8px; font-family:Arial, sans-serif; font-size:18px; }
+        #saharsh-face { position:absolute; top:20px; right:20px; width:120px; height:120px; border-radius:50%; border:5px solid #ff0066; box-shadow:0 0 20px #ff0066; }
+        #win { position:absolute; inset:0; background:rgba(0,255,0,0.95); display:flex; align-items:center; justify-content:center; color:#000; font-size:60px; font-weight:bold; text-align:center; display:none; }
+    </style>
+</head>
+<body>
+
+<img id="saharsh-face" src="https://asset-cdn.schoology.com/system/files/imagecache/profile_big/pictures/picture-c0b09cdead19788fb0f8be0d53b5c572_68c34cd700b90.jpg" alt="Saharsh">
+
+<div id="blocker">
+    <div>
+        <h1>Secure Centrix81</h1>
+        <p>Play as Saharsh<br>the ultimate class-skipper legend</p>
+        <br>
+        <p style="font-size:24px;">CLICK TO ENTER THE CLASSROOM</p>
+    </div>
+</div>
+
+<div id="instructions">
+    <strong>WASD</strong> → move  <strong>SPACE</strong> → jump  <strong>MOUSE</strong> → look<br>
+    Avoid the red books (studying = instant failure)<br>
+    Reach the glowing computer to play Secure Centrix81<br>
+    <span style="color:#ff0066;">Goal: Fail classes in style ✊</span>
+</div>
+
+<div id="hud">Grade: F<br>Addiction: MAX</div>
+
+<div id="win">
+    <div>
+        CONGRATULATIONS SAHARSH!<br><br>
+        You successfully failed all your classes<br>
+        and unlocked Secure Centrix81 god mode!<br><br>
+        <span style="font-size:40px;">F forever 🗿</span>
+    </div>
+</div>
+
+<script src="https://unpkg.com/three@0.126.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.126.0/examples/js/controls/PointerLockControls.js"></script>
+
+<script>
+    const saharshImg = "https://asset-cdn.schoology.com/system/files/imagecache/profile_big/pictures/picture-c0b09cdead19788fb0f8be0d53b5c572_68c34cd700b90.jpg";
+
+    let camera, scene, renderer, controls;
+    let moveForward=false, moveBackward=false, moveLeft=false, moveRight=false, canJump=false;
+    let prevTime = performance.now();
+    const velocity = new THREE.Vector3();
+    const direction = new THREE.Vector3();
+    const playerRadius = 1.5;
+
+    // Win condition
+    const computerPos = new THREE.Vector3(0, 2, -18);
+    let won = false;
+
+    // Bad books (studying = lose purity)
+    const bookPositions = [
+        new THREE.Vector3(8,1,-8), new THREE.Vector3(-7,1,-10), new THREE.Vector3(12,1,-15),
+        new THREE.Vector3(-10,1,-5), new THREE.Vector3(3,1,-12), new THREE.Vector3(-12,1,-18)
+    ];
+    let studied = false;
+
+    init();
+    animate();
+
+    function init() {
+
+        camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x101020);
+        scene.fog = new THREE.FogExp2(0x101020, 0.015);
+
+        // Lights
+        scene.add(new THREE.HemisphereLight(0x606060, 0x4040a0, 1));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(10, 20, 5);
+        scene.add(dirLight);
+
+        // Floor
+        const floor = new THREE.Mesh(
+            new THREE.PlaneGeometry(60, 60),
+            new THREE.MeshStandardMaterial({color:0x2d1b1b})
+        );
+        floor.rotation.x = -Math.PI/2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // Walls (classroom style)
+        const wallMat = new THREE.MeshStandardMaterial({color:0xe0d8c3});
+        const wallGeo = new THREE.BoxGeometry(60, 20, 1);
+        const wall1 = new THREE.Mesh(wallGeo, wallMat); wall1.position.z = -30; wall1.position.y=10; scene.add(wall1);
+        const wall2 = new THREE.Mesh(new THREE.BoxGeometry(1,20,60), wallMat); wall2.position.x = -30; wall2.position.y=10; scene.add(wall2);
+        const wall3 = wall2.clone(); wall3.position.x = 30; scene.add(wall3);
+
+        // Desks
+        const deskMat = new THREE.MeshStandardMaterial({color:0x8b5a2b});
+        for(let x=-12; x<=12; x+=8){
+            for(let z=5; z>=-20; z-=10){
+                const desk = new THREE.Mesh(new THREE.BoxGeometry(4,1.5,2), deskMat);
+                desk.position.set(x, 0.75, z);
+                scene.add(desk);
+            }
+        }
+
+        // Evil studying books (red glowing danger)
+        bookPositions.forEach(p => {
+            const book = new THREE.Mesh(
+                new THREE.BoxGeometry(1.2,1.2,1.2),
+                new THREE.MeshStandardMaterial({color:0xff0000, emissive:0xff0000, emissiveIntensity:0.6})
+            );
+            book.position.copy(p);
+            scene.add(book);
+        });
+
+        // The holy computer (glowing green)
+        const pcBase = new THREE.Mesh(new THREE.BoxGeometry(4,2,3), new THREE.MeshStandardMaterial({color:0x00ff00, emissive:0x00ff00, emissiveIntensity:0.8}));
+        pcBase.position.set(0,1,-18);
+        scene.add(pcBase);
+
+        const monitor = new THREE.Mesh(new THREE.BoxGeometry(3,2,0.5), new THREE.MeshStandardMaterial({color:0x000000}));
+        monitor.position.set(0,2.5,-17.75);
+        scene.add(monitor);
+
+        // Saharsh playing on the monitor (sprite)
+        const spriteMat = new THREE.SpriteMaterial({map: new THREE.TextureLoader().load(saharshImg)});
+        const sprite = new THREE.Sprite(spriteMat);
+        sprite.scale.set(4,4,1);
+        sprite.position.set(0,2.5,-17.6);
+        scene.add(sprite);
+
+        // Multiple floating Saharsh heads for chaos
+        for(let i=0;i<8;i++){
+            const s = new THREE.Sprite(spriteMat);
+            s.scale.set(3,3,1);
+            s.position.set(
+                Math.random()*40-20,
+                Math.random()*10+5,
+                Math.random()*40-20
+            );
+            scene.add(s);
+        }
+
+        controls = new THREE.PointerLockControls(camera, document.body);
+
+        document.getElementById('blocker').addEventListener('click', () => controls.lock());
+
+        controls.addEventListener('lock', () => {
+            document.getElementById('blocker').style.display = 'none';
+            document.getElementById('instructions').style.display = '';
+        });
+
+        controls.addEventListener('unlock', () => {
+            document.getElementById('blocker').style.display = '';
+            document.getElementById('instructions').style.display = 'none';
+        });
+
+        scene.add(controls.getObject());
+        camera.position.set(0, 5, 25);  // start outside classroom
+
+        // Controls
+        document.addEventListener('keydown', e => {
+            switch(e.code){
+                case 'KeyW': moveForward = true; break;
+                case 'KeyS': moveBackward = true; break;
+                case 'KeyA': moveLeft = true; break;
+                case 'KeyD': moveRight = true; break;
+                case 'Space': if(canJump) velocity.y += 12; canJump=false; break;
+            }
+        });
+        document.addEventListener('keyup', e => {
+            switch(e.code){
+                case 'KeyW': moveForward = false; break;
+                case 'KeyS': moveBackward = false; break;
+                case 'KeyA': moveLeft = false; break;
+                case 'KeyD': moveRight = false; break;
+            }
+        });
+
+        renderer = new THREE.WebGLRenderer({antialias:true});
+        renderer.setSize(innerWidth, innerHeight);
+        renderer.setPixelRatio(devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+
+        window.addEventListener('resize', () => {
+            camera.aspect = innerWidth/innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(innerWidth, innerHeight);
+        });
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        if(controls.isLocked && !won){
+
+            const time = performance.now();
+            const delta = (time - prevTime)/1000;
+
+            velocity.x -= velocity.x * 10 * delta;
+            velocity.z -= velocity.z * 10 * delta;
+            velocity.y -= 98 * delta; // stronger gravity
+
+            direction.z = Number(moveForward) - Number(moveBackward);
+            direction.x = Number(moveRight) - Number(moveLeft);
+            direction.normalize();
+
+            if(moveForward || moveBackward) velocity.z -= direction.z * 80 * delta;
+            if(moveLeft || moveRight) velocity.x -= direction.x * 80 * delta;
+
+            controls.moveRight(-velocity.x * delta);
+            controls.moveForward(-velocity.z * delta);
+            controls.getObject().position.y += velocity.y * delta;
+
+            if(controls.getObject().position.y < 5){
+                velocity.y = 0;
+                controls.getObject().position.y = 5;
+                canJump = true;
+            }
+
+            const pos = controls.getObject().position;
+
+            // Check studying (touch red book)
+            if(!studied){
+                for(let bp of bookPositions){
+                    if(pos.distanceTo(bp) < 3){
+                        studied = true;
+                        document.getElementById('hud').innerHTML = 'Grade: D-<br>You studied...<br>Saharsh is disappointed';
+                        break;
+                    }
+                }
+            }
+
+            // Check win
+            if(pos.distanceTo(computerPos) < 4){
+                won = true;
+                document.getElementById('win').style.display = 'flex';
+                controls.unlock();
+            }
+
+            prevTime = time;
+        }
+
+        renderer.render(scene, camera);
+    }
+</script>
+</body>
+</html>
