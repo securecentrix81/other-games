@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Saharsh's Class Failing Game</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap');
+
+    body {
+      font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      background: radial-gradient(circle at top, #1e3a8a 0%, #0f172a 45%, #020617 100%);
+      color: #0f172a;
+    }
+
+    .hud-card {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 1.5rem;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-shadow: 0 15px 40px rgba(15, 23, 42, 0.12);
+    }
+
+    #gameWrapper {
+      position: relative;
+      border-radius: 2rem;
+      overflow: hidden;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      box-shadow: 0 40px 80px rgba(15, 23, 42, 0.45);
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 64, 175, 0.6));
+    }
+
+    #game {
+      width: 100%;
+      height: 560px;
+    }
+
+    #game canvas {
+      display: block;
+    }
+
+    #menuOverlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      background: rgba(2, 6, 23, 0.85);
+      color: #e2e8f0;
+      z-index: 10;
+    }
+
+    #gpaBar {
+      width: 100%;
+      height: 12px;
+      border-radius: 999px;
+      background: #ffe4e6;
+      overflow: hidden;
+      border: 1px solid rgba(244, 114, 182, 0.5);
+    }
+
+    #gpaFill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #be123c, #fb7185);
+      transition: width 0.3s ease;
+    }
+
+    #uiOverlay {
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body class="text-slate-100 p-4 md:p-8">
+  <main class="max-w-6xl mx-auto space-y-8">
+    <header class="text-center space-y-2">
+      <p class="uppercase tracking-[0.4em] text-xs text-indigo-200">Secure Centrix81 Training Sim</p>
+      <h1 class="text-4xl md:text-5xl font-bold text-white">Saharsh's Class Failing Game</h1>
+      <p class="text-indigo-100 max-w-2xl mx-auto">Sprint through chaotic classrooms, hack Secure Centrix terminals, and try not to fail absolutely everything in this 3D action puzzle adventure.</p>
+    </header>
+
+    <section class="grid md:grid-cols-3 gap-4">
+      <div class="hud-card p-4 space-y-3">
+        <div class="flex items-center justify-between text-slate-500 uppercase text-xs tracking-[0.3em]">
+          <span>Level</span>
+          <span id="levelLabel" class="text-slate-900 font-semibold">--</span>
+        </div>
+        <div>
+          <p class="text-slate-500 uppercase text-xs tracking-[0.3em]">Semester Timer</p>
+          <p class="text-3xl font-bold text-emerald-600"><span id="timer">0</span>s</p>
+        </div>
+      </div>
+      <div class="hud-card p-4 space-y-2">
+        <p class="text-slate-500 uppercase text-xs tracking-[0.3em]">GPA Integrity</p>
+        <div id="gpaBar">
+          <div id="gpaFill"></div>
+        </div>
+        <p class="text-sm font-semibold text-slate-700"><span id="gpaValue">4.00</span> / 4.00</p>
+      </div>
+      <div class="hud-card p-4 space-y-2">
+        <p class="text-slate-500 uppercase text-xs tracking-[0.3em]">Faculty Broadcast</p>
+        <p id="eventLog" class="font-medium text-slate-800">Secure Centrix is waiting...</p>
+      </div>
+    </section>
+
+    <div id="gameWrapper">
+      <div id="game"></div>
+      <div id="uiOverlay" class="absolute top-4 left-4 flex flex-col gap-3 text-white">
+        <div class="bg-black/50 px-4 py-3 rounded-2xl shadow-lg">
+          <p class="text-[10px] uppercase tracking-[0.6em] text-emerald-300">Status</p>
+          <p id="statusLabel" class="text-lg font-semibold">Awaiting deploy...</p>
+        </div>
+        <div class="bg-black/40 px-4 py-3 rounded-2xl shadow-lg text-sm space-y-1">
+          <p>Assignments Left: <span id="assignmentCount" class="font-semibold">0</span></p>
+          <p>Secure Nodes: <span id="nodesInfo" class="font-semibold">0/0</span></p>
+          <p>Terminal Lock: <span id="terminalStatus" class="font-semibold">Locked</span></p>
+        </div>
+      </div>
+      <div id="menuOverlay" class="hidden">
+        <div class="bg-slate-900/80 border border-white/10 rounded-3xl w-full max-w-2xl p-8 space-y-4 text-center">
+          <p id="overlaySubtitle" class="text-xs uppercase tracking-[0.5em] text-indigo-300">Mission Launch</p>
+          <h2 id="overlayTitle" class="text-3xl font-bold text-white">Secure Centrix Boot Chamber</h2>
+          <p id="overlayMessage" class="text-slate-200">Play as Saharsh, dodge grade drones, and upload something—anything—before the faculty notices.</p>
+          <button id="overlayButton" class="px-8 py-3 rounded-full bg-emerald-400 text-slate-900 font-semibold tracking-wide shadow-xl hover:bg-emerald-300 transition">Start Semester</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="hud-card p-6 space-y-4">
+      <h2 class="text-2xl font-semibold text-slate-900">Mission Checklist</h2>
+      <ul class="text-slate-600 space-y-2">
+        <li>• WASD / Arrow Keys to sprint across the classroom grid.</li>
+        <li>• Hold Shift to sprint harder. Press E to interact with Secure Nodes or the terminal.</li>
+        <li>• Collect every glowing assignment shard, sync the numbered nodes in ascending order, then upload at the Secure Centrix console.</li>
+        <li>• Avoid red Grade Drones and cluttered desks—they'll shred your GPA and time.</li>
+      </ul>
+      <p class="text-slate-500 text-sm">Win by clearing every level before the timer or GPA hits zero. Lose and the faculty locks you out of Secure Centrix81 forever.</p>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script>
+    (() => {
+      const gameEl = document.getElementById('game');
+      const hud = {
+        assignments: document.getElementById('assignmentCount'),
+        nodes: document.getElementById('nodesInfo'),
+        timer: document.getElementById('timer'),
+        gpaValue: document.getElementById('gpaValue'),
+        level: document.getElementById('levelLabel'),
+        status: document.getElementById('statusLabel'),
+        terminal: document.getElementById('terminalStatus'),
+        gpaFill: document.getElementById('gpaFill'),
+        log: document.getElementById('eventLog')
+      };
+
+      const overlay = {
+        root: document.getElementById('menuOverlay'),
+        subtitle: document.getElementById('overlaySubtitle'),
+        title: document.getElementById('overlayTitle'),
+        message: document.getElementById('overlayMessage'),
+        button: document.getElementById('overlayButton')
+      };
+      let overlayAction = null;
+      overlay.button.addEventListener('click', () => {
+        if (overlayAction) overlayAction();
+      });
+
+      function showOverlay(title, message, buttonText, action, subtitle = '') {
+        overlay.title.textContent = title;
+        overlay.message.textContent = message;
+        overlay.button.textContent = buttonText;
+        overlay.subtitle.textContent = subtitle;
+        overlay.root.classList.remove('hidden');
+        overlayAction = action;
+      }
+
+      function hideOverlay() {
+        overlay.root.classList.add('hidden');
+        overlayAction = null;
+      }
+
+      const levelConfigs = [
+        { name: 'Orientation Meltdown', assignments: 5, drones: 2, nodes: 3, desks: 6, time: 75, size: 50 },
+        { name: 'Finals Catastrophe', assignments: 7, drones: 3, nodes: 4, desks: 8, time: 90, size: 62 }
+      ];
+
+      let scene, camera, renderer, clock;
+      let player;
+      let playerVelocity = new THREE.Vector3();
+      let floor, grid, rimBorder;
+      let assignments = [];
+      let nodes = [];
+      let drones = [];
+      let desks = [];
+      let terminal = null;
+      let occupiedSpots = [];
+      let levelBounds = 20;
+      let levelIndex = 0;
+      let timer = 0;
+      let assignmentsLeft = 0;
+      let activatedNodes = 0;
+      let nextNode = 1;
+      let gpa = 4;
+      const maxGpa = 4;
+      let invulnerableTimer = 0;
+      let state = 'menu';
+
+      const keys = {};
+      let pendingInteraction = false;
+
+      window.addEventListener('keydown', (e) => {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
+        keys[e.code] = true;
+        if (e.code === 'KeyE') pendingInteraction = true;
+      });
+
+      window.addEventListener('keyup', (e) => {
+        keys[e.code] = false;
+      });
+
+      function initThree() {
+        scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x0f172a, 60, 140);
+
+        camera = new THREE.PerspectiveCamera(55, gameEl.clientWidth / gameEl.clientHeight, 0.1, 500);
+        camera.position.set(25, 28, 25);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(gameEl.clientWidth, gameEl.clientHeight);
+        renderer.shadowMap.enabled = true;
+        gameEl.appendChild(renderer.domElement);
+
+        const hemi = new THREE.HemisphereLight(0xffffff, 0x0f172a, 0.9);
+        scene.add(hemi);
+
+        const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+        dir.position.set(35, 45, 25);
+        dir.castShadow = true;
+        dir.shadow.camera.far = 150;
+        scene.add(dir);
+
+        clock = new THREE.Clock();
+
+        createPlayer();
+
+        window.addEventListener('resize', onWindowResize);
+        animate();
+      }
+
+      function createPlayer() {
+        const loader = new THREE.TextureLoader();
+        loader.setCrossOrigin('anonymous');
+        const faceTexture = loader.load('https://asset-cdn.schoology.com/system/files/imagecache/profile_big/pictures/picture-c0b09cdead19788fb0f8be0d53b5c572_68c34cd700b90.jpg');
+        faceTexture.colorSpace = THREE.SRGBColorSpace;
+        const geometry = new THREE.BoxGeometry(2.1, 2.8, 1.6);
+        const blueMaterial = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.4, metalness: 0.2 });
+        const faceMaterial = new THREE.MeshStandardMaterial({ map: faceTexture, roughness: 0.8 });
+        const materials = [blueMaterial, blueMaterial, faceMaterial, blueMaterial, blueMaterial, blueMaterial];
+        player = new THREE.Mesh(geometry, materials);
+        player.castShadow = true;
+        player.position.set(0, 1.4, 0);
+        scene.add(player);
+
+        const auraGeo = new THREE.RingGeometry(1.2, 1.5, 32);
+        const auraMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+        const aura = new THREE.Mesh(auraGeo, auraMat);
+        aura.rotation.x = -Math.PI / 2;
+        aura.position.y = 0.05;
+        player.add(aura);
+      }
+
+      function onWindowResize() {
+        if (!renderer) return;
+        const width = gameEl.clientWidth;
+        const height = gameEl.clientHeight;
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height);
+      }
+
+      function animate() {
+        requestAnimationFrame(animate);
+        const delta = clock.getDelta();
+        if (state === 'playing') {
+          updatePlayer(delta);
+          updateAssignments(delta);
+          updateNodes(delta);
+          updateDrones(delta);
+          updateTimer(delta);
+          if (invulnerableTimer > 0) invulnerableTimer -= delta;
+          handleInteraction();
+        }
+        renderer.render(scene, camera);
+      }
+
+      function updatePlayer(delta) {
+        const moveVec = new THREE.Vector3(
+          (keys['KeyD'] || keys['ArrowRight'] ? 1 : 0) - (keys['KeyA'] || keys['ArrowLeft'] ? 1 : 0),
+          0,
+          (keys['KeyS'] || keys['ArrowDown'] ? 1 : 0) - (keys['KeyW'] || keys['ArrowUp'] ? 1 : 0)
+        );
+        let moving = false;
+        if (moveVec.lengthSq() > 0) {
+          moving = true;
+          moveVec.normalize();
+          const speed = (keys['ShiftLeft'] || keys['ShiftRight'] ? 28 : 18) * delta;
+          player.position.x += moveVec.x * speed;
+          player.position.z += moveVec.z * speed;
+          player.rotation.y = Math.atan2(moveVec.x, moveVec.z);
+        }
+        player.position.addScaledVector(playerVelocity, delta);
+        playerVelocity.multiplyScalar(0.9);
+
+        resolveDeskCollisions();
+        clampPlayer();
+        updateCamera(delta);
+        hud.status.textContent = moving ? 'Scrambling through excuses...' : 'Plotting next excuse...';
+      }
+
+      function updateCamera(delta) {
+        const desired = new THREE.Vector3(player.position.x + 22, 28, player.position.z + 22);
+        camera.position.lerp(desired, 0.08);
+        const target = new THREE.Vector3(player.position.x, player.position.y + 1.5, player.position.z);
+        camera.lookAt(target);
+      }
+
+      function clampPlayer() {
+        player.position.x = THREE.MathUtils.clamp(player.position.x, -levelBounds, levelBounds);
+        player.position.z = THREE.MathUtils.clamp(player.position.z, -levelBounds, levelBounds);
+      }
+
+      function resolveDeskCollisions() {
+        const radius = 1.1;
+        desks.forEach((desk) => {
+          const dx = player.position.x - desk.mesh.position.x;
+          const dz = player.position.z - desk.mesh.position.z;
+          const overlapX = desk.width / 2 + radius - Math.abs(dx);
+          const overlapZ = desk.depth / 2 + radius - Math.abs(dz);
+          if (overlapX > 0 && overlapZ > 0) {
+            if (overlapX < overlapZ) {
+              player.position.x += dx > 0 ? overlapX : -overlapX;
+            } else {
+              player.position.z += dz > 0 ? overlapZ : -overlapZ;
+            }
+          }
+        });
+      }
+
+      function updateAssignments(delta) {
+        assignments.forEach((item) => {
+          item.mesh.rotation.y += delta * 2;
+          item.mesh.position.y = 1 + Math.sin(performance.now() * 0.002 + item.offset) * 0.3;
+          if (!item.collected && player.position.distanceTo(item.mesh.position) < 1.6) {
+            item.collected = true;
+            scene.remove(item.mesh);
+            assignmentsLeft = Math.max(0, assignmentsLeft - 1);
+            updateHUD();
+            showMessage('Grabbed assignment ' + item.label + '!');
+          }
+        });
+      }
+
+      function updateNodes(delta) {
+        nodes.forEach((node) => {
+          node.mesh.rotation.y += delta * 0.5;
+          node.label.lookAt(camera.position);
+          node.mesh.material.emissiveIntensity = node.activated ? 0.8 : 0.3 + Math.sin(performance.now() * 0.003 + node.index) * 0.1;
+        });
+      }
+
+      function updateDrones(delta) {
+        drones.forEach((drone) => {
+          drone.angle += delta * drone.speed;
+          const x = drone.center.x + Math.cos(drone.angle) * drone.radius;
+          const z = drone.center.z + Math.sin(drone.angle * drone.drift) * drone.radius;
+          drone.mesh.position.set(x, 1.8 + Math.sin(drone.angle * 2) * 0.4, z);
+          drone.mesh.rotation.y += delta * 3;
+          if (player.position.distanceTo(drone.mesh.position) < 1.7) {
+            damagePlayer(0.7, 'Grade drone interference!');
+            const knock = new THREE.Vector3().subVectors(player.position, drone.mesh.position).setY(0).normalize().multiplyScalar(30);
+            playerVelocity.add(knock);
+          }
+        });
+      }
+
+      function updateTimer(delta) {
+        timer -= delta;
+        if (timer <= 0) {
+          timer = 0;
+          updateHUD();
+          failGame('Timer expired! Secure Centrix flagged your absence.');
+          return;
+        }
+        updateHUD();
+      }
+
+      function handleInteraction() {
+        if (!pendingInteraction) return;
+        pendingInteraction = false;
+        if (state !== 'playing') return;
+
+        const nearNode = nodes.find((node) => player.position.distanceTo(node.mesh.position) < 2.2);
+        if (nearNode) {
+          if (nearNode.activated) {
+            showMessage('Node ' + nearNode.index + ' already synced.');
+          } else if (nearNode.index === nextNode) {
+            activateNode(nearNode);
+          } else {
+            timer = Math.max(0, timer - 5);
+            showMessage('Wrong order! Secure Centrix shaved 5s.');
+          }
+          updateHUD();
+          return;
+        }
+
+        if (terminal && player.position.distanceTo(terminal.position) < 3) {
+          if (assignmentsLeft === 0 && activatedNodes === nodes.length) {
+            hud.status.textContent = 'Uploading chaos log...';
+            showMessage('Secure Centrix upload successful!');
+            setTimeout(() => completeLevel(), 800);
+          } else {
+            showMessage('Terminal locked. Finish tasks first.');
+          }
+        }
+      }
+
+      function activateNode(node) {
+        node.activated = true;
+        node.mesh.material.emissive = new THREE.Color(0x2dd4bf);
+        node.mesh.material.color.setHex(0x22d3ee);
+        node.label.material.color = new THREE.Color(0xffffff);
+        activatedNodes++;
+        nextNode++;
+        showMessage('Node ' + node.index + ' synced! (' + activatedNodes + '/' + nodes.length + ')');
+        updateHUD();
+      }
+
+      function damagePlayer(amount, reason) {
+        if (invulnerableTimer > 0 || state !== 'playing') return;
+        gpa = Math.max(0, gpa - amount);
+        invulnerableTimer = 1.5;
+        updateHUD();
+        showMessage(reason);
+        if (gpa <= 0) {
+          failGame('Your GPA collapsed. Faculty removed your Secure Centrix access.');
+        }
+      }
+
+      function updateHUD() {
+        hud.assignments.textContent = assignmentsLeft;
+        hud.nodes.textContent = activatedNodes + '/' + nodes.length;
+        hud.timer.textContent = Math.ceil(timer);
+        hud.level.textContent = levelConfigs[levelIndex] ? levelConfigs[levelIndex].name : '--';
+        hud.terminal.textContent = assignmentsLeft === 0 && activatedNodes === nodes.length ? 'Unlocked' : 'Locked';
+        hud.gpaValue.textContent = gpa.toFixed(2);
+        hud.gpaFill.style.width = ((gpa / maxGpa) * 100) + '%';
+      }
+
+      function showMessage(text) {
+        hud.log.textContent = text;
+      }
+
+      function clearArena() {
+        const removeMesh = (mesh) => {
+          if (mesh && mesh.parent) mesh.parent.remove(mesh);
+        };
+        assignments.forEach((item) => removeMesh(item.mesh));
+        nodes.forEach((node) => {
+          removeMesh(node.mesh);
+          removeMesh(node.label);
+          removeMesh(node.pillar);
+        });
+        drones.forEach((drone) => removeMesh(drone.mesh));
+        desks.forEach((desk) => removeMesh(desk.mesh));
+        removeMesh(floor);
+        removeMesh(grid);
+        removeMesh(rimBorder);
+        removeMesh(terminal);
+        assignments = [];
+        nodes = [];
+        drones = [];
+        desks = [];
+        terminal = null;
+        rimBorder = null;
+      }
+
+      function randomPosition(spread, minDistance = 5) {
+        let attempts = 0;
+        while (attempts < 40) {
+          const x = (Math.random() - 0.5) * spread;
+          const z = (Math.random() - 0.5) * spread;
+          const pos = new THREE.Vector3(x, 0, z);
+          const close = occupiedSpots.some((p) => p.distanceTo(pos) < minDistance);
+          if (!close && pos.length() > 4) {
+            occupiedSpots.push(pos.clone());
+            return pos;
+          }
+          attempts++;
+        }
+        return new THREE.Vector3((Math.random() - 0.5) * spread, 0, (Math.random() - 0.5) * spread);
+      }
+
+      function buildLevel(index) {
+        clearArena();
+        occupiedSpots = [];
+        const cfg = levelConfigs[index];
+        if (!cfg) return;
+        levelBounds = cfg.size / 2 - 3;
+        timer = cfg.time;
+        assignmentsLeft = cfg.assignments;
+        activatedNodes = 0;
+        nextNode = 1;
+        gpa = Math.min(gpa, maxGpa);
+        updateHUD();
+
+        const planeGeo = new THREE.PlaneGeometry(cfg.size, cfg.size, 32, 32);
+        const planeMat = new THREE.MeshStandardMaterial({ color: 0x0f766e, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
+        floor = new THREE.Mesh(planeGeo, planeMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        grid = new THREE.GridHelper(cfg.size, cfg.size / 2, 0x38bdf8, 0x1f2937);
+        grid.position.y = 0.02;
+        scene.add(grid);
+
+        const rimGeo = new THREE.TorusGeometry(cfg.size / 2, 0.4, 16, 48);
+        const rimMat = new THREE.MeshBasicMaterial({ color: 0x1d4ed8, transparent: true, opacity: 0.35 });
+        rimBorder = new THREE.Mesh(rimGeo, rimMat);
+        rimBorder.rotation.x = Math.PI / 2;
+        rimBorder.position.y = 0.1;
+        scene.add(rimBorder);
+
+        spawnAssignments(cfg.assignments, cfg.size * 0.8);
+        spawnNodes(cfg.nodes, cfg.size * 0.7);
+        spawnDrones(cfg.drones, cfg.size * 0.7);
+        spawnDesks(cfg.desks, cfg.size * 0.9);
+        createTerminal(cfg.size);
+
+        resetPlayerPosition();
+        updateHUD();
+        showMessage('Collect ' + assignmentsLeft + ' assignments, sync nodes in order, then upload at the terminal.');
+      }
+
+      function resetPlayerPosition() {
+        player.position.set(0, 1.4, 0);
+        playerVelocity.set(0, 0, 0);
+      }
+
+      function spawnAssignments(count, spread) {
+        for (let i = 0; i < count; i++) {
+          const pos = randomPosition(spread, 5);
+          const geo = new THREE.OctahedronGeometry(0.9);
+          const mat = new THREE.MeshStandardMaterial({ color: 0xfacc15, emissive: 0xf59e0b, emissiveIntensity: 0.5, metalness: 0.2 });
+          const mesh = new THREE.Mesh(geo, mat);
+          mesh.castShadow = true;
+          mesh.position.set(pos.x, 1.2, pos.z);
+          scene.add(mesh);
+          assignments.push({ mesh, collected: false, label: i + 1, offset: Math.random() * Math.PI * 2 });
+        }
+      }
+
+      function spawnNodes(count, spread) {
+        for (let i = 0; i < count; i++) {
+          const pos = randomPosition(spread, 8);
+          const pillarGeo = new THREE.CylinderGeometry(1.2, 1.2, 0.4, 16);
+          const pillarMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.3, roughness: 0.6 });
+          const plate = new THREE.Mesh(pillarGeo, pillarMat);
+          plate.position.set(pos.x, 0.2, pos.z);
+          plate.receiveShadow = true;
+          scene.add(plate);
+
+          const nodeGeo = new THREE.CylinderGeometry(0.9, 0.9, 1.4, 12);
+          const nodeMat = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, emissive: 0x075985, emissiveIntensity: 0.3, metalness: 0.2 });
+          const nodeMesh = new THREE.Mesh(nodeGeo, nodeMat);
+          nodeMesh.position.set(pos.x, 0.9, pos.z);
+          nodeMesh.castShadow = true;
+          scene.add(nodeMesh);
+
+          const labelMat = new THREE.MeshBasicMaterial({ map: makeNumberTexture(i + 1), transparent: true });
+          const labelGeo = new THREE.PlaneGeometry(1.4, 1.4);
+          const labelMesh = new THREE.Mesh(labelGeo, labelMat);
+          labelMesh.position.set(pos.x, 2.1, pos.z);
+          labelMesh.lookAt(camera.position);
+          scene.add(labelMesh);
+
+          nodes.push({ mesh: nodeMesh, pillar: plate, label: labelMesh, index: i + 1, activated: false });
+        }
+      }
+
+      function makeNumberTexture(number) {
+        const size = 128;
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'rgba(23,37,84,0.9)';
+        ctx.fillRect(0, 0, size, size);
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 72px Space Grotesk';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(number, size / 2, size / 2);
+        return new THREE.CanvasTexture(canvas);
+      }
+
+      function spawnDrones(count, spread) {
+        for (let i = 0; i < count; i++) {
+          const pos = randomPosition(spread, 6);
+          const geo = new THREE.SphereGeometry(1.1, 16, 16);
+          const mat = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xb91c1c, emissiveIntensity: 0.6, metalness: 0.3 });
+          const mesh = new THREE.Mesh(geo, mat);
+          mesh.castShadow = true;
+          scene.add(mesh);
+          drones.push({
+            mesh,
+            center: new THREE.Vector3(pos.x, 1.6, pos.z),
+            radius: THREE.MathUtils.randFloat(4, 10),
+            speed: THREE.MathUtils.randFloat(1.2, 2.4),
+            angle: Math.random() * Math.PI * 2,
+            drift: THREE.MathUtils.randFloat(0.8, 1.4)
+          });
+        }
+      }
+
+      function spawnDesks(count, spread) {
+        for (let i = 0; i < count; i++) {
+          const pos = randomPosition(spread, 4);
+          const width = THREE.MathUtils.randFloat(4, 7);
+          const depth = THREE.MathUtils.randFloat(3, 6);
+          const height = 2.2;
+          const geo = new THREE.BoxGeometry(width, height, depth);
+          const mat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.8, metalness: 0.1 });
+          const mesh = new THREE.Mesh(geo, mat);
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          mesh.position.set(pos.x, height / 2, pos.z);
+          scene.add(mesh);
+          desks.push({ mesh, width, depth });
+        }
+      }
+
+      function createTerminal(size) {
+        const geo = new THREE.BoxGeometry(3, 4, 1.5);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.4, roughness: 0.6 });
+        const term = new THREE.Mesh(geo, mat);
+        term.position.set(size / 2 - 5, 2, 0);
+        term.castShadow = true;
+        scene.add(term);
+
+        const screenGeo = new THREE.PlaneGeometry(2.4, 2);
+        const screenMat = new THREE.MeshBasicMaterial({ map: makeTerminalTexture(), transparent: true });
+        const screen = new THREE.Mesh(screenGeo, screenMat);
+        screen.position.set(0, 0.6, 0.76);
+        term.add(screen);
+
+        terminal = term;
+      }
+
+      function makeTerminalTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, 256, 256);
+        ctx.fillStyle = '#34d399';
+        ctx.font = 'bold 26px Space Grotesk';
+        ctx.fillText('Secure', 20, 80);
+        ctx.fillText('Centrix 81', 20, 120);
+        ctx.font = '18px Space Grotesk';
+        ctx.fillText('Upload Dossiers', 20, 170);
+        ctx.fillStyle = '#10b981';
+        ctx.fillRect(20, 190, 200, 6);
+        return new THREE.CanvasTexture(canvas);
+      }
+
+      function startSession() {
+        gpa = maxGpa;
+        levelIndex = 0;
+        state = 'playing';
+        hideOverlay();
+        clock.getDelta();
+        buildLevel(levelIndex);
+      }
+
+      function completeLevel() {
+        if (state !== 'playing') return;
+        levelIndex++;
+        if (levelIndex >= levelConfigs.length) {
+          state = 'victory';
+          showOverlay(
+            'Semester Survived!',
+            'Saharsh finally uploaded the excuses dossier to Secure Centrix.',
+            'Replay Semester',
+            () => {
+              hideOverlay();
+              startSession();
+            },
+            'Victory'
+          );
+        } else {
+          state = 'intermission';
+          showOverlay(
+            'Class Escaped!',
+            'Brace for ' + levelConfigs[levelIndex].name + '.',
+            'Next Crisis',
+            () => {
+              hideOverlay();
+              state = 'playing';
+              clock.getDelta();
+              buildLevel(levelIndex);
+            },
+            'Mission Brief'
+          );
+        }
+      }
+
+      function failGame(reason) {
+        state = 'fail';
+        showOverlay(
+          'Academic Probation!',
+          reason,
+          'Retry Semester',
+          () => {
+            hideOverlay();
+            startSession();
+          },
+          'System Alert'
+        );
+      }
+
+      initThree();
+      showOverlay(
+        'Secure Centrix Boot Chamber',
+        'Play as Saharsh, dodge grade drones, and upload something—anything—before the faculty notices.',
+        'Start Semester',
+        () => {
+          hideOverlay();
+          startSession();
+        },
+        'Mission Launch'
+      );
+    })();
+  </script>
+</body>
+</html>
