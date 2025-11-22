@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saharsh's Class Failing Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100vh;
+        }
+
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #saharshPhoto {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid #FFD700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        #menu, #gameOver, #victory {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            color: white;
+            pointer-events: all;
+            max-width: 600px;
+            border: 3px solid #FFD700;
+        }
+
+        h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: #FFD700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        h2 {
+            font-size: 28px;
+            margin-bottom: 15px;
+            color: #FF6B6B;
+        }
+
+        p {
+            font-size: 16px;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 10px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            pointer-events: all;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.6);
+        }
+
+        #instructions {
+            text-align: left;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        #instructions ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+
+        #instructions li {
+            margin: 8px 0;
+        }
+
+        .stat {
+            display: inline-block;
+            margin-right: 20px;
+            padding: 5px 15px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+        }
+
+        #crosshair::before,
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        #crosshair::before {
+            width: 20px;
+            height: 2px;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+        }
+
+        #crosshair::after {
+            width: 2px;
+            height: 20px;
+            left: 50%;
+            top: 0;
+            transform: translateX(-50%);
+        }
+
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .level-indicator {
+            font-size: 48px;
+            color: #FFD700;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div id="hud" class="hidden">
+            <div class="stat">🎮 Games: <span id="score">0</span>/10</div>
+            <div class="stat">⏱️ Time: <span id="timer">60</span>s</div>
+            <div class="stat">📚 Study Avoided: <span id="avoided">0</span></div>
+            <div class="stat">❤️ Lives: <span id="lives">3</span></div>
+            <div class="stat">📊 Level: <span id="level">1</span></div>
+        </div>
+
+        <img id="saharshPhoto" class="hidden" src="https://asset-cdn.schoology.com/system/files/imagecache/profile_big/pictures/picture-c0b09cdead19788fb0f8be0d53b5c572_68c34cd700b90.jpg" alt="Saharsh">
+
+        <div id="crosshair" class="hidden"></div>
+
+        <div id="message"></div>
+
+        <div id="menu">
+            <h1>🎮 Saharsh's Class Failing Game 🎮</h1>
+            <p style="font-size: 20px; color: #FFD700;">Navigate the school and collect SecureCentrix games while avoiding homework!</p>
+            
+            <div id="instructions">
+                <h3 style="color: #FFD700;">📖 How to Play:</h3>
+                <ul>
+                    <li><strong>WASD</strong> - Move around the school</li>
+                    <li><strong>Mouse</strong> - Look around (click to lock cursor)</li>
+                    <li><strong>Collect</strong> 🎮 SecureCentrix game icons (10 per level)</li>
+                    <li><strong>Avoid</strong> 📚 Homework, 📖 Textbooks, and 👨‍🏫 Teachers!</li>
+                    <li><strong>Goal:</strong> Successfully fail your classes by playing games!</li>
+                </ul>
+                <p style="margin-top: 15px; color: #FF6B6B;"><strong>Warning:</strong> Touching study materials costs you a life!</p>
+            </div>
+
+            <button id="startBtn">Start Failing Classes!</button>
+        </div>
+
+        <div id="gameOver" class="hidden">
+            <h1>😱 You Accidentally Studied!</h1>
+            <h2>Your GPA went UP! Game Over!</h2>
+            <p>You collected <span id="finalScore">0</span> games across <span id="finalLevel">0</span> levels.</p>
+            <p>Study materials avoided: <span id="finalAvoided">0</span></p>
+            <button id="restartBtn">Try to Fail Again</button>
+            <button id="menuBtn">Main Menu</button>
+        </div>
+
+        <div id="victory" class="hidden">
+            <h1>🎉 CONGRATULATIONS! 🎉</h1>
+            <div class="level-indicator">Level <span id="victoryLevel">1</span> Complete!</div>
+            <h2>You Successfully Failed Your Classes!</h2>
+            <p>Games collected: <span id="victoryScore">0</span></p>
+            <p>Time remaining: <span id="victoryTime">0</span>s</p>
+            <p style="font-size: 20px; color: #FFD700; margin-top: 20px;">
+                "Education is important, but gaming is importanter!" - Saharsh, probably
+            </p>
+            <button id="nextLevelBtn">Next Level</button>
+            <button id="menuBtn2">Main Menu</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script>
+        // Game State
+        const gameState = {
+            scene: 'menu',
+            score: 0,
+            avoided: 0,
+            lives: 3,
+            timeLeft: 60,
+            level: 1,
+            totalGamesNeeded: 10,
+            paused: false
+        };
+
+        // Three.js setup
+        let scene, camera, renderer, controls;
+        let player, moveSpeed = 0.15;
+        let objects = [];
+        let games = [];
+        let obstacles = [];
+        let keys = {};
+        let mouse = { x: 0, y: 0 };
+        let yaw = 0, pitch = 0;
+        let locked = false;
+
+        // Initialize
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB);
+            scene.fog = new THREE.Fog(0x87CEEB, 1, 50);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 1.6, 0);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(10, 20, 10);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            scene.add(dirLight);
+
+            // Create school environment
+            createSchool();
+
+            // Event listeners
+            document.addEventListener('keydown', (e) => keys[e.code] = true);
+            document.addEventListener('keyup', (e) => keys[e.code] = false);
+            
+            renderer.domElement.addEventListener('click', () => {
+                if (gameState.scene === 'playing') {
+                    renderer.domElement.requestPointerLock();
+                }
+            });
+
+            document.addEventListener('pointerlockchange', () => {
+                locked = document.pointerLockElement === renderer.domElement;
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (locked && gameState.scene === 'playing') {
+                    yaw -= e.movementX * 0.002;
+                    pitch -= e.movementY * 0.002;
+                    pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+                }
+            });
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // UI Event listeners
+            document.getElementById('startBtn').addEventListener('click', startGame);
+            document.getElementById('restartBtn').addEventListener('click', restartGame);
+            document.getElementById('menuBtn').addEventListener('click', showMenu);
+            document.getElementById('menuBtn2').addEventListener('click', showMenu);
+            document.getElementById('nextLevelBtn').addEventListener('click', nextLevel);
+
+            animate();
+        }
+
+        function createSchool() {
+            // Floor
+            const floorGeometry = new THREE.PlaneGeometry(40, 40);
+            const floorMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xcccccc,
+                roughness: 0.8
+            });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // Walls
+            const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            
+            // North wall
+            const wall1 = createWall(20, 5, 0.5, 0, 2.5, -20, wallMaterial);
+            scene.add(wall1);
+            
+            // South wall
+            const wall2 = createWall(20, 5, 0.5, 0, 2.5, 20, wallMaterial);
+            scene.add(wall2);
+            
+            // East wall
+            const wall3 = createWall(0.5, 5, 40, 20, 2.5, 0, wallMaterial);
+            scene.add(wall3);
+            
+            // West wall
+            const wall4 = createWall(0.5, 5, 40, -20, 2.5, 0, wallMaterial);
+            scene.add(wall4);
+
+            // Desks
+            for (let i = 0; i < 8; i++) {
+                const x = (i % 4) * 6 - 9;
+                const z = Math.floor(i / 4) * 8 - 4;
+                const desk = createDesk(x, z);
+                scene.add(desk);
+            }
+
+            // Chalkboard
+            const boardGeom = new THREE.BoxGeometry(8, 3, 0.2);
+            const boardMat = new THREE.MeshStandardMaterial({ color: 0x1a4d2e });
+            const board = new THREE.Mesh(boardGeom, boardMat);
+            board.position.set(0, 2.5, -19.8);
+            scene.add(board);
+        }
+
+        function createWall(w, h, d, x, y, z, material) {
+            const geometry = new THREE.BoxGeometry(w, h, d);
+            const wall = new THREE.Mesh(geometry, material);
+            wall.position.set(x, y, z);
+            wall.receiveShadow = true;
+            wall.castShadow = true;
+            objects.push(wall);
+            return wall;
+        }
+
+        function createDesk(x, z) {
+            const group = new THREE.Group();
+            
+            // Desktop
+            const topGeom = new THREE.BoxGeometry(2, 0.1, 1.5);
+            const topMat = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+            const top = new THREE.Mesh(topGeom, topMat);
+            top.position.y = 0.8;
+            top.castShadow = true;
+            group.add(top);
+            
+            // Legs
+            const legGeom = new THREE.BoxGeometry(0.1, 0.8, 0.1);
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x654321 });
+            
+            const positions = [[-0.9, 0.4, -0.7], [0.9, 0.4, -0.7], [-0.9, 0.4, 0.7], [0.9, 0.4, 0.7]];
+            positions.forEach(pos => {
+                const leg = new THREE.Mesh(legGeom, legMat);
+                leg.position.set(...pos);
+                leg.castShadow = true;
+                group.add(leg);
+            });
+            
+            group.position.set(x, 0, z);
+            objects.push(group);
+            return group;
+        }
+
+        function spawnGames() {
+            // Clear existing games
+            games.forEach(game => scene.remove(game.mesh));
+            games = [];
+
+            const gamesNeeded = gameState.totalGamesNeeded;
+            
+            for (let i = 0; i < gamesNeeded; i++) {
+                let x, z;
+                let attempts = 0;
+                do {
+                    x = Math.random() * 30 - 15;
+                    z = Math.random() * 30 - 15;
+                    attempts++;
+                } while (attempts < 50 && (Math.abs(x) < 2 && Math.abs(z) < 2)); // Don't spawn on player
+
+                const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+                const material = new THREE.MeshStandardMaterial({ 
+                    color: 0x00ff00,
+                    emissive: 0x00ff00,
+                    emissiveIntensity: 0.3
+                });
+                const game = new THREE.Mesh(geometry, material);
+                game.position.set(x, 0.5, z);
+                game.castShadow = true;
+                scene.add(game);
+                
+                games.push({
+                    mesh: game,
+                    rotation: Math.random() * Math.PI * 2,
+                    bobOffset: Math.random() * Math.PI * 2
+                });
+            }
+        }
+
+        function spawnObstacles() {
+            // Clear existing obstacles
+            obstacles.forEach(obs => scene.remove(obs.mesh));
+            obstacles = [];
+
+            const numObstacles = 5 + gameState.level * 2;
+            
+            for (let i = 0; i < numObstacles; i++) {
+                let x, z;
+                let attempts = 0;
+                do {
+                    x = Math.random() * 30 - 15;
+                    z = Math.random() * 30 - 15;
+                    attempts++;
+                } while (attempts < 50 && (Math.abs(x) < 3 && Math.abs(z) < 3));
+
+                const type = Math.random();
+                let geometry, material, obstacleType, speed = 0;
+                
+                if (type < 0.33) {
+                    // Homework
+                    geometry = new THREE.BoxGeometry(0.6, 0.05, 0.8);
+                    material = new THREE.MeshStandardMaterial({ color: 0xffffff });
+                    obstacleType = 'homework';
+                } else if (type < 0.66) {
+                    // Textbook
+                    geometry = new THREE.BoxGeometry(0.5, 0.7, 0.3);
+                    material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+                    obstacleType = 'textbook';
+                } else {
+                    // Teacher (moving obstacle)
+                    geometry = new THREE.CapsuleGeometry(0.3, 1.2, 4, 8);
+                    material = new THREE.MeshStandardMaterial({ color: 0x0000ff });
+                    obstacleType = 'teacher';
+                    speed = 0.02 + gameState.level * 0.01;
+                }
+                
+                const obstacle = new THREE.Mesh(geometry, material);
+                obstacle.position.set(x, obstacleType === 'homework' ? 0.03 : 0.85, z);
+                obstacle.castShadow = true;
+                scene.add(obstacle);
+                
+                obstacles.push({
+                    mesh: obstacle,
+                    type: obstacleType,
+                    speed: speed,
+                    direction: Math.random() * Math.PI * 2
+                });
+            }
+        }
+
+        function startGame() {
+            gameState.scene = 'playing';
+            gameState.score = 0;
+            gameState.avoided = 0;
+            gameState.lives = 3;
+            gameState.timeLeft = 60;
+            gameState.level = 1;
+            
+            camera.position.set(0, 1.6, 0);
+            yaw = 0;
+            pitch = 0;
+
+            spawnGames();
+            spawnObstacles();
+            
+            document.getElementById('menu').classList.add('hidden');
+            document.getElementById('gameOver').classList.add('hidden');
+            document.getElementById('victory').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+            document.getElementById('saharshPhoto').classList.remove('hidden');
+            document.getElementById('crosshair').classList.remove('hidden');
+            
+            updateHUD();
+            startTimer();
+        }
+
+        function restartGame() {
+            startGame();
+        }
+
+        function showMenu() {
+            gameState.scene = 'menu';
+            document.getElementById('menu').classList.remove('hidden');
+            document.getElementById('gameOver').classList.add('hidden');
+            document.getElementById('victory').classList.add('hidden');
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('saharshPhoto').classList.add('hidden');
+            document.getElementById('crosshair').classList.add('hidden');
+        }
+
+        function nextLevel() {
+            gameState.level++;
+            gameState.score = 0;
+            gameState.timeLeft = 60 - (gameState.level - 1) * 5;
+            if (gameState.timeLeft < 30) gameState.timeLeft = 30;
+            
+            camera.position.set(0, 1.6, 0);
+            yaw = 0;
+            pitch = 0;
+
+            spawnGames();
+            spawnObstacles();
+            
+            document.getElementById('victory').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+            
+            gameState.scene = 'playing';
+            updateHUD();
+            startTimer();
+        }
+
+        function startTimer() {
+            const timerInterval = setInterval(() => {
+                if (gameState.scene === 'playing') {
+                    gameState.timeLeft--;
+                    updateHUD();
+                    
+                    if (gameState.timeLeft <= 0) {
+                        clearInterval(timerInterval);
+                        gameOver();
+                    }
+                } else {
+                    clearInterval(timerInterval);
+                }
+            }, 1000);
+        }
+
+        function updateHUD() {
+            document.getElementById('score').textContent = gameState.score;
+            document.getElementById('timer').textContent = gameState.timeLeft;
+            document.getElementById('avoided').textContent = gameState.avoided;
+            document.getElementById('lives').textContent = gameState.lives;
+            document.getElementById('level').textContent = gameState.level;
+        }
+
+        function collectGame(index) {
+            scene.remove(games[index].mesh);
+            games.splice(index, 1);
+            gameState.score++;
+            updateHUD();
+            showMessage('+1 Game! 🎮');
+            
+            if (gameState.score >= gameState.totalGamesNeeded) {
+                victory();
+            }
+        }
+
+        function hitObstacle(type) {
+            gameState.lives--;
+            updateHUD();
+            
+            const messages = {
+                'homework': 'Touched homework! 📝',
+                'textbook': 'Hit a textbook! 📚',
+                'teacher': 'Caught by teacher! 👨‍🏫'
+            };
+            
+            showMessage(messages[type] + ' -1 Life!', '#ff0000');
+            
+            // Push player back
+            camera.position.x -= Math.sin(yaw) * 2;
+            camera.position.z -= Math.cos(yaw) * 2;
+            
+            if (gameState.lives <= 0) {
+                gameOver();
+            }
+        }
+
+        function gameOver() {
+            gameState.scene = 'gameOver';
+            document.getElementById('finalScore').textContent = gameState.score + (gameState.level - 1) * 10;
+            document.getElementById('finalLevel').textContent = gameState.level;
+            document.getElementById('finalAvoided').textContent = gameState.avoided;
+            document.getElementById('gameOver').classList.remove('hidden');
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('crosshair').classList.add('hidden');
+        }
+
+        function victory() {
+            gameState.scene = 'victory';
+            document.getElementById('victoryLevel').textContent = gameState.level;
+            document.getElementById('victoryScore').textContent = gameState.score;
+            document.getElementById('victoryTime').textContent = gameState.timeLeft;
+            document.getElementById('victory').classList.remove('hidden');
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('crosshair').classList.add('hidden');
+        }
+
+        function showMessage(text, color = '#FFD700') {
+            const msgEl = document.getElementById('message');
+            msgEl.textContent = text;
+            msgEl.style.color = color;
+            msgEl.style.opacity = '1';
+            
+            setTimeout(() => {
+                msgEl.style.opacity = '0';
+            }, 1500);
+        }
+
+        function updatePlayer() {
+            if (gameState.scene !== 'playing') return;
+
+            const oldPos = camera.position.clone();
+            
+            // Movement
+            const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+            const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+            
+            if (keys['KeyW']) {
+                camera.position.x += forward.x * moveSpeed;
+                camera.position.z += forward.z * moveSpeed;
+            }
+            if (keys['KeyS']) {
+                camera.position.x -= forward.x * moveSpeed;
+                camera.position.z -= forward.z * moveSpeed;
+            }
+            if (keys['KeyA']) {
+                camera.position.x -= right.x * moveSpeed;
+                camera.position.z -= right.z * moveSpeed;
+            }
+            if (keys['KeyD']) {
+                camera.position.x += right.x * moveSpeed;
+                camera.position.z += right.z * moveSpeed;
+            }
+
+            // Boundary check
+            if (Math.abs(camera.position.x) > 19 || Math.abs(camera.position.z) > 19) {
+                camera.position.copy(oldPos);
+            }
+
+            // Camera rotation
+            camera.rotation.order = 'YXZ';
+            camera.rotation.y = yaw;
+            camera.rotation.x = pitch;
+
+            // Check game collection
+            for (let i = games.length - 1; i >= 0; i--) {
+                const dist = camera.position.distanceTo(games[i].mesh.position);
+                if (dist < 1) {
+                    collectGame(i);
+                }
+            }
+
+            // Check obstacle collision
+            obstacles.forEach((obs, i) => {
+                const dist = camera.position.distanceTo(obs.mesh.position);
+                if (dist < 0.8) {
+                    hitObstacle(obs.type);
+                    // Respawn obstacle
+                    obs.mesh.position.x = Math.random() * 30 - 15;
+                    obs.mesh.position.z = Math.random() * 30 - 15;
+                }
+            });
+        }
+
+        function updateObjects() {
+            const time = Date.now() * 0.001;
+            
+            // Animate games
+            games.forEach((game, i) => {
+                game.mesh.rotation.y += 0.02;
+                game.mesh.position.y = 0.5 + Math.sin(time * 2 + game.bobOffset) * 0.1;
+            });
+
+            // Move teachers
+            obstacles.forEach(obs => {
+                if (obs.type === 'teacher') {
+                    obs.mesh.position.x += Math.sin(obs.direction) * obs.speed;
+                    obs.mesh.position.z += Math.cos(obs.direction) * obs.speed;
+                    
+                    // Bounce off walls
+                    if (Math.abs(obs.mesh.position.x) > 18 || Math.abs(obs.mesh.position.z) > 18) {
+                        obs.direction += Math.PI;
+                    }
+                    
+                    // Random direction changes
+                    if (Math.random() < 0.01) {
+                        obs.direction += (Math.random() - 0.5) * 0.5;
+                    }
+                }
+            });
+
+            // Increment avoided counter when near obstacles
+            let nearObstacle = false;
+            obstacles.forEach(obs => {
+                const dist = camera.position.distanceTo(obs.mesh.position);
+                if (dist < 2 && dist > 0.8) {
+                    nearObstacle = true;
+                }
+            });
+            
+            if (nearObstacle && Math.random() < 0.02 && gameState.scene === 'playing') {
+                gameState.avoided++;
+                updateHUD();
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            updatePlayer();
+            updateObjects();
+            
+            renderer.render(scene, camera);
+        }
+
+        // Start
+        init();
+    </script>
+</body>
+</html>
