@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Saharsh's Class Failing Game - Secure Centrix81</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #05070d;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #ffffff;
+    }
+    canvas {
+      display: block;
+    }
+    #ui {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+      font-size: 14px;
+    }
+    .hidden {
+      display: none;
+    }
+    .panel {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle at top, rgba(50, 80, 160, 0.98), rgba(5, 7, 13, 0.98));
+      border-radius: 14px;
+      padding: 24px 28px;
+      max-width: 540px;
+      width: 90%;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.9);
+      border: 1px solid rgba(120, 180, 255, 0.45);
+      pointer-events: auto;
+    }
+    .panel h1, .panel h2 {
+      margin: 0 0 10px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-align: center;
+    }
+    .panel h1 {
+      font-size: 26px;
+    }
+    .panel h2 {
+      font-size: 20px;
+    }
+    .panel .subtitle {
+      margin: 0 0 14px;
+      text-align: center;
+      color: #c4d8ff;
+      font-size: 13px;
+    }
+    .panel .description {
+      font-size: 13px;
+      margin-bottom: 14px;
+      color: #e0ecff;
+    }
+    .panel .controls {
+      background: rgba(2, 6, 18, 0.7);
+      border-radius: 10px;
+      padding: 10px 12px;
+      border: 1px solid rgba(120, 180, 255, 0.3);
+      margin-bottom: 14px;
+      font-size: 12px;
+    }
+    .panel .controls h2 {
+      font-size: 14px;
+      text-align: left;
+      margin-bottom: 6px;
+    }
+    .panel .controls ul {
+      padding-left: 18px;
+      margin: 0;
+    }
+    .panel .controls li {
+      margin-bottom: 3px;
+    }
+    .buttons {
+      text-align: center;
+      margin-top: 8px;
+    }
+    button {
+      font: inherit;
+      cursor: pointer;
+      padding: 8px 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(120, 180, 255, 0.8);
+      background: linear-gradient(135deg, #4a8cff, #79b4ff);
+      color: #020612;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.6);
+      min-width: 150px;
+    }
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 22px rgba(0, 0, 0, 0.7);
+      background: linear-gradient(135deg, #6ea2ff, #99caff);
+    }
+    button:active {
+      transform: translateY(1px) scale(0.99);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.8);
+    }
+    #hud {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      pointer-events: none;
+      font-size: 13px;
+    }
+    .hud-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    #hud .hud-box {
+      background: rgba(4, 8, 20, 0.8);
+      border-radius: 8px;
+      padding: 6px 10px;
+      border: 1px solid rgba(120, 180, 255, 0.4);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.8);
+    }
+    #gradeBar {
+      position: relative;
+      flex: 1;
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(10, 16, 32, 0.85);
+      margin-left: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(140, 160, 220, 0.7);
+    }
+    #gradeFill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 50%;
+      background: linear-gradient(90deg, #ff9800, #ffc107);
+      box-shadow: 0 0 10px rgba(255, 193, 7, 0.7);
+      transition: width 0.12s ease-out, background 0.2s ease-out, box-shadow 0.2s ease-out;
+    }
+    #hudLevelName {
+      font-weight: 700;
+      color: #ffeb3b;
+    }
+    #hudTime {
+      font-weight: 700;
+      color: #ffb74d;
+    }
+    #hudGradeText {
+      font-weight: 700;
+    }
+    #hudFun {
+      font-weight: 700;
+      color: #80d8ff;
+    }
+    #hudPassed {
+      font-weight: 700;
+      color: #8bc34a;
+    }
+    #pauseBanner {
+      position: absolute;
+      top: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(3, 8, 30, 0.9);
+      border: 1px solid rgba(130, 190, 255, 0.9);
+      font-size: 13px;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.8);
+      pointer-events: none;
+      text-align: center;
+    }
+    .panel p {
+      margin: 4px 0;
+    }
+    #betweenStats, #finalStats {
+      font-size: 13px;
+      color: #d0e2ff;
+    }
+    #betweenTitle {
+      margin-bottom: 6px;
+    }
+    #finalHeadline {
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    #finalDetails {
+      margin-bottom: 10px;
+    }
+    .small-panel {
+      max-width: 360px;
+      padding: 18px 20px;
+    }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <div id="hud" class="hidden">
+      <div class="hud-box">
+        <div class="hud-row">
+          <div>Class: <span id="hudLevelName">-</span></div>
+          <div>Time Left: <span id="hudTime">0s</span></div>
+        </div>
+        <div class="hud-row">
+          <div>Grade: <span id="hudGradeText">50%</span></div>
+          <div id="gradeBar"><div id="gradeFill"></div></div>
+        </div>
+        <div class="hud-row">
+          <div>SecureCentrix Fun: <span id="hudFun">0</span></div>
+          <div>Classes Passed: <span id="hudPassed">0</span>/3</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="pauseBanner" class="hidden">
+      Paused (press P to resume)
+    </div>
+
+    <div id="menu" class="panel">
+      <h1>Saharsh's Class Failing Game</h1>
+      <p class="subtitle">A Secure Centrix81 3D action / puzzle / adventure.</p>
+      <p class="description">
+        Guide Saharsh through three brutal classes. Collect glowing green assignment cubes to raise his grade,
+        but avoid the tempting blue SecureCentrix terminals that drain his grade while boosting his fun.
+        Balance fun and responsibility before the bell rings for each class.
+      </p>
+      <div class="controls">
+        <h2>Controls</h2>
+        <ul>
+          <li><strong>Move:</strong> WASD or Arrow Keys</li>
+          <li><strong>Pause / Resume:</strong> P</li>
+          <li><strong>Goal:</strong> Finish each class with at least a 60% grade.</li>
+          <li>Green cubes = homework (grade up).</li>
+          <li>Blue pillars = SecureCentrix (fun up, grade down).</li>
+        </ul>
+      </div>
+      <div class="buttons">
+        <button id="startButton">Start Semester</button>
+      </div>
+    </div>
+
+    <div id="betweenLevels" class="panel hidden small-panel">
+      <h2 id="betweenTitle">Class Result</h2>
+      <p id="betweenSummary"></p>
+      <p id="betweenStats"></p>
+      <div class="buttons">
+        <button id="nextLevelButton">Next Class</button>
+      </div>
+    </div>
+
+    <div id="gameOver" class="panel hidden">
+      <h1>Semester Report</h1>
+      <p id="finalHeadline"></p>
+      <p id="finalDetails"></p>
+      <p id="finalStats"></p>
+      <div class="buttons">
+        <button id="restartButton">Play Again</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script>
+    // UI references
+    const menuPanel = document.getElementById('menu');
+    const hudPanel = document.getElementById('hud');
+    const pauseBanner = document.getElementById('pauseBanner');
+    const betweenPanel = document.getElementById('betweenLevels');
+    const gameOverPanel = document.getElementById('gameOver');
+
+    const startButton = document.getElementById('startButton');
+    const nextLevelButton = document.getElementById('nextLevelButton');
+    const restartButton = document.getElementById('restartButton');
+
+    const hudLevelName = document.getElementById('hudLevelName');
+    const hudTime = document.getElementById('hudTime');
+    const hudGradeText = document.getElementById('hudGradeText');
+    const hudFun = document.getElementById('hudFun');
+    const hudPassed = document.getElementById('hudPassed');
+    const gradeFill = document.getElementById('gradeFill');
+
+    const betweenTitle = document.getElementById('betweenTitle');
+    const betweenSummary = document.getElementById('betweenSummary');
+    const betweenStats = document.getElementById('betweenStats');
+
+    const finalHeadline = document.getElementById('finalHeadline');
+    const finalDetails = document.getElementById('finalDetails');
+    const finalStats = document.getElementById('finalStats');
+
+    // Three.js core
+    let scene, camera, renderer, clock;
+    let player;
+    const obstacles = [];
+    const assignments = [];
+    const consoles = [];
+    const worldHalfSize = 22;
+
+    const cameraTarget = new THREE.Vector3();
+
+    // Game state
+    const levelConfigs = [
+      { name: 'Math Class', timeLimit: 50, numAssignments: 12, numConsoles: 4 },
+      { name: 'Science Lab', timeLimit: 55, numAssignments: 14, numConsoles: 6 },
+      { name: 'History Lecture', timeLimit: 60, numAssignments: 16, numConsoles: 8 }
+    ];
+
+    let gameState = 'menu'; // 'menu' | 'playing' | 'paused' | 'between' | 'finished'
+    let currentLevelIndex = 0;
+    let timeRemaining = 0;
+    let grade = 50;
+    let funScore = 0;
+    let classesPassed = 0;
+    let classesFailed = 0;
+
+    const keys = {};
+
+    init();
+    animate();
+
+    function init() {
+      scene = new THREE.Scene();
+      scene.fog = new THREE.Fog(0x05070d, 20, 120);
+
+      camera = new THREE.PerspectiveCamera(
+        60,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        200
+      );
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(window.devicePixelRatio || 1);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0x05070d);
+      document.body.appendChild(renderer.domElement);
+
+      clock = new THREE.Clock();
+
+      const ambient = new THREE.AmbientLight(0xffffff, 0.55);
+      const directional = new THREE.DirectionalLight(0xffffff, 0.9);
+      directional.position.set(18, 25, 15);
+      directional.castShadow = false;
+      scene.add(ambient, directional);
+
+      const floorGeo = new THREE.PlaneGeometry(worldHalfSize * 2.4, worldHalfSize * 2.4, 1, 1);
+      const floorMat = new THREE.MeshStandardMaterial({
+        color: 0x111726,
+        roughness: 0.9,
+        metalness: 0.05
+      });
+      const floor = new THREE.Mesh(floorGeo, floorMat);
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.y = 0;
+      scene.add(floor);
+
+      buildEnvironment();
+
+      const playerGeo = new THREE.BoxGeometry(1.4, 2.2, 1.4);
+      const playerMat = new THREE.MeshStandardMaterial({
+        color: 0xffc94d,
+        emissive: 0x553300,
+        emissiveIntensity: 0.4
+      });
+      player = new THREE.Mesh(playerGeo, playerMat);
+      player.castShadow = false;
+      player.receiveShadow = false;
+      resetPlayerPosition();
+      scene.add(player);
+
+      camera.position.set(0, 15, 26);
+      camera.lookAt(player.position);
+
+      window.addEventListener('resize', onWindowResize);
+      window.addEventListener('keydown', onKeyDown);
+      window.addEventListener('keyup', onKeyUp);
+
+      startButton.addEventListener('click', startNewGame);
+      nextLevelButton.addEventListener('click', handleNextLevel);
+      restartButton.addEventListener('click', startNewGame);
+    }
+
+    function buildEnvironment() {
+      const wallMat = new THREE.MeshStandardMaterial({
+        color: 0x1b243b,
+        roughness: 0.7,
+        metalness: 0.1
+      });
+
+      const sideWallGeo = new THREE.BoxGeometry(1, 8, worldHalfSize * 2.2);
+      const leftWall = new THREE.Mesh(sideWallGeo, wallMat);
+      leftWall.position.set(-worldHalfSize * 1.15, 4, 0);
+      const rightWall = leftWall.clone();
+      rightWall.position.set(worldHalfSize * 1.15, 4, 0);
+
+      const backWallGeo = new THREE.BoxGeometry(worldHalfSize * 2.4, 8, 1);
+      const backWall = new THREE.Mesh(backWallGeo, wallMat);
+      backWall.position.set(0, 4, -worldHalfSize * 1.15);
+
+      const frontWall = backWall.clone();
+      frontWall.position.set(0, 4, worldHalfSize * 1.15);
+
+      scene.add(leftWall, rightWall, backWall, frontWall);
+
+      const boardGeo = new THREE.BoxGeometry(18, 5, 0.4);
+      const boardMat = new THREE.MeshStandardMaterial({
+        color: 0x263238,
+        emissive: 0x001020,
+        emissiveIntensity: 0.7
+      });
+      const board = new THREE.Mesh(boardGeo, boardMat);
+      board.position.set(0, 5, -worldHalfSize * 1.1 + 0.6);
+      scene.add(board);
+
+      const deskGeo = new THREE.BoxGeometry(6, 1, 3);
+      const deskMat = new THREE.MeshStandardMaterial({
+        color: 0x37474f,
+        roughness: 0.8,
+        metalness: 0.05
+      });
+      const rows = [-10, 0, 10];
+      const cols = [-8, 8];
+
+      for (let z of rows) {
+        for (let x of cols) {
+          const desk = new THREE.Mesh(deskGeo, deskMat);
+          desk.position.set(x, 0.5, z);
+          scene.add(desk);
+          obstacles.push(desk);
+        }
+      }
+
+      const platformGeo = new THREE.BoxGeometry(10, 0.6, 3.5);
+      const platformMat = new THREE.MeshStandardMaterial({
+        color: 0x263238,
+        roughness: 0.8,
+        metalness: 0.05
+      });
+      const platform = new THREE.Mesh(platformGeo, platformMat);
+      platform.position.set(0, 0.3, -worldHalfSize * 0.8);
+      scene.add(platform);
+    }
+
+    function resetPlayerPosition() {
+      if (!player) return;
+      player.position.set(0, 1.1, worldHalfSize * 0.6);
+      player.rotation.set(0, 0, 0);
+    }
+
+    function startNewGame() {
+      currentLevelIndex = 0;
+      funScore = 0;
+      classesPassed = 0;
+      classesFailed = 0;
+
+      menuPanel.classList.add('hidden');
+      gameOverPanel.classList.add('hidden');
+      betweenPanel.classList.add('hidden');
+      pauseBanner.classList.add('hidden');
+      hudPanel.classList.remove('hidden');
+
+      startLevel(currentLevelIndex);
+    }
+
+    function startLevel(index) {
+      clearLevelObjects();
+      resetPlayerPosition();
+
+      const config = levelConfigs[index];
+      timeRemaining = config.timeLimit;
+      grade = 50;
+
+      spawnAssignments(config.numAssignments);
+      spawnConsoles(config.numConsoles);
+
+      gameState = 'playing';
+      updateHUD();
+    }
+
+    function clearLevelObjects() {
+      for (const obj of assignments) {
+        scene.remove(obj);
+      }
+      for (const obj of consoles) {
+        scene.remove(obj);
+      }
+      assignments.length = 0;
+      consoles.length = 0;
+    }
+
+    function spawnAssignments(count) {
+      for (let i = 0; i < count; i++) {
+        const geo = new THREE.BoxGeometry(1.2, 1.2, 1.2);
+        const mat = new THREE.MeshStandardMaterial({
+          color: 0x4caf50,
+          emissive: 0x1b5e20,
+          emissiveIntensity: 0.9
+        });
+        const cube = new THREE.Mesh(geo, mat);
+        const pos = findFreeRandomPosition(2.5);
+        cube.position.set(pos.x, 1, pos.z);
+        cube.userData.baseY = 1;
+        cube.userData.phase = Math.random() * Math.PI * 2;
+        assignments.push(cube);
+        scene.add(cube);
+      }
+    }
+
+    function spawnConsoles(count) {
+      for (let i = 0; i < count; i++) {
+        const geo = new THREE.BoxGeometry(1.2, 2.2, 0.7);
+        const mat = new THREE.MeshStandardMaterial({
+          color: 0x2979ff,
+          emissive: 0x0d47a1,
+          emissiveIntensity: 1.1,
+          metalness: 0.4,
+          roughness: 0.3
+        });
+        const consoleMesh = new THREE.Mesh(geo, mat);
+        const pos = findFreeRandomPosition(3);
+        consoleMesh.position.set(pos.x, 1.1, pos.z);
+        consoleMesh.userData.baseY = 1.1;
+        consoleMesh.userData.phase = Math.random() * Math.PI * 2;
+        consoleMesh.userData.cooldown = 0;
+        consoles.push(consoleMesh);
+        scene.add(consoleMesh);
+      }
+    }
+
+    function positionHitsObstacles(x, z, radius) {
+      for (const obs of obstacles) {
+        const dx = x - obs.position.x;
+        const dz = z - obs.position.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist < radius + 2.3) return true;
+      }
+      return false;
+    }
+
+    function findFreeRandomPosition(radius) {
+      const margin = 3;
+      const maxX = worldHalfSize - margin;
+      const maxZ = worldHalfSize - margin;
+
+      for (let attempt = 0; attempt < 50; attempt++) {
+        const x = (Math.random() * 2 - 1) * maxX;
+        const z = (Math.random() * 2 - 1) * maxZ * 0.95;
+        if (!positionHitsObstacles(x, z, radius)) {
+          return { x, z };
+        }
+      }
+      return { x: 0, z: 0 };
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = clock.getDelta();
+      const elapsed = clock.getElapsedTime();
+
+      if (gameState === 'playing') {
+        updateGameplay(dt, elapsed);
+      }
+
+      if (player && camera) {
+        updateCamera(dt);
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    function updateGameplay(dt, elapsed) {
+      updatePlayer(dt);
+      updateAssignments(dt, elapsed);
+      updateConsoles(dt, elapsed);
+
+      timeRemaining -= dt;
+      if (timeRemaining <= 0) {
+        timeRemaining = 0;
+        updateHUD();
+        if (gameState === 'playing') {
+          finishCurrentLevel();
+        }
+      } else {
+        updateHUD();
+      }
+    }
+
+    function updatePlayer(dt) {
+      const speed = 10;
+      let moveX = 0;
+      let moveZ = 0;
+
+      if (keys['KeyW'] || keys['ArrowUp']) moveZ -= 1;
+      if (keys['KeyS'] || keys['ArrowDown']) moveZ += 1;
+      if (keys['KeyA'] || keys['ArrowLeft']) moveX -= 1;
+      if (keys['KeyD'] || keys['ArrowRight']) moveX += 1;
+
+      const len = Math.hypot(moveX, moveZ);
+      if (len > 0) {
+        moveX /= len;
+        moveZ /= len;
+
+        const prevX = player.position.x;
+        const prevZ = player.position.z;
+
+        player.position.x += moveX * speed * dt;
+        player.position.z += moveZ * speed * dt;
+
+        if (player.position.x > worldHalfSize) player.position.x = worldHalfSize;
+        if (player.position.x < -worldHalfSize) player.position.x = -worldHalfSize;
+        if (player.position.z > worldHalfSize) player.position.z = worldHalfSize;
+        if (player.position.z < -worldHalfSize) player.position.z = -worldHalfSize;
+
+        if (collidesWithObstacles(player.position)) {
+          player.position.x = prevX;
+          player.position.z = prevZ;
+        }
+
+        const angle = Math.atan2(moveX, moveZ);
+        player.rotation.y = angle;
+      }
+    }
+
+    function collidesWithObstacles(pos) {
+      for (const obs of obstacles) {
+        const dx = pos.x - obs.position.x;
+        const dz = pos.z - obs.position.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist < 2.3) return true;
+      }
+      return false;
+    }
+
+    function updateAssignments(dt, elapsed) {
+      const playerPos = player.position;
+      for (let i = assignments.length - 1; i >= 0; i--) {
+        const a = assignments[i];
+        a.rotation.y += dt * 2.5;
+        a.position.y = a.userData.baseY + Math.sin(elapsed * 3 + a.userData.phase) * 0.25;
+
+        const dx = playerPos.x - a.position.x;
+        const dz = playerPos.z - a.position.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist < 1.6) {
+          scene.remove(a);
+          assignments.splice(i, 1);
+          grade = Math.min(100, grade + 8);
+          updateHUD();
+        }
+      }
+    }
+
+    function updateConsoles(dt, elapsed) {
+      const playerPos = player.position;
+      for (let i = 0; i < consoles.length; i++) {
+        const c = consoles[i];
+        c.rotation.y -= dt * 1.5;
+        c.position.y = c.userData.baseY + Math.sin(elapsed * 2 + c.userData.phase) * 0.18;
+
+        if (c.userData.cooldown > 0) {
+          c.userData.cooldown -= dt;
+          continue;
+        }
+
+        const dx = playerPos.x - c.position.x;
+        const dz = playerPos.z - c.position.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist < 1.75) {
+          c.userData.cooldown = 1.2;
+          grade = Math.max(0, grade - 15);
+          funScore += 15;
+          updateHUD();
+        }
+      }
+    }
+
+    function updateCamera(dt) {
+      const followHeight = 13;
+      const followDistance = 18;
+      cameraTarget.copy(player.position);
+
+      const desiredPos = new THREE.Vector3(
+        cameraTarget.x,
+        cameraTarget.y + followHeight,
+        cameraTarget.z + followDistance
+      );
+      camera.position.lerp(desiredPos, 0.12);
+      camera.lookAt(cameraTarget.x, cameraTarget.y + 2, cameraTarget.z);
+    }
+
+    function finishCurrentLevel() {
+      gameState = 'between';
+      hudPanel.classList.remove('hidden');
+      betweenPanel.classList.remove('hidden');
+      pauseBanner.classList.add('hidden');
+
+      const config = levelConfigs[currentLevelIndex];
+      const passed = grade >= 60;
+
+      if (passed) {
+        classesPassed++;
+        betweenTitle.textContent = config.name + ' Passed!';
+        betweenSummary.textContent =
+          'You scraped together enough assignments to pass this class.';
+      } else {
+        classesFailed++;
+        betweenTitle.textContent = config.name + ' Failed...';
+        betweenSummary.textContent =
+          'Too much time on SecureCentrix and not enough homework. This class is a fail.';
+      }
+
+      betweenStats.textContent =
+        'Grade: ' +
+        Math.round(grade) +
+        '% | Classes Passed: ' +
+        classesPassed +
+        ' / ' +
+        levelConfigs.length +
+        ' | SecureCentrix Fun: ' +
+        funScore;
+
+      if (currentLevelIndex >= levelConfigs.length - 1) {
+        nextLevelButton.textContent = 'View Semester Report';
+      } else {
+        nextLevelButton.textContent = 'Next Class';
+      }
+    }
+
+    function handleNextLevel() {
+      if (currentLevelIndex >= levelConfigs.length - 1) {
+        showFinalResults();
+      } else {
+        currentLevelIndex++;
+        betweenPanel.classList.add('hidden');
+        startLevel(currentLevelIndex);
+      }
+    }
+
+    function showFinalResults() {
+      gameState = 'finished';
+      betweenPanel.classList.add('hidden');
+      hudPanel.classList.add('hidden');
+      pauseBanner.classList.add('hidden');
+      gameOverPanel.classList.remove('hidden');
+
+      const total = levelConfigs.length;
+      let headline;
+      let details;
+
+      if (classesPassed >= Math.ceil(total * 0.67)) {
+        headline = 'You survived the semester!';
+        details =
+          'Despite frequent SecureCentrix sessions, Saharsh managed to keep most of the classes afloat.';
+      } else if (classesPassed >= 1) {
+        headline = 'Mixed report card.';
+        details =
+          'Some classes survived, others did not. Maybe next time spend a little less time on SecureCentrix.';
+      } else {
+        headline = 'Academic disaster.';
+        details =
+          'SecureCentrix completely took over. Every class failed. Maybe the next semester will go better.';
+      }
+
+      finalHeadline.textContent = headline;
+      finalDetails.textContent = details;
+
+      finalStats.textContent =
+        'Passed: ' +
+        classesPassed +
+        ' / ' +
+        total +
+        ' | Failed: ' +
+        classesFailed +
+        ' | Total SecureCentrix Fun: ' +
+        funScore;
+    }
+
+    function updateHUD() {
+      const config = levelConfigs[currentLevelIndex];
+      if (!config) return;
+
+      hudLevelName.textContent = config.name;
+      hudTime.textContent = Math.max(0, Math.ceil(timeRemaining)) + 's';
+      hudGradeText.textContent = Math.round(grade) + '%';
+      hudFun.textContent = funScore;
+      hudPassed.textContent = classesPassed;
+
+      const clampedGrade = Math.max(0, Math.min(100, grade));
+      gradeFill.style.width = clampedGrade + '%';
+
+      if (clampedGrade >= 80) {
+        gradeFill.style.background = 'linear-gradient(90deg, #4caf50, #8bc34a)';
+        gradeFill.style.boxShadow = '0 0 14px rgba(76, 175, 80, 0.9)';
+      } else if (clampedGrade >= 60) {
+        gradeFill.style.background = 'linear-gradient(90deg, #ffc107, #ffeb3b)';
+        gradeFill.style.boxShadow = '0 0 12px rgba(255, 235, 59, 0.8)';
+      } else {
+        gradeFill.style.background = 'linear-gradient(90deg, #f44336, #ff7043)';
+        gradeFill.style.boxShadow = '0 0 10px rgba(244, 67, 54, 0.9)';
+      }
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function onKeyDown(event) {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(event.code)) {
+        event.preventDefault();
+      }
+      if (event.code === 'KeyP') {
+        if (gameState === 'playing') {
+          gameState = 'paused';
+          pauseBanner.classList.remove('hidden');
+        } else if (gameState === 'paused') {
+          gameState = 'playing';
+          pauseBanner.classList.add('hidden');
+        }
+        return;
+      }
+
+      keys[event.code] = true;
+    }
+
+    function onKeyUp(event) {
+      keys[event.code] = false;
+    }
+  </script>
+</body>
+</html>
