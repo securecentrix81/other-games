@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secure Centrix81 - Saharsh Gobi-LOW IQ Adventures</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    #gameCanvas {
+      background: radial-gradient(circle at top, rgba(15,23,42,0.9), #010313 70%);
+      border: 2px solid rgba(148,163,184,0.3);
+      box-shadow: 0 20px 60px rgba(15,23,42,0.7);
+    }
+    .hud-card {
+      backdrop-filter: blur(8px);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-gray-100">
+  <div class="min-h-screen max-w-5xl mx-auto px-4 py-8 space-y-8">
+    <header class="text-center space-y-3">
+      <p class="text-sm uppercase tracking-[0.3em] text-cyan-300">Secure Centrix81</p>
+      <h1 class="text-4xl font-black text-white">Saharsh Gobi-LOW IQ Adventures</h1>
+      <p class="text-lg text-slate-300">Triple-world action saga featuring runner chaos, educational infiltration, and a job-application boss showdown.</p>
+      <div class="flex justify-center gap-4 pt-4">
+        <button id="startButton" class="px-6 py-2 rounded-full bg-cyan-500 text-black font-semibold shadow">Start Mission</button>
+        <button id="resetButton" class="px-6 py-2 rounded-full border border-cyan-400 text-cyan-200 font-semibold">Restart Campaign</button>
+      </div>
+    </header>
+
+    <div class="relative w-full flex justify-center">
+      <canvas id="gameCanvas" width="960" height="540" class="rounded-3xl"></canvas>
+      <div id="hud" class="hud-card absolute top-4 left-1/2 -translate-x-1/2 w-11/12 md:w-3/4 bg-slate-900/70 text-sm px-5 py-3 rounded-2xl border border-white/10 flex flex-wrap gap-4 justify-around">
+        <div>
+          <p class="text-xs text-slate-400">Stage</p>
+          <p id="stageLabel" class="text-cyan-300 font-semibold">Menu</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400">Score</p>
+          <p id="scoreLabel" class="text-emerald-300 font-semibold">0</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400">Health</p>
+          <p id="healthLabel" class="text-rose-300 font-semibold">100</p>
+        </div>
+        <div class="flex-1 min-w-[180px]">
+          <p class="text-xs text-slate-400">Objective</p>
+          <p id="objectiveLabel" class="text-white font-semibold">Press Start Mission to begin.</p>
+        </div>
+      </div>
+      <div class="absolute inset-0 flex items-end justify-center pointer-events-none pb-4">
+        <div id="messageBox" class="bg-slate-900/80 px-6 py-3 rounded-full text-sm text-cyan-200 shadow"></div>
+      </div>
+    </div>
+
+    <section class="grid md:grid-cols-3 gap-6 text-sm text-slate-300">
+      <div class="bg-slate-900/40 p-4 rounded-2xl border border-white/5">
+        <h2 class="font-semibold text-cyan-300 mb-2">Controls</h2>
+        <ul class="space-y-1 list-disc list-inside">
+          <li>WASD - Move</li>
+          <li>Space - Jump / Double Jump (Stage 1)</li>
+          <li>Mouse Move - Aim Centrix gun</li>
+          <li>Mouse Hold/Click - Fire in Stage 3</li>
+        </ul>
+      </div>
+      <div class="bg-slate-900/40 p-4 rounded-2xl border border-white/5">
+        <h2 class="font-semibold text-emerald-300 mb-2">Stage Breakdown</h2>
+        <p><span class="font-semibold">Stage 1:</span> Tomb-runner sprint, grab 1000+ score in coins, dodge grades, reach escape machine.</p>
+        <p class="mt-2"><span class="font-semibold">Stage 2:</span> Educational firewall. Collect 10 red Centrix cubes, avoid blue/green debt.</p>
+        <p class="mt-2"><span class="font-semibold">Stage 3:</span> Job application boss fight with wave-based homework mini-bosses.</p>
+      </div>
+      <div class="bg-slate-900/40 p-4 rounded-2xl border border-white/5">
+        <h2 class="font-semibold text-rose-300 mb-2">Win / Lose</h2>
+        <ul class="space-y-1 list-disc list-inside">
+          <li>Health hits zero → defeat.</li>
+          <li>Collect all objectives + defeat boss → win.</li>
+          <li>Restart anytime to attempt a better run.</li>
+        </ul>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const stageLabel = document.getElementById('stageLabel');
+    const scoreLabel = document.getElementById('scoreLabel');
+    const healthLabel = document.getElementById('healthLabel');
+    const objectiveLabel = document.getElementById('objectiveLabel');
+    const startButton = document.getElementById('startButton');
+    const resetButton = document.getElementById('resetButton');
+    const messageBox = document.getElementById('messageBox');
+
+    const groundY = canvas.height - 70;
+    const keys = {};
+    let isFiring = false;
+    let pointer = { x: canvas.width / 2, y: canvas.height / 2 };
+
+    const player = {
+      x: 140,
+      y: groundY - 60,
+      width: 40,
+      height: 60,
+      vx: 0,
+      vy: 0,
+      speed: 5,
+      jumpPower: 12,
+      onGround: true,
+      doubleJumpUsed: false
+    };
+
+    const game = {
+      mode: 'menu',
+      stage: 0,
+      score: 0,
+      health: 100,
+      objectiveText: 'Press Start Mission to begin.',
+      teleporterActive: false,
+      stage1: {
+        coins: [],
+        hazards: [],
+        teleporter: null,
+        coinTimer: 60,
+        hazardTimer: 150,
+        speed: 5
+      },
+      stage2: {
+        reds: [],
+        hazards: [],
+        redTimer: 90,
+        hazardTimer: 120,
+        teleporter: null,
+        collected: 0
+      },
+      stage3: {
+        boss: null,
+        bossMax: 400,
+        bossHealth: 400,
+        bullets: [],
+        miniBosses: [],
+        milestones: [0.75, 0.5, 0.25],
+        triggered: [false, false, false],
+        fireCooldown: 0
+      }
+    };
+
+    function announce(text) {
+      messageBox.textContent = text;
+    }
+
+    function startCampaign() {
+      setupStage1();
+    }
+
+    startButton.addEventListener('click', () => {
+      startCampaign();
+    });
+
+    resetButton.addEventListener('click', () => {
+      startCampaign();
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if ([ 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight' ].includes(e.code)) {
+        e.preventDefault();
+      }
+      keys[e.code] = true;
+      if (game.mode === 'stage1' && (e.code === 'Space' || e.code === 'KeyW')) {
+        attemptJump();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keys[e.code] = false;
+      if (e.code === 'Space' && game.mode !== 'stage1') {
+        // no action; reserved for stage1 jumps
+      }
+    });
+
+    canvas.addEventListener('mousedown', (e) => {
+      pointer = getCanvasPosition(e);
+      isFiring = true;
+      fireBullet(pointer.x, pointer.y);
+    });
+
+    document.addEventListener('mouseup', () => {
+      isFiring = false;
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      pointer = getCanvasPosition(e);
+    });
+
+    function getCanvasPosition(evt) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: (evt.clientX - rect.left) * (canvas.width / rect.width),
+        y: (evt.clientY - rect.top) * (canvas.height / rect.height)
+      };
+    }
+
+    function attemptJump() {
+      if (player.onGround) {
+        player.vy = -player.jumpPower;
+        player.onGround = false;
+        player.doubleJumpUsed = false;
+      } else if (!player.doubleJumpUsed) {
+        player.vy = -player.jumpPower * 0.85;
+        player.doubleJumpUsed = true;
+      }
+    }
+
+    function setupStage1() {
+      game.mode = 'stage1';
+      game.stage = 1;
+      game.score = 0;
+      game.health = 100;
+      player.width = 40;
+      player.height = 60;
+      player.speed = 5.5;
+      player.x = 140;
+      player.y = groundY - player.height;
+      player.vx = 0;
+      player.vy = 0;
+      player.jumpPower = 16;
+      player.onGround = true;
+      game.stage1.coins = [];
+      game.stage1.hazards = [];
+      game.stage1.teleporter = null;
+      game.stage1.coinTimer = 40;
+      game.stage1.hazardTimer = 120;
+      game.stage1.speed = 5;
+      game.teleporterActive = false;
+      announce('Stage 1: Dash through the Grade Gauntlet and collect 1000 coin points!');
+    }
+
+    function setupStage2() {
+      game.mode = 'stage2';
+      game.stage = 2;
+      player.width = 48;
+      player.height = 48;
+      player.x = canvas.width / 2 - player.width / 2;
+      player.y = canvas.height / 2 - player.height / 2;
+      player.vx = 0;
+      player.vy = 0;
+      player.speed = 4.2;
+      game.teleporterActive = false;
+      game.stage2.reds = [];
+      game.stage2.hazards = [];
+      game.stage2.redTimer = 60;
+      game.stage2.hazardTimer = 80;
+      game.stage2.teleporter = null;
+      game.stage2.collected = 0;
+      game.health = Math.min(120, game.health + 30);
+      announce('Stage 2: Educational World breached. Gather 10 red Centrix boxes, dodge the debt traps!');
+    }
+
+    function setupStage3() {
+      game.mode = 'stage3';
+      game.stage = 3;
+      player.width = 48;
+      player.height = 56;
+      player.x = 140;
+      player.y = canvas.height / 2 - player.height / 2;
+      player.speed = 4.4;
+      game.stage3.bossMax = 400;
+      game.stage3.bossHealth = 400;
+      game.stage3.bullets = [];
+      game.stage3.miniBosses = [];
+      game.stage3.triggered = [false, false, false];
+      game.stage3.fireCooldown = 0;
+      game.stage3.boss = {
+        baseX: canvas.width - 260,
+        baseY: canvas.height / 2 - 120,
+        x: canvas.width - 260,
+        y: canvas.height / 2 - 120,
+        width: 150,
+        height: 150
+      };
+      game.health = Math.max(game.health, 100);
+      announce('Stage 3: Job Application boss online! Hold the mouse to unleash the Centrix gun.');
+    }
+
+    function update() {
+      updateHud();
+      switch (game.mode) {
+        case 'menu':
+          drawMenu();
+          break;
+        case 'stage1':
+          updateStage1();
+          break;
+        case 'stage2':
+          updateStage2();
+          break;
+        case 'stage3':
+          updateStage3();
+          break;
+        case 'victory':
+          drawVictory();
+          break;
+        case 'gameover':
+          drawGameOver();
+          break;
+      }
+      requestAnimationFrame(update);
+    }
+
+    function updateHud() {
+      const stageNames = {
+        0: 'Menu Briefing',
+        1: 'Grade Escape',
+        2: 'Educational Firewall',
+        3: 'Job Application Siege'
+      };
+      stageLabel.textContent = `Stage ${game.stage || 0} - ${stageNames[game.stage] || '---'}`;
+      scoreLabel.textContent = Math.floor(game.score);
+      healthLabel.textContent = Math.max(0, Math.round(game.health));
+      objectiveLabel.textContent = game.objectiveText || '';
+    }
+
+    function drawMenu() {
+      ctx.fillStyle = '#020617';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#0ea5e9';
+      ctx.font = 'bold 48px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Secure Centrix81 Ops Desk', canvas.width / 2, canvas.height / 2 - 40);
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = '22px sans-serif';
+      ctx.fillText('Press Start Mission to begin the triple-world prank heist.', canvas.width / 2, canvas.height / 2 + 20);
+    }
+
+    function drawVictory() {
+      ctx.fillStyle = '#042f2e';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#4ade80';
+      ctx.textAlign = 'center';
+      ctx.font = '48px sans-serif';
+      ctx.fillText('Centrix Ultimate Hack Complete!', canvas.width / 2, canvas.height / 2 - 10);
+      ctx.font = '24px sans-serif';
+      ctx.fillStyle = '#a7f3d0';
+      ctx.fillText('Press Restart Campaign to relaunch the saga.', canvas.width / 2, canvas.height / 2 + 40);
+    }
+
+    function drawGameOver() {
+      ctx.fillStyle = '#2c0410';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#f87171';
+      ctx.textAlign = 'center';
+      ctx.font = '48px sans-serif';
+      ctx.fillText('Mission Failed', canvas.width / 2, canvas.height / 2 - 10);
+      ctx.font = '24px sans-serif';
+      ctx.fillStyle = '#fecdd3';
+      ctx.fillText('Press Restart Campaign to try again.', canvas.width / 2, canvas.height / 2 + 40);
+    }
+
+    function updateStage1() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawStage1Background();
+      game.objectiveText = game.teleporterActive ? 'Reach the escape machine!' : `Collect 1000 coin score (Current ${game.score})`;
+
+      player.vy += 0.7;
+      player.y += player.vy;
+      if (player.y + player.height >= groundY) {
+        player.y = groundY - player.height;
+        player.vy = 0;
+        player.onGround = true;
+        player.doubleJumpUsed = false;
+      } else {
+        player.onGround = false;
+      }
+
+      let moveX = 0;
+      if (keys.KeyA) moveX -= player.speed;
+      if (keys.KeyD) moveX += player.speed;
+      player.x += moveX;
+      player.x = Math.min(Math.max(player.x, 80), canvas.width / 2);
+
+      const scroll = game.stage1.speed + Math.min(game.score / 400, 4);
+
+      game.stage1.coinTimer--;
+      if (game.stage1.coinTimer <= 0) {
+        game.stage1.coins.push({
+          x: canvas.width + 40,
+          y: groundY - 80 - Math.random() * 180,
+          radius: 12
+        });
+        game.stage1.coinTimer = 45 + Math.random() * 40;
+      }
+
+      game.stage1.hazardTimer--;
+      if (game.stage1.hazardTimer <= 0) {
+        game.stage1.hazards.push({
+          x: canvas.width + 60,
+          y: groundY - 50,
+          width: 40 + Math.random() * 40,
+          height: 50
+        });
+        game.stage1.hazardTimer = 130 + Math.random() * 80;
+      }
+
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+
+      ctx.fillStyle = '#facc15';
+      game.stage1.coins = game.stage1.coins.filter((coin) => {
+        coin.x -= scroll;
+        drawCoin(coin);
+        if (circleRectCollision(coin.x, coin.y, coin.radius, player)) {
+          game.score += 50;
+          return false;
+        }
+        return coin.x > -50;
+      });
+
+      ctx.fillStyle = '#f43f5e';
+      game.stage1.hazards = game.stage1.hazards.filter((hazard) => {
+        hazard.x -= scroll * 1.05;
+        drawGradeHazard(hazard);
+        if (rectIntersect(hazard, player)) {
+          applyDamage(20);
+          return false;
+        }
+        return hazard.x + hazard.width > 0;
+      });
+
+      if (game.score >= 1000 && !game.teleporterActive) {
+        game.teleporterActive = true;
+        game.stage1.teleporter = {
+          x: canvas.width + 200,
+          y: groundY - 140,
+          width: 70,
+          height: 140,
+          pulse: 0
+        };
+        announce('Escape machine online! Reach it to enter the Educational World.');
+      }
+
+      if (game.teleporterActive && game.stage1.teleporter) {
+        const tp = game.stage1.teleporter;
+        tp.x -= scroll;
+        drawTeleporter(tp);
+        if (rectIntersect(tp, player)) {
+          setupStage2();
+          return;
+        }
+      }
+
+      drawPlayerRunner();
+    }
+
+    function updateStage2() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawStage2Background();
+      game.objectiveText = game.teleporterActive ? 'Dash into the portal!' : `Collect 10 red boxes (${game.stage2.collected}/10) | Avoid blue(-40) & green(-20)`;
+
+      handleTopDownMovement(player.speed);
+
+      game.stage2.redTimer--;
+      if (game.stage2.redTimer <= 0 && game.stage2.collected < 10) {
+        spawnRedBox();
+        game.stage2.redTimer = 70 + Math.random() * 60;
+      }
+
+      game.stage2.hazardTimer--;
+      if (game.stage2.hazardTimer <= 0) {
+        spawnDebtBox();
+        game.stage2.hazardTimer = 80 + Math.random() * 80;
+      }
+
+      game.stage2.hazards = game.stage2.hazards.filter((box) => {
+        drawDebtBox(box);
+        box.life--;
+        if (rectIntersect(box, player)) {
+          if (!box.hit) {
+            box.hit = true;
+            applyDamage(box.type === 'blue' ? 30 : 15);
+            const knock = box.type === 'blue' ? 30 : 16;
+            player.x += player.x > canvas.width / 2 ? knock : -knock;
+            player.y += player.y > canvas.height / 2 ? knock : -knock;
+            player.x = clamp(player.x, 20, canvas.width - player.width - 20);
+            player.y = clamp(player.y, 20, canvas.height - player.height - 20);
+          }
+          return false;
+        }
+        return box.life > 0;
+      });
+
+      game.stage2.reds = game.stage2.reds.filter((red) => {
+        drawRedBox(red);
+        if (rectIntersect(red, player)) {
+          game.stage2.collected += 1;
+          game.score += 30;
+          announce(`Red Centrix secured! ${game.stage2.collected}/10`);
+          return false;
+        }
+        return true;
+      });
+
+      if (game.stage2.collected >= 10 && !game.teleporterActive) {
+        game.teleporterActive = true;
+        game.stage2.teleporter = {
+          x: canvas.width - 140,
+          y: canvas.height / 2 - 80,
+          width: 80,
+          height: 140,
+          pulse: 0
+        };
+        announce('Portal unlocked! Time for the Job Application showdown.');
+      }
+
+      if (game.stage2.teleporter) {
+        drawTeleporter(game.stage2.teleporter);
+        if (rectIntersect(game.stage2.teleporter, player)) {
+          setupStage3();
+        }
+      }
+
+      drawPlayerTopDown();
+    }
+
+    function updateStage3() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawStage3Background();
+      game.objectiveText = 'Defeat the Job Application boss! Keep health above zero.';
+
+      handleTopDownMovement(player.speed + 0.2);
+
+      const time = performance.now() * 0.0015;
+      const boss = game.stage3.boss;
+      boss.x = boss.baseX + Math.cos(time) * 40;
+      boss.y = boss.baseY + Math.sin(time) * 60;
+
+      if (game.stage3.fireCooldown > 0) game.stage3.fireCooldown--;
+      if (isFiring) {
+        fireBullet(pointer.x, pointer.y);
+      }
+
+      game.stage3.bullets = game.stage3.bullets.filter((bullet) => {
+        bullet.x += bullet.vx;
+        bullet.y += bullet.vy;
+        bullet.life--;
+        ctx.fillStyle = '#fb923c';
+        ctx.beginPath();
+        ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
+        ctx.fill();
+        if (bullet.x < 0 || bullet.x > canvas.width || bullet.y < 0 || bullet.y > canvas.height || bullet.life <= 0) {
+          return false;
+        }
+        if (circleRectCollision(bullet.x, bullet.y, bullet.radius, boss)) {
+          game.stage3.bossHealth -= 8;
+          game.score += 5;
+          return false;
+        }
+        for (const mini of game.stage3.miniBosses) {
+          if (circleRectCollision(bullet.x, bullet.y, bullet.radius, mini)) {
+            mini.health -= 20;
+            if (mini.health <= 0) {
+              game.score += 40;
+            }
+            return false;
+          }
+        }
+        return true;
+      });
+
+      const healthRatio = Math.max(0, game.stage3.bossHealth / game.stage3.bossMax);
+      game.stage3.milestones.forEach((threshold, idx) => {
+        if (!game.stage3.triggered[idx] && healthRatio <= threshold) {
+          game.stage3.triggered[idx] = true;
+          spawnMiniBosses();
+          announce('Homework mini-boss wave! Clear them fast.');
+        }
+      });
+
+      game.stage3.miniBosses = game.stage3.miniBosses.filter((mini) => {
+        const targetX = player.x + player.width / 2;
+        const targetY = player.y + player.height / 2;
+        const dx = targetX - (mini.x + mini.width / 2);
+        const dy = targetY - (mini.y + mini.height / 2);
+        const dist = Math.hypot(dx, dy) || 1;
+        mini.x += (dx / dist) * mini.speed;
+        mini.y += (dy / dist) * mini.speed;
+        drawMini(mini);
+        if (rectIntersect(mini, player)) {
+          applyDamage(0.8);
+        }
+        return mini.health > 0;
+      });
+
+      drawBoss(boss);
+      drawPlayerShooter();
+
+      if (rectIntersect(boss, player)) {
+        applyDamage(0.6);
+      }
+
+      if (game.stage3.bossHealth <= 0 && game.stage3.miniBosses.length === 0) {
+        triggerVictory();
+      }
+    }
+
+    function drawStage1Background() {
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, '#0f172a');
+      gradient.addColorStop(1, '#020617');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#1e293b';
+      for (let i = 0; i < 6; i++) {
+        const width = 220;
+        const height = 120 + Math.sin((performance.now() * 0.0005) + i) * 20;
+        const x = (i * 200 + (performance.now() * 0.05 % 200)) % (canvas.width + width) - width;
+        ctx.fillRect(x, groundY - height, width, height);
+      }
+    }
+
+    function drawStage2Background() {
+      ctx.fillStyle = '#030c1f';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = 'rgba(148,163,184,0.1)';
+      for (let x = 0; x < canvas.width; x += 40) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+    }
+
+    function drawStage3Background() {
+      ctx.fillStyle = '#050506';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = 'rgba(16,185,129,0.15)';
+      for (let i = 0; i < 8; i++) {
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, canvas.height / 2, 60 + i * 40, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    function drawPlayerRunner() {
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(player.x, player.y, player.width, player.height);
+      ctx.fillStyle = '#0369a1';
+      ctx.fillRect(player.x + player.width * 0.2, player.y + player.height * 0.2, player.width * 0.6, player.height * 0.25);
+    }
+
+    function drawPlayerTopDown() {
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(player.x, player.y, player.width, player.height);
+      ctx.fillStyle = '#0ea5e9';
+      ctx.fillRect(player.x + 8, player.y + 8, player.width - 16, player.height - 16);
+    }
+
+    function drawPlayerShooter() {
+      ctx.fillStyle = '#fde047';
+      ctx.fillRect(player.x, player.y, player.width, player.height);
+      ctx.fillStyle = '#1d4ed8';
+      ctx.fillRect(player.x + 6, player.y + 6, player.width - 12, player.height - 24);
+      ctx.fillStyle = '#f97316';
+      ctx.fillRect(player.x + player.width - 8, player.y + player.height / 2 - 4, 18, 8);
+    }
+
+    function drawCoin(coin) {
+      const grad = ctx.createRadialGradient(coin.x - 4, coin.y - 4, 4, coin.x, coin.y, coin.radius);
+      grad.addColorStop(0, '#fff7c2');
+      grad.addColorStop(1, '#facc15');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(coin.x, coin.y, coin.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#78350f';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('C', coin.x, coin.y + 4);
+      ctx.textAlign = 'left';
+    }
+
+    function drawGradeHazard(hazard) {
+      ctx.fillStyle = '#be123c';
+      ctx.fillRect(hazard.x, hazard.y, hazard.width, hazard.height);
+      ctx.fillStyle = '#fee2e2';
+      ctx.font = '16px sans-serif';
+      ctx.fillText('A+', hazard.x + 8, hazard.y + 30);
+    }
+
+    function drawTeleporter(tp) {
+      tp.pulse = (tp.pulse || 0) + 0.08;
+      const alpha = (Math.sin(tp.pulse) + 1) / 2;
+      ctx.save();
+      ctx.strokeStyle = `rgba(59,130,246,${0.6 + alpha * 0.4})`;
+      ctx.lineWidth = 6;
+      ctx.strokeRect(tp.x, tp.y, tp.width, tp.height);
+      ctx.fillStyle = `rgba(14,165,233,${0.2 + alpha * 0.4})`;
+      ctx.fillRect(tp.x, tp.y, tp.width, tp.height);
+      ctx.restore();
+    }
+
+    function spawnRedBox() {
+      const size = 46;
+      game.stage2.reds.push({
+        x: 60 + Math.random() * (canvas.width - 160),
+        y: 80 + Math.random() * (canvas.height - 160),
+        width: size,
+        height: size,
+        size
+      });
+    }
+
+    function spawnDebtBox() {
+      const type = Math.random() > 0.5 ? 'blue' : 'green';
+      game.stage2.hazards.push({
+        x: 60 + Math.random() * (canvas.width - 160),
+        y: 80 + Math.random() * (canvas.height - 160),
+        width: 52,
+        height: 52,
+        type,
+        life: 360,
+        hit: false
+      });
+    }
+
+    function drawRedBox(red) {
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(red.x, red.y, red.size, red.size);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.fillText('C81', red.x + 6, red.y + red.size / 2 + 4);
+    }
+
+    function drawDebtBox(box) {
+      ctx.fillStyle = box.type === 'blue' ? '#38bdf8' : '#22c55e';
+      ctx.fillRect(box.x, box.y, box.width, box.height);
+      ctx.fillStyle = '#0f172a';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText(box.type === 'blue' ? '-40' : '-20', box.x + 6, box.y + 30);
+    }
+
+    function drawBoss(boss) {
+      ctx.fillStyle = '#db2777';
+      ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
+      ctx.fillStyle = '#fde68a';
+      ctx.font = '20px sans-serif';
+      ctx.fillText('JOB', boss.x + 40, boss.y + boss.height / 2);
+      const ratio = Math.max(0, game.stage3.bossHealth / game.stage3.bossMax);
+      ctx.fillStyle = '#1f2937';
+      ctx.fillRect(canvas.width / 2 - 180, 30, 360, 16);
+      ctx.fillStyle = ratio > 0.5 ? '#22c55e' : ratio > 0.25 ? '#facc15' : '#f43f5e';
+      ctx.fillRect(canvas.width / 2 - 180, 30, 360 * ratio, 16);
+    }
+
+    function spawnMiniBosses() {
+      for (let i = 0; i < 5; i++) {
+        game.stage3.miniBosses.push({
+          x: canvas.width - 240 - Math.random() * 120,
+          y: 80 + Math.random() * (canvas.height - 160),
+          width: 38,
+          height: 38,
+          speed: 1.8 + Math.random() * 0.8,
+          health: 50
+        });
+      }
+    }
+
+    function drawMini(mini) {
+      ctx.fillStyle = '#a855f7';
+      ctx.fillRect(mini.x, mini.y, mini.width, mini.height);
+      ctx.fillStyle = '#fdf4ff';
+      ctx.font = '14px sans-serif';
+      ctx.fillText('HW', mini.x + 6, mini.y + mini.height / 2 + 4);
+    }
+
+    function fireBullet(targetX, targetY) {
+      if (game.mode !== 'stage3') return;
+      if (game.stage3.fireCooldown > 0) return;
+      const originX = player.x + player.width / 2;
+      const originY = player.y + player.height / 2;
+      const dx = targetX - originX;
+      const dy = targetY - originY;
+      const dist = Math.hypot(dx, dy) || 1;
+      const speed = 9;
+      game.stage3.bullets.push({
+        x: originX,
+        y: originY,
+        vx: (dx / dist) * speed,
+        vy: (dy / dist) * speed,
+        radius: 6,
+        life: 80
+      });
+      game.stage3.fireCooldown = 10;
+    }
+
+    function handleTopDownMovement(speed) {
+      let moveX = 0;
+      let moveY = 0;
+      if (keys.KeyA) moveX -= speed;
+      if (keys.KeyD) moveX += speed;
+      if (keys.KeyW) moveY -= speed;
+      if (keys.KeyS) moveY += speed;
+      if (moveX !== 0 && moveY !== 0) {
+        const factor = Math.sqrt(0.5);
+        moveX *= factor;
+        moveY *= factor;
+      }
+      player.x += moveX;
+      player.y += moveY;
+      player.x = clamp(player.x, 20, canvas.width - player.width - 20);
+      player.y = clamp(player.y, 20, canvas.height - player.height - 20);
+    }
+
+    function applyDamage(amount) {
+      game.health -= amount;
+      if (game.health <= 0) {
+        game.health = 0;
+        triggerGameOver('Saharsh was overwhelmed!');
+      }
+    }
+
+    function triggerVictory() {
+      game.mode = 'victory';
+      game.objectiveText = 'Centrix Ultimate Hacked as Prank! Restart to replay.';
+      announce('Victory! The job boss is toast and the prank is complete.');
+    }
+
+    function triggerGameOver(reason) {
+      if (game.mode === 'gameover' || game.mode === 'victory') return;
+      game.mode = 'gameover';
+      game.objectiveText = `${reason} Press Restart to try again.`;
+      announce(reason);
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function rectIntersect(a, b) {
+      return a.x < b.x + b.width &&
+        a.x + a.width > b.x &&
+        a.y < b.y + b.height &&
+        a.y + a.height > b.y;
+    }
+
+    function circleRectCollision(cx, cy, radius, rect) {
+      const closestX = clamp(cx, rect.x, rect.x + rect.width);
+      const closestY = clamp(cy, rect.y, rect.y + rect.height);
+      const dx = cx - closestX;
+      const dy = cy - closestY;
+      return (dx * dx + dy * dy) < radius * radius;
+    }
+
+    update();
+  </script>
+</body>
+</html>
