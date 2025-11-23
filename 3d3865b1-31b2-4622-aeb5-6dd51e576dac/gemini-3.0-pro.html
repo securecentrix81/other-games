@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saharsh Gobi-LOW iq adventures</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Courier New', Courier, monospace; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; box-sizing: border-box; }
+        .hud-text { color: #00ff00; text-shadow: 2px 2px 0 #000; font-weight: bold; }
+        .hidden { display: none !important; }
+        #start-screen, #game-over-screen, #victory-screen, #stage-transition { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.85); display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; pointer-events: auto; z-index: 10;
+        }
+        button { pointer-events: auto; background: #00ff00; color: black; border: none; padding: 15px 30px; font-size: 20px; font-weight: bold; cursor: pointer; margin-top: 20px; text-transform: uppercase; }
+        button:hover { background: #fff; }
+        .health-bar-container { width: 300px; height: 20px; background: #333; border: 2px solid white; margin-top: 10px; }
+        .health-bar-fill { height: 100%; background: #00ff00; width: 100%; transition: width 0.2s; }
+        
+        /* Boss Bar Moved to Bottom Center */
+        .boss-health-container { 
+            position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%);
+            width: 600px; height: 30px; background: #333; border: 2px solid red; 
+            display: none; pointer-events: none;
+        }
+        .boss-health-fill { height: 100%; background: red; width: 100%; transition: width 0.2s; }
+    </style>
+</head>
+<body>
+
+    <!-- Game Canvas Container -->
+    <div id="game-container"></div>
+
+    <!-- UI Layer -->
+    <div id="ui-layer">
+        <div class="flex justify-between items-start w-full">
+            <div class="flex flex-col">
+                <div id="score-display" class="hud-text text-2xl">SCORE: 0</div>
+                <div id="stage-display" class="hud-text text-xl mt-2">STAGE 1: RUN FROM GRADES</div>
+                <div class="health-bar-container" id="player-health-container">
+                    <div class="health-bar-fill" id="player-health"></div>
+                </div>
+                <div id="health-text" class="hud-text text-sm mt-1">HP: 100%</div>
+            </div>
+            <div class="flex flex-col items-end">
+                <div id="objective-display" class="hud-text text-xl text-right">Reach 1000 Points</div>
+            </div>
+        </div>
+        
+        <!-- Boss Bar is now absolutely positioned via CSS -->
+        <div class="boss-health-container" id="boss-health-container">
+            <div class="boss-health-fill" id="boss-health"></div>
+            <div class="text-center text-white font-bold" style="margin-top: -25px;">JOB APPLICATION BOSS</div>
+        </div>
+
+        <div class="w-full text-center">
+            <div id="message-display" class="hud-text text-yellow-400 text-xl font-bold h-8"></div>
+        </div>
+    </div>
+
+    <!-- Screens -->
+    <div id="start-screen">
+        <h1 class="text-5xl text-green-500 font-bold mb-4 text-center">SAHARSH GOBI-LOW IQ ADVENTURES</h1>
+        <p class="text-white text-xl max-w-2xl text-center mb-8">
+            Help Saharsh escape the matrix!<br><br>
+            STAGE 1: Run from "Grades", Jump (SPACE), Collect Coins (WASD). Reach 1000 pts.<br>
+            STAGE 2: Educational World. Avoid Blue (-40HP) & Green (-20HP) boxes. Collect 10 Red Boxes.<br>
+            STAGE 3: Defeat the "Job Application" Boss using the Centrix Gun (Click to Shoot).
+        </p>
+        <button id="start-btn">Start Adventure</button>
+    </div>
+
+    <div id="stage-transition" class="hidden">
+        <h1 id="transition-title" class="text-4xl text-yellow-400 font-bold mb-4">STAGE COMPLETE</h1>
+        <p id="transition-desc" class="text-white text-xl mb-8">Warping to next world...</p>
+        <button id="next-stage-btn">Teleport</button>
+    </div>
+
+    <div id="game-over-screen" class="hidden">
+        <h1 class="text-6xl text-red-600 font-bold mb-4">GAME OVER</h1>
+        <p id="death-reason" class="text-white text-xl mb-8">You failed.</p>
+        <button id="restart-btn">Try Again</button>
+    </div>
+
+    <div id="victory-screen" class="hidden">
+        <!-- Added text-center class to h1 -->
+        <h1 class="text-6xl text-green-500 font-bold mb-4 text-center">CENTRIX ULTIMATE HACKED!</h1>
+        <p class="text-white text-xl mb-8 text-center">
+            Prank Successful.<br>
+            Job Application Destroyed.<br>
+            Saharsh is free!
+        </p>
+        <button id="play-again-btn">Play Again</button>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // --- Game State ---
+        const state = {
+            stage: 0, // 0: Menu, 1: Runner, 2: Collector, 3: Boss
+            score: 0,
+            health: 100,
+            maxHealth: 100,
+            redBoxesCollected: 0,
+            bossHealth: 100,
+            bossMaxHealth: 1000,
+            miniBosses: [],
+            projectiles: [],
+            enemies: [],
+            coins: [],
+            isPlaying: false,
+            lastTime: 0,
+            speed: 0,
+            invincible: false
+        };
+
+        // --- Configuration ---
+        const SAHARSH_IMG_URL = 'https://asset-cdn.schoology.com/system/files/imagecache/profile_big/pictures/picture-c0b09cdead19788fb0f8be0d53b5c572_68c34cd700b90.jpg';
+        
+        // --- Three.js Setup ---
+        const scene = new THREE.Scene();
+        // Add fog for depth
+        scene.fog = new THREE.FogExp2(0x000000, 0.02);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.getElementById('game-container').appendChild(renderer.domElement);
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(10, 20, 10);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // Load Textures
+        const textureLoader = new THREE.TextureLoader();
+        const saharshTexture = textureLoader.load(SAHARSH_IMG_URL);
+        
+        // --- Player Setup ---
+        const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
+        const playerMaterial = new THREE.MeshStandardMaterial({ map: saharshTexture });
+        const player = new THREE.Mesh(playerGeometry, playerMaterial);
+        player.castShadow = true;
+        
+        // Player Physics/Movement
+        let playerVelocity = new THREE.Vector3();
+        let isJumping = false;
+        const GRAVITY = 0.03;
+        const JUMP_FORCE = 0.6;
+        const MOVE_SPEED = 0.2;
+        
+        // Inputs
+        const keys = { w: false, a: false, s: false, d: false, space: false };
+        window.addEventListener('keydown', (e) => {
+            if(e.key === 'w' || e.key === 'W') keys.w = true;
+            if(e.key === 'a' || e.key === 'A') keys.a = true;
+            if(e.key === 's' || e.key === 'S') keys.s = true;
+            if(e.key === 'd' || e.key === 'D') keys.d = true;
+            if(e.key === ' ') keys.space = true;
+        });
+        window.addEventListener('keyup', (e) => {
+            if(e.key === 'w' || e.key === 'W') keys.w = false;
+            if(e.key === 'a' || e.key === 'A') keys.a = false;
+            if(e.key === 's' || e.key === 'S') keys.s = false;
+            if(e.key === 'd' || e.key === 'D') keys.d = false;
+            if(e.key === ' ') keys.space = false;
+        });
+        
+        // Mouse for shooting
+        const mouse = new THREE.Vector2();
+        const raycaster = new THREE.Raycaster();
+        window.addEventListener('mousedown', () => {
+            if(state.stage === 3 && state.isPlaying) fireProjectile();
+        });
+        window.addEventListener('mousemove', (event) => {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        });
+
+        // --- Stage Management ---
+
+        function clearScene() {
+            for(let i = scene.children.length - 1; i >= 0; i--) {
+                let obj = scene.children[i];
+                if(obj !== camera && obj !== ambientLight && obj !== dirLight) {
+                    scene.remove(obj);
+                }
+            }
+            state.enemies = [];
+            state.coins = [];
+            state.projectiles = [];
+            state.miniBosses = [];
+        }
+
+        function startStage1() {
+            state.stage = 1;
+            state.score = 0;
+            state.health = 100;
+            state.speed = 0.3; // Forward runner speed
+            updateUI();
+            
+            clearScene();
+            
+            // Infinite Runner Floor
+            const floorGeo = new THREE.PlaneGeometry(20, 200);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.z = -50;
+            scene.add(floor);
+            
+            // Player setup
+            player.position.set(0, 0.5, 0);
+            scene.add(player);
+            
+            camera.position.set(0, 4, 6);
+            camera.lookAt(player.position);
+
+            document.getElementById('stage-display').innerText = "STAGE 1: RUN FROM GRADES";
+            document.getElementById('objective-display').innerText = "Get 1000 Score";
+            document.getElementById('boss-health-container').style.display = 'none';
+        }
+
+        function startStage2() {
+            state.stage = 2;
+            state.redBoxesCollected = 0;
+            state.health = 100;
+            updateUI();
+
+            clearScene();
+
+            // Arena Floor
+            const floorGeo = new THREE.PlaneGeometry(60, 60);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x111133 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            scene.add(floor);
+
+            // Walls
+            const wallGeo = new THREE.BoxGeometry(60, 5, 1);
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x444488 });
+            
+            const w1 = new THREE.Mesh(wallGeo, wallMat); w1.position.set(0, 2.5, -30); scene.add(w1);
+            const w2 = new THREE.Mesh(wallGeo, wallMat); w2.position.set(0, 2.5, 30); scene.add(w2);
+            const w3 = new THREE.Mesh(wallGeo, wallMat); w3.position.set(-30, 2.5, 0); w3.rotation.y = Math.PI/2; scene.add(w3);
+            const w4 = new THREE.Mesh(wallGeo, wallMat); w4.position.set(30, 2.5, 0); w4.rotation.y = Math.PI/2; scene.add(w4);
+
+            player.position.set(0, 0.5, 0);
+            scene.add(player);
+
+            // Camera Top-downish
+            camera.position.set(0, 25, 20);
+            camera.lookAt(0, 0, 0);
+
+            // Spawn Red Boxes
+            spawnRedBoxes(10);
+            
+            // Spawn Enemies (Blue/Green) - 2x more (16)
+            spawnPatrolEnemies(16);
+
+            document.getElementById('stage-display').innerText = "STAGE 2: EDUCATIONAL WORLD";
+            document.getElementById('objective-display').innerText = "Find 10 Red Boxes (0/10)";
+            document.getElementById('boss-health-container').style.display = 'none';
+            
+            showMessage("Avoid Blue/Green! Find Red!");
+        }
+
+        function startStage3() {
+            state.stage = 3;
+            state.health = 100;
+            state.bossHealth = 1000;
+            state.bossMaxHealth = 1000;
+            updateUI();
+            
+            clearScene();
+
+            // Boss Arena
+            const floorGeo = new THREE.PlaneGeometry(40, 40);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x330000 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            scene.add(floor);
+
+            player.position.set(0, 0.5, 15);
+            scene.add(player);
+            
+            // Boss
+            createBoss();
+
+            camera.position.set(0, 10, 25);
+            camera.lookAt(0, 0, 0);
+
+            document.getElementById('stage-display').innerText = "STAGE 3: JOB INTERVIEW";
+            document.getElementById('objective-display').innerText = "Defeat the Boss!";
+            document.getElementById('boss-health-container').style.display = 'block';
+            
+            showMessage("Shoot with Mouse Click!");
+        }
+
+        function createBoss() {
+            const bossGeo = new THREE.BoxGeometry(6, 6, 6);
+            const bossMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+            const boss = new THREE.Mesh(bossGeo, bossMat);
+            boss.position.set(0, 3, -10);
+            boss.userData = { type: 'boss', maxHealth: 1000, health: 1000 };
+            scene.add(boss);
+            
+            // Boss Label
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 256; canvas.height = 128;
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0,0,256,128);
+            ctx.fillStyle = 'black';
+            ctx.font = 'bold 24px Arial';
+            ctx.fillText("JOB APPLICATION", 10, 70);
+            const tex = new THREE.CanvasTexture(canvas);
+            const label = new THREE.Mesh(new THREE.PlaneGeometry(6,3), new THREE.MeshBasicMaterial({map: tex, transparent:true}));
+            label.position.z = 3.1;
+            boss.add(label);
+
+            state.boss = boss;
+        }
+
+        function spawnRedBoxes(count) {
+            for(let i=0; i<count; i++) {
+                const geo = new THREE.BoxGeometry(1, 1, 1);
+                const mat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x550000 });
+                const box = new THREE.Mesh(geo, mat);
+                box.position.set(
+                    (Math.random() - 0.5) * 50,
+                    0.5,
+                    (Math.random() - 0.5) * 50
+                );
+                box.userData = { type: 'red_box' };
+                scene.add(box);
+                state.coins.push(box);
+            }
+        }
+
+        function spawnPatrolEnemies(count) {
+            for(let i=0; i<count; i++) {
+                const isBlue = Math.random() > 0.5;
+                const color = isBlue ? 0x0000ff : 0x00ff00;
+                const damage = isBlue ? 40 : 20;
+                
+                const geo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+                const mat = new THREE.MeshStandardMaterial({ color: color });
+                const enemy = new THREE.Mesh(geo, mat);
+                enemy.position.set(
+                    (Math.random() - 0.5) * 40,
+                    0.75,
+                    (Math.random() - 0.5) * 40
+                );
+                // 1.2x Speed: was 0.2, now 0.24
+                enemy.userData = { 
+                    type: 'patrol', 
+                    damage: damage, 
+                    velocity: new THREE.Vector3((Math.random()-0.5)*0.24, 0, (Math.random()-0.5)*0.24) 
+                };
+                scene.add(enemy);
+                state.enemies.push(enemy);
+            }
+        }
+        
+        function spawnMiniBosses(count) {
+            showMessage("HOMEWORK ATTACK!");
+            for(let i=0; i<count; i++) {
+                const geo = new THREE.BoxGeometry(2, 2, 2);
+                const mat = new THREE.MeshStandardMaterial({ color: 0xffff00 }); // Yellow for homework
+                const mb = new THREE.Mesh(geo, mat);
+                // Spread out more: (Math.random()-0.5)*40 instead of 10
+                mb.position.set(
+                    state.boss.position.x + (Math.random()-0.5)*40,
+                    1,
+                    state.boss.position.z + 8 + (Math.random()*15)
+                );
+                mb.userData = { type: 'miniboss', health: 50 };
+                scene.add(mb);
+                state.miniBosses.push(mb);
+            }
+        }
+
+        function fireProjectile() {
+            const geo = new THREE.SphereGeometry(0.2);
+            const mat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+            const proj = new THREE.Mesh(geo, mat);
+            
+            proj.position.copy(player.position);
+            proj.position.y += 0.5; // Eye level
+            
+            raycaster.setFromCamera(mouse, camera);
+            const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+            const target = new THREE.Vector3();
+            raycaster.ray.intersectPlane(plane, target);
+            
+            if(target) {
+                const dir = new THREE.Vector3().subVectors(target, player.position).normalize();
+                proj.userData = { velocity: dir.multiplyScalar(0.8) };
+                scene.add(proj);
+                state.projectiles.push(proj);
+            }
+        }
+
+        // --- Game Loop Logic ---
+
+        function updateUI() {
+            document.getElementById('score-display').innerText = `SCORE: ${state.score}`;
+            document.getElementById('player-health').style.width = `${Math.max(0, state.health)}%`;
+            document.getElementById('health-text').innerText = `HP: ${state.health}%`;
+            
+            if(state.stage === 2) {
+                document.getElementById('objective-display').innerText = `Red Boxes: ${state.redBoxesCollected}/10`;
+            }
+            
+            if(state.stage === 3) {
+                const bossPct = (state.bossHealth / state.bossMaxHealth) * 100;
+                document.getElementById('boss-health').style.width = `${Math.max(0, bossPct)}%`;
+            }
+        }
+
+        function showMessage(msg) {
+            const el = document.getElementById('message-display');
+            el.innerText = msg;
+            setTimeout(() => { if(el.innerText === msg) el.innerText = ""; }, 3000);
+        }
+
+        function damagePlayer(amount) {
+            if(state.invincible) return;
+            state.health -= amount;
+            updateUI();
+            
+            // visual feedback
+            player.material.color.setHex(0xff0000);
+            setTimeout(() => player.material.color.setHex(0xffffff), 200);
+            state.invincible = true;
+            setTimeout(() => state.invincible = false, 1000);
+
+            if(state.health <= 0) {
+                gameOver("Health Depleted");
+            }
+        }
+
+        function gameOver(reason) {
+            state.isPlaying = false;
+            document.getElementById('game-over-screen').classList.remove('hidden');
+            document.getElementById('death-reason').innerText = reason;
+        }
+
+        function stageComplete() {
+            state.isPlaying = false;
+            if(state.stage === 3) {
+                document.getElementById('victory-screen').classList.remove('hidden');
+            } else {
+                document.getElementById('transition-title').innerText = `STAGE ${state.stage} COMPLETE`;
+                document.getElementById('stage-transition').classList.remove('hidden');
+            }
+        }
+
+        function animate(time) {
+            requestAnimationFrame(animate);
+            const dt = (time - state.lastTime) / 1000;
+            state.lastTime = time;
+
+            if(!state.isPlaying) return;
+
+            if(state.stage === 1) updateStage1(dt);
+            if(state.stage === 2) updateStage2(dt);
+            if(state.stage === 3) updateStage3(dt);
+            
+            renderer.render(scene, camera);
+        }
+
+        function playerMovement(dt, allowJump = true) {
+            // Reset X/Z velocity for crisp movement
+            playerVelocity.x = 0;
+            playerVelocity.z = 0;
+
+            if(keys.w) playerVelocity.z = -MOVE_SPEED * 60 * dt;
+            if(keys.s) playerVelocity.z = MOVE_SPEED * 60 * dt;
+            if(keys.a) playerVelocity.x = -MOVE_SPEED * 60 * dt;
+            if(keys.d) playerVelocity.x = MOVE_SPEED * 60 * dt;
+
+            player.position.add(playerVelocity);
+
+            // Jumping
+            if(allowJump) {
+                if(keys.space && !isJumping) {
+                    isJumping = true;
+                    playerVelocity.y = JUMP_FORCE;
+                }
+
+                player.position.y += playerVelocity.y;
+                
+                if(player.position.y > 0.5) {
+                    playerVelocity.y -= GRAVITY;
+                } else {
+                    player.position.y = 0.5;
+                    playerVelocity.y = 0;
+                    isJumping = false;
+                }
+            }
+        }
+
+        function updateStage1(dt) {
+            // Runner logic: Player basically stays, world moves OR player moves forward
+            // Let's move player forward continuously
+            const RUN_SPEED = 10 * dt;
+            
+            // Lateral movement
+            if(keys.a && player.position.x > -9) player.position.x -= 15 * dt;
+            if(keys.d && player.position.x < 9) player.position.x += 15 * dt;
+            
+            // Jump
+            if(keys.space && !isJumping) {
+                isJumping = true;
+                playerVelocity.y = 0.5;
+            }
+            player.position.y += playerVelocity.y;
+            if(player.position.y > 0.5) {
+                playerVelocity.y -= GRAVITY;
+            } else {
+                player.position.y = 0.5;
+                isJumping = false;
+            }
+
+            // Spawn Logic
+            // Move existing objects towards player
+            const OBSTACLE_SPEED = 20 * dt;
+            
+            // Spawn timer
+            if(Math.random() < 0.05) {
+                // Spawn Coin
+                const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.2, 16), new THREE.MeshStandardMaterial({ color: 0xffff00 }));
+                coin.rotation.x = Math.PI/2;
+                coin.rotation.z = Math.PI/2;
+                coin.position.set((Math.random() - 0.5) * 16, 1, -50); // Spawn far ahead (z=-50 relative to camera but actually we bring them to player at z=0)
+                // Wait, simple approach: Objects move +Z towards player at Z=0
+                coin.position.z = -60;
+                coin.userData = { type: 'coin' };
+                scene.add(coin);
+                state.coins.push(coin);
+            }
+
+            if(Math.random() < 0.03) {
+                // Spawn Grade (Obstacle)
+                // Text texture for grade
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 64; canvas.height = 64;
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(0,0,64,64);
+                ctx.fillStyle = 'red';
+                ctx.font = 'bold 50px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const grades = ['F', 'D', 'C-'];
+                ctx.fillText(grades[Math.floor(Math.random()*3)], 32, 32);
+                const tex = new THREE.CanvasTexture(canvas);
+
+                const obs = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), new THREE.MeshBasicMaterial({ map: tex }));
+                obs.position.set((Math.random() - 0.5) * 16, 1, -60);
+                obs.userData = { type: 'obstacle' };
+                scene.add(obs);
+                state.enemies.push(obs);
+            }
+
+            // Update Objects
+            // Coins
+            for(let i = state.coins.length - 1; i >= 0; i--) {
+                const c = state.coins[i];
+                c.position.z += OBSTACLE_SPEED;
+                c.rotation.x += 0.1;
+                
+                // Collision
+                if(c.position.distanceTo(player.position) < 1.5) {
+                    scene.remove(c);
+                    state.coins.splice(i, 1);
+                    state.score += 50; // Faster to reach 1000
+                    updateUI();
+                    if(state.score >= 1000) stageComplete();
+                }
+                else if(c.position.z > 10) {
+                    scene.remove(c);
+                    state.coins.splice(i, 1);
+                }
+            }
+
+            // Obstacles
+            for(let i = state.enemies.length - 1; i >= 0; i--) {
+                const e = state.enemies[i];
+                e.position.z += OBSTACLE_SPEED;
+
+                if(e.position.distanceTo(player.position) < 1.5) {
+                    scene.remove(e);
+                    state.enemies.splice(i, 1);
+                    damagePlayer(20);
+                }
+                else if(e.position.z > 10) {
+                    scene.remove(e);
+                    state.enemies.splice(i, 1);
+                }
+            }
+        }
+
+        function updateStage2(dt) {
+            playerMovement(dt, true);
+            
+            // Camera follows player smoothly
+            camera.position.x = player.position.x;
+            camera.position.z = player.position.z + 20;
+            camera.lookAt(player.position);
+
+            // Check boundaries
+            if(player.position.x > 29) player.position.x = 29;
+            if(player.position.x < -29) player.position.x = -29;
+            if(player.position.z > 29) player.position.z = 29;
+            if(player.position.z < -29) player.position.z = -29;
+
+            // Update Enemies
+            state.enemies.forEach(e => {
+                e.position.add(e.userData.velocity);
+                
+                // Bounce off walls (approx)
+                if(e.position.x > 28 || e.position.x < -28) e.userData.velocity.x *= -1;
+                if(e.position.z > 28 || e.position.z < -28) e.userData.velocity.z *= -1;
+
+                if(e.position.distanceTo(player.position) < 1.5) {
+                    damagePlayer(e.userData.damage);
+                    // Pushback
+                    const dir = new THREE.Vector3().subVectors(player.position, e.position).normalize();
+                    player.position.add(dir.multiplyScalar(2));
+                }
+            });
+
+            // Check Collections
+            for(let i = state.coins.length - 1; i >= 0; i--) {
+                const c = state.coins[i];
+                if(c.position.distanceTo(player.position) < 1.5) {
+                    scene.remove(c);
+                    state.coins.splice(i, 1);
+                    state.score += 30;
+                    state.redBoxesCollected++;
+                    updateUI();
+                    if(state.redBoxesCollected >= 10) stageComplete();
+                }
+            }
+        }
+
+        function updateStage3(dt) {
+            playerMovement(dt, true);
+            
+            // Camera fixed angle for boss
+            camera.position.x = player.position.x * 0.5; 
+            camera.position.z = player.position.z + 15;
+            camera.lookAt(player.position.x, 2, player.position.z - 10);
+
+            // Update Projectiles
+            for(let i = state.projectiles.length - 1; i >= 0; i--) {
+                const p = state.projectiles[i];
+                p.position.add(p.userData.velocity);
+                
+                // Boss Hit
+                if(state.boss && p.position.distanceTo(state.boss.position) < 4) {
+                    state.bossHealth -= 10;
+                    checkBossPhases();
+                    updateUI();
+                    scene.remove(p);
+                    state.projectiles.splice(i, 1);
+                    // Boss Flash
+                    state.boss.material.color.setHex(0xffffff);
+                    setTimeout(() => state.boss.material.color.setHex(0xff0000), 50);
+                    
+                    if(state.bossHealth <= 0) {
+                        scene.remove(state.boss);
+                        state.boss = null;
+                        stageComplete();
+                    }
+                    continue;
+                }
+
+                // MiniBoss Hit
+                let hitMini = false;
+                for(let j = state.miniBosses.length -1; j >= 0; j--) {
+                    const mb = state.miniBosses[j];
+                    if(p.position.distanceTo(mb.position) < 2) {
+                        mb.userData.health -= 25;
+                        scene.remove(p);
+                        state.projectiles.splice(i, 1);
+                        hitMini = true;
+                        if(mb.userData.health <= 0) {
+                            scene.remove(mb);
+                            state.miniBosses.splice(j, 1);
+                        }
+                        break;
+                    }
+                }
+                if(hitMini) continue;
+
+                // Remove if far
+                if(p.position.distanceTo(player.position) > 50) {
+                    scene.remove(p);
+                    state.projectiles.splice(i, 1);
+                }
+            }
+
+            // Update MiniBosses
+            state.miniBosses.forEach(mb => {
+                const dir = new THREE.Vector3().subVectors(player.position, mb.position).normalize();
+                mb.position.add(dir.multiplyScalar(0.05)); // Slow chase
+                if(mb.position.distanceTo(player.position) < 1.5) {
+                    damagePlayer(5);
+                }
+            });
+        }
+
+        // Boss Phases
+        const phasesTriggered = { 75: false, 50: false, 25: false };
+        function checkBossPhases() {
+            const pct = (state.bossHealth / state.bossMaxHealth) * 100;
+            if(pct <= 75 && !phasesTriggered[75]) {
+                phasesTriggered[75] = true;
+                spawnMiniBosses(5);
+            }
+            if(pct <= 50 && !phasesTriggered[50]) {
+                phasesTriggered[50] = true;
+                spawnMiniBosses(5);
+            }
+            if(pct <= 25 && !phasesTriggered[25]) {
+                phasesTriggered[25] = true;
+                spawnMiniBosses(5);
+            }
+        }
+
+        // --- Event Listeners ---
+        document.getElementById('start-btn').addEventListener('click', () => {
+            document.getElementById('start-screen').classList.add('hidden');
+            state.isPlaying = true;
+            startStage1();
+        });
+
+        document.getElementById('next-stage-btn').addEventListener('click', () => {
+            document.getElementById('stage-transition').classList.add('hidden');
+            state.isPlaying = true;
+            if(state.stage === 1) startStage2();
+            else if(state.stage === 2) startStage3();
+        });
+
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            location.reload();
+        });
+
+        document.getElementById('play-again-btn').addEventListener('click', () => {
+            location.reload();
+        });
+
+        // Start Loop
+        requestAnimationFrame(animate);
+
+        // Handle Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+</html>
