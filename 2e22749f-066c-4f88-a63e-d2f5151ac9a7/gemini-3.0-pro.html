@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Be A Failure or Asian IQ Brain-minded</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a202c;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none; /* Prevent pull-to-refresh on mobile */
+        }
+        #game-ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .hud-text {
+            text-shadow: 2px 2px 0 #000;
+        }
+        #start-screen, #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            pointer-events: auto;
+        }
+        .btn {
+            background: linear-gradient(to right, #4ade80, #3b82f6);
+            border: none;
+            padding: 15px 40px;
+            font-size: 24px;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.1s;
+            text-transform: uppercase;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .btn:hover {
+            transform: scale(1.05);
+        }
+        .btn:active {
+            transform: scale(0.95);
+        }
+        .hidden {
+            display: none !important;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Game Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- UI Overlay -->
+    <div id="game-ui">
+        <div class="flex justify-between items-start">
+            <div class="text-white">
+                <div class="text-3xl font-bold hud-text" id="iq-display">IQ: 0</div>
+                <div class="text-xl text-yellow-400 hud-text mt-1" id="char-display">Character: Saharsh GObinath</div>
+                <div class="text-sm text-gray-300 hud-text mt-1">Next Evolution: <span id="next-evo">50</span> IQ</div>
+            </div>
+            <div class="text-right">
+                <div class="text-2xl font-bold text-red-500 hud-text" id="boss-warning" style="display:none;">⚠️ CENTRIX BOSS APPROACHING ⚠️</div>
+                <div class="w-48 h-6 bg-gray-700 rounded-full mt-2 border-2 border-white overflow-hidden relative">
+                    <div id="hp-bar" class="h-full bg-green-500 transition-all duration-200" style="width: 100%;"></div>
+                    <div class="absolute inset-0 flex items-center justify-center text-xs font-bold text-white text-shadow">HP</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center text-white opacity-50 text-sm pointer-events-none hud-text">
+            WASD / Arrows to Move &bull; Click / Space to Shoot<br>
+            Collect Green (Homework) & Blue (Tutors) &bull; Fight Bosses every 50 IQ
+        </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen">
+        <h1 class="text-5xl md:text-7xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500 mb-4 text-center px-4" style="line-height: 1.2;">
+            Be A Failure or<br>Asian IQ Brain-minded
+        </h1>
+        <p class="text-white text-xl mb-8 max-w-2xl text-center px-4">
+            Collect Homework & Tutors to increase your IQ.<br>
+            Evolve from Saharsh to Stephen Hawking.<br>
+            Defeat the Centrix Boss every 50 IQ levels to upgrade.<br>
+            <span class="text-red-400">Warning: 0 HP = Reset to 0 IQ (PERMADEATH)</span>
+        </p>
+        <button class="btn" onclick="startGame()">Start Game</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over-screen" class="hidden">
+        <h1 class="text-6xl font-bold text-red-600 mb-2">FAILURE</h1>
+        <p class="text-white text-2xl mb-6">You have reset to Saharsh level.</p>
+        <div class="text-yellow-400 text-3xl mb-8 font-bold" id="final-score">Max IQ Reached: 0</div>
+        <button class="btn" onclick="startGame()">Try Again</button>
+    </div>
+
+    <script>
+        // --- Game Configuration & State ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Game State
+        let gameState = 'start'; // start, playing, boss, gameover, victory
+        let lastTime = 0;
+        let animationId;
+        let score = 0; // IQ
+        let maxScore = 0;
+        let level = 0;
+        let isBossActive = false;
+        
+        // Entities
+        let player;
+        let bullets = [];
+        let enemies = []; // Goons
+        let items = []; // Homework/Tutors
+        let boss = null;
+        let particles = [];
+        let floatingTexts = [];
+
+        // Assets
+        const saharshImg = new Image();
+        saharshImg.src = "https://asset-cdn.schoology.com/system/files/imagecache/profile_big/pictures/picture-c0b09cdead19788fb0f8be0d53b5c572_68c34cd700b90.jpg";
+
+        // Character Definitions
+        const characters = [
+            { iq: 0, name: "Saharsh GObinath", type: "image", src: saharshImg, color: "#fff", speed: 4, size: 30 },
+            { iq: 50, name: "Hamster", type: "emoji", char: "🐹", color: "#d4a373", speed: 4.5, size: 25 },
+            { iq: 100, name: "Toddler", type: "emoji", char: "👶", color: "#ffecd1", speed: 5, size: 28 },
+            { iq: 150, name: "Anbu", type: "emoji", char: "😐", color: "#60a5fa", speed: 5.5, size: 32, desc: "Kinda dumb at math" },
+            { iq: 200, name: "Calvin", type: "emoji", char: "🤪", color: "#c084fc", speed: 6, size: 32, desc: "Smart-Coding-TROLLER" },
+            { iq: 250, name: "Teacher", type: "emoji", char: "🧑‍🏫", color: "#34d399", speed: 6.5, size: 35 },
+            { iq: 300, name: "Stanford Student", type: "emoji", char: "🎓", color: "#facc15", speed: 7, size: 35 },
+            { iq: 350, name: "Professoner", type: "emoji", char: "👨‍🔬", color: "#fb7185", speed: 7.5, size: 38 },
+            { iq: 400, name: "Stephen Hawking", type: "emoji", char: "🧠", color: "#38bdf8", speed: 8, size: 40 }, // Used Brain for simplicity/respect
+            { iq: 450, name: "Asian Doctor", type: "emoji", char: "👨‍⚕️", color: "#fff", speed: 8.5, size: 42 }
+        ];
+
+        // --- Input Handling ---
+        const keys = { w: false, a: false, s: false, d: false, space: false };
+        const mouse = { x: 0, y: 0, down: false };
+
+        window.addEventListener('keydown', e => {
+            if (['w','a','s','d','ArrowUp','ArrowLeft','ArrowDown','ArrowRight'].includes(e.key)) {
+                keys[e.key.toLowerCase().replace('arrowup','w').replace('arrowleft','a').replace('arrowdown','s').replace('arrowright','d')] = true;
+            }
+            if (e.code === 'Space') {
+                keys.space = true;
+                if (gameState === 'playing' || gameState === 'boss') player.shoot();
+            }
+        });
+
+        window.addEventListener('keyup', e => {
+            if (['w','a','s','d','ArrowUp','ArrowLeft','ArrowDown','ArrowRight'].includes(e.key)) {
+                keys[e.key.toLowerCase().replace('arrowup','w').replace('arrowleft','a').replace('arrowdown','s').replace('arrowright','d')] = false;
+            }
+            if (e.code === 'Space') keys.space = false;
+        });
+
+        window.addEventListener('mousemove', e => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        window.addEventListener('mousedown', () => {
+            mouse.down = true;
+            if (gameState === 'playing' || gameState === 'boss') player.shoot();
+        });
+        
+        window.addEventListener('mouseup', () => mouse.down = false);
+        window.addEventListener('resize', resizeCanvas);
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+
+        // --- Game Classes ---
+
+        class Player {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = canvas.width / 2;
+                this.y = canvas.height / 2;
+                this.iq = 0;
+                this.hp = 100;
+                this.maxHp = 100;
+                this.charIndex = 0;
+                this.updateCharacter();
+                this.vx = 0;
+                this.vy = 0;
+                this.lastShot = 0;
+                this.fireRate = 300; // ms
+            }
+
+            updateCharacter() {
+                // Find correct character based on IQ
+                // Thresholds are 0, 50, 100, etc.
+                let idx = Math.floor(this.iq / 50);
+                if (idx >= characters.length) idx = characters.length - 1;
+                
+                // Only update if changed
+                if (idx !== this.charIndex) {
+                    this.charIndex = idx;
+                    createFloatingText(this.x, this.y - 50, "EVOLUTION!", "#fbbf24", 30);
+                    // Heal on evo
+                    this.hp = this.maxHp;
+                }
+
+                this.currentStats = characters[this.charIndex];
+                
+                // Update UI
+                document.getElementById('iq-display').innerText = `IQ: ${this.iq}`;
+                document.getElementById('char-display').innerText = `Character: ${this.currentStats.name}`;
+                const nextThreshold = (this.charIndex + 1) * 50;
+                document.getElementById('next-evo').innerText = nextThreshold;
+                
+                // Logic check: If we hit a threshold exactly (like 50, 100) and no boss is present, trigger boss
+                // We handle this in the main loop to avoid spamming
+            }
+
+            update(dt) {
+                // Movement
+                let dx = 0;
+                let dy = 0;
+                if (keys.w) dy -= 1;
+                if (keys.s) dy += 1;
+                if (keys.a) dx -= 1;
+                if (keys.d) dx += 1;
+
+                // Normalize vector
+                if (dx !== 0 || dy !== 0) {
+                    const len = Math.sqrt(dx*dx + dy*dy);
+                    dx /= len;
+                    dy /= len;
+                }
+
+                this.x += dx * this.currentStats.speed;
+                this.y += dy * this.currentStats.speed;
+
+                // Bounds
+                this.x = Math.max(20, Math.min(canvas.width - 20, this.x));
+                this.y = Math.max(20, Math.min(canvas.height - 20, this.y));
+
+                // Display name tag
+                ctx.font = "14px Arial";
+                ctx.fillStyle = "white";
+                ctx.textAlign = "center";
+                ctx.fillText(this.currentStats.name, this.x, this.y - this.currentStats.size - 10);
+                ctx.fillText(`IQ: ${this.iq}`, this.x, this.y - this.currentStats.size - 25);
+            }
+
+            draw() {
+                const s = this.currentStats;
+                if (s.type === 'image' && s.src.complete) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, s.size, 0, Math.PI * 2);
+                    ctx.closePath();
+                    ctx.clip();
+                    ctx.drawImage(s.src, this.x - s.size, this.y - s.size, s.size * 2, s.size * 2);
+                    ctx.restore();
+                    // Border
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, s.size, 0, Math.PI * 2);
+                    ctx.strokeStyle = s.color;
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                } else if (s.type === 'emoji') {
+                    ctx.font = `${s.size * 2}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(s.char, this.x, this.y);
+                } else {
+                    // Fallback
+                    ctx.fillStyle = s.color;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, s.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            shoot() {
+                const now = Date.now();
+                if (now - this.lastShot > this.fireRate) {
+                    // Calculate direction to mouse
+                    const angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
+                    const speed = 12;
+                    const vx = Math.cos(angle) * speed;
+                    const vy = Math.sin(angle) * speed;
+                    
+                    // Projectile type changes slightly with IQ
+                    let color = '#4ade80'; // Green (Study Gun)
+                    let size = 6;
+                    if (this.charIndex >= 9) {
+                        color = '#f472b6'; // Powerful shots
+                        size = 10;
+                    }
+
+                    bullets.push(new Bullet(this.x, this.y, vx, vy, color, size, 10 + this.charIndex * 2));
+                    this.lastShot = now;
+                }
+            }
+            
+            takeDamage(amount) {
+                this.hp -= amount;
+                createFloatingText(this.x, this.y, `-${amount}`, "red", 20);
+                
+                // Update Health Bar
+                const hpPct = (this.hp / this.maxHp) * 100;
+                const bar = document.getElementById('hp-bar');
+                bar.style.width = `${Math.max(0, hpPct)}%`;
+                bar.className = `h-full transition-all duration-200 ${hpPct < 30 ? 'bg-red-600' : (hpPct < 60 ? 'bg-yellow-500' : 'bg-green-500')}`;
+
+                if (this.hp <= 0) {
+                    gameOver();
+                }
+            }
+        }
+
+        class Bullet {
+            constructor(x, y, vx, vy, color, size, damage, isEnemy = false) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.color = color;
+                this.size = size;
+                this.damage = damage;
+                this.isEnemy = isEnemy;
+                this.markedForDeletion = false;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Bounds
+                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+                    this.markedForDeletion = true;
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        class Item {
+            constructor(type) {
+                this.type = type; // 'homework' (green box) or 'tutor' (blue box)
+                this.x = Math.random() * (canvas.width - 60) + 30;
+                this.y = Math.random() * (canvas.height - 60) + 30;
+                this.size = 20;
+                this.angle = 0;
+                this.markedForDeletion = false;
+            }
+
+            update() {
+                this.angle += 0.05;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                
+                if (this.type === 'homework') {
+                    ctx.fillStyle = '#22c55e'; // Green
+                    ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(-this.size/2, -this.size/2, this.size, this.size);
+                    ctx.fillStyle = 'white';
+                    ctx.font = "bold 12px Arial";
+                    ctx.fillText("HW", -10, 4);
+                } else {
+                    ctx.fillStyle = '#3b82f6'; // Blue
+                    ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(-this.size/2, -this.size/2, this.size, this.size);
+                    ctx.fillStyle = 'white';
+                    ctx.font = "bold 10px Arial";
+                    ctx.fillText("Tutor", -12, 4);
+                }
+                
+                ctx.restore();
+            }
+        }
+
+        class Boss {
+            constructor(level) {
+                this.level = level; // 1 to 10 (approx)
+                this.x = canvas.width / 2;
+                this.y = -100; // Spawn above
+                this.targetY = 100;
+                this.w = 80;
+                this.h = 80;
+                this.hp = 500 + (level * 250);
+                this.maxHp = this.hp;
+                this.speed = 2 + (level * 0.5);
+                this.state = 'entering'; // entering, fighting
+                this.moveAngle = 0;
+                this.lastShot = 0;
+                this.fireRate = Math.max(500, 2000 - (level * 150));
+                this.spawnRate = Math.max(1000, 5000 - (level * 300));
+                this.lastSpawn = 0;
+                this.name = "CENTRIX BOSS v" + level;
+                if (level === 9) {
+                    this.name = "FINAL CENTRIX BOSS";
+                    this.hp *= 2;
+                    this.fireRate = 200;
+                }
+            }
+
+            update() {
+                // Movement
+                if (this.state === 'entering') {
+                    this.y += 2;
+                    if (this.y >= this.targetY) {
+                        this.state = 'fighting';
+                    }
+                } else {
+                    // Hover movement
+                    this.moveAngle += 0.03;
+                    this.x += Math.sin(this.moveAngle) * this.speed;
+                    this.x = Math.max(this.w, Math.min(canvas.width - this.w, this.x));
+
+                    // Shooting
+                    const now = Date.now();
+                    if (now - this.lastShot > this.fireRate) {
+                        this.shoot();
+                        this.lastShot = now;
+                    }
+
+                    // Spawning Goons
+                    if (now - this.lastSpawn > this.spawnRate) {
+                        // Spawn goons
+                        const count = Math.min(5, Math.floor(this.level / 2) + 1);
+                        for(let i=0; i<count; i++) {
+                            enemies.push(new Goon(this.x, this.y, this.level));
+                        }
+                        this.lastSpawn = now;
+                    }
+                }
+            }
+
+            shoot() {
+                // Shoot at player
+                const angle = Math.atan2(player.y - this.y, player.x - this.x);
+                const speed = 6 + (this.level * 0.5);
+                const vx = Math.cos(angle) * speed;
+                const vy = Math.sin(angle) * speed;
+                
+                bullets.push(new Bullet(this.x, this.y, vx, vy, '#ef4444', 12, 10 + this.level * 2, true));
+
+                // If high level, shoot spread
+                if (this.level > 3) {
+                    bullets.push(new Bullet(this.x, this.y, Math.cos(angle+0.3)*speed, Math.sin(angle+0.3)*speed, '#ef4444', 10, 10, true));
+                    bullets.push(new Bullet(this.x, this.y, Math.cos(angle-0.3)*speed, Math.sin(angle-0.3)*speed, '#ef4444', 10, 10, true));
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                
+                // Draw Boss Body
+                ctx.fillStyle = '#7f1d1d';
+                ctx.fillRect(-this.w/2, -this.h/2, this.w, this.h);
+                
+                // Face
+                ctx.fillStyle = '#ef4444'; // Eyes
+                ctx.fillRect(-20, -10, 10, 10);
+                ctx.fillRect(10, -10, 10, 10);
+                ctx.fillStyle = 'black'; // Mouth
+                ctx.fillRect(-20, 20, 40, 5);
+
+                // Health bar for boss
+                const pct = this.hp / this.maxHp;
+                ctx.fillStyle = 'red';
+                ctx.fillRect(-this.w/2, -this.h/2 - 15, this.w * pct, 10);
+                ctx.strokeStyle = 'white';
+                ctx.strokeRect(-this.w/2, -this.h/2 - 15, this.w, 10);
+                
+                // Name
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 16px Arial';
+                ctx.fillText(this.name, 0, -this.h/2 - 25);
+
+                ctx.restore();
+            }
+        }
+
+        class Goon {
+            constructor(x, y, level) {
+                this.x = x;
+                this.y = y;
+                this.level = level;
+                this.size = 15;
+                this.speed = 2 + Math.random() * 2;
+                this.hp = 20 + (level * 5);
+                this.damage = 5 + level;
+            }
+
+            update() {
+                // Chase player
+                const angle = Math.atan2(player.y - this.y, player.x - this.x);
+                this.x += Math.cos(angle) * this.speed;
+                this.y += Math.sin(angle) * this.speed;
+            }
+
+            draw() {
+                ctx.fillStyle = '#dc2626';
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y - this.size);
+                ctx.lineTo(this.x + this.size, this.y + this.size);
+                ctx.lineTo(this.x - this.size, this.y + this.size);
+                ctx.fill();
+            }
+        }
+
+        // --- Helper Functions ---
+
+        function createFloatingText(x, y, text, color, size) {
+            floatingTexts.push({ x, y, text, color, size, life: 60, vy: -1 });
+        }
+
+        function spawnItem() {
+            // Only spawn items if not in boss fight, or maybe slowly during boss fight?
+            // Prompt: "To earn points you have get the green boxes... for each 50 times for all the upgrades... then u gotta do the centrix boss"
+            // Implies items are for leveling UP TO boss.
+            if (gameState === 'playing') {
+                const r = Math.random();
+                if (r < 0.7) items.push(new Item('homework')); // 70% green
+                else items.push(new Item('tutor')); // 30% blue
+            }
+        }
+
+        function checkCollisions() {
+            // Player vs Items
+            for (let i = items.length - 1; i >= 0; i--) {
+                const item = items[i];
+                const dx = player.x - item.x;
+                const dy = player.y - item.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+
+                if (dist < player.currentStats.size + item.size) {
+                    // Collect
+                    let gain = item.type === 'homework' ? 2 : 5;
+                    
+                    // Prevent over-leveling past next boss threshold
+                    // Current thresholds: 50, 100, 150...
+                    const nextThreshold = (Math.floor(player.iq / 50) + 1) * 50;
+                    
+                    if (player.iq + gain >= nextThreshold) {
+                        // Trigger Boss Fight!
+                        player.iq = nextThreshold;
+                        items.splice(i, 1);
+                        startBossFight();
+                        return; 
+                    } else {
+                        player.iq += gain;
+                        createFloatingText(player.x, player.y, `+${gain} IQ`, item.type === 'homework' ? '#4ade80' : '#60a5fa', 20);
+                    }
+                    
+                    player.updateCharacter();
+                    items.splice(i, 1);
+                }
+            }
+
+            // Bullets vs Enemies/Boss/Player
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const b = bullets[i];
+                
+                if (b.isEnemy) {
+                    // Enemy bullet vs Player
+                    const dx = player.x - b.x;
+                    const dy = player.y - b.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < player.currentStats.size + b.size) {
+                        player.takeDamage(b.damage);
+                        b.markedForDeletion = true;
+                        createFloatingText(player.x, player.y, "OUCH!", "red", 20);
+                    }
+                } else {
+                    // Player bullet
+                    if (gameState === 'boss' && boss) {
+                        // Vs Boss
+                        if (b.x > boss.x - boss.w/2 && b.x < boss.x + boss.w/2 &&
+                            b.y > boss.y - boss.h/2 && b.y < boss.y + boss.h/2) {
+                            boss.hp -= b.damage;
+                            createFloatingText(b.x, b.y, `-${b.damage}`, "white", 15);
+                            b.markedForDeletion = true;
+                            if (boss.hp <= 0) {
+                                bossDefeated();
+                            }
+                            continue;
+                        }
+                        // Vs Goons
+                        for (let j = enemies.length - 1; j >= 0; j--) {
+                            const e = enemies[j];
+                            const dx = e.x - b.x;
+                            const dy = e.y - b.y;
+                            const dist = Math.sqrt(dx*dx + dy*dy);
+                            if (dist < e.size + b.size) {
+                                e.hp -= b.damage;
+                                b.markedForDeletion = true;
+                                if (e.hp <= 0) {
+                                    enemies.splice(j, 1);
+                                    createFloatingText(e.x, e.y, "X", "red", 20);
+                                }
+                                break; // Bullet hit one enemy
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Player vs Enemies (Goons)
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const e = enemies[i];
+                const dx = player.x - e.x;
+                const dy = player.y - e.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < player.currentStats.size + e.size) {
+                    player.takeDamage(5);
+                    // Knockback
+                    const angle = Math.atan2(player.y - e.y, player.x - e.x);
+                    player.x += Math.cos(angle) * 20;
+                    player.y += Math.sin(angle) * 20;
+                }
+            }
+        }
+
+        function startBossFight() {
+            if (gameState === 'boss') return;
+            gameState = 'boss';
+            isBossActive = true;
+            
+            // Clear items
+            items = [];
+            
+            // Create Boss
+            const bossLevel = player.iq / 50;
+            boss = new Boss(bossLevel);
+            
+            document.getElementById('boss-warning').style.display = 'block';
+            
+            // Alert
+            createFloatingText(canvas.width/2, canvas.height/2, "BOSS FIGHT!", "red", 50);
+        }
+
+        function bossDefeated() {
+            gameState = 'playing';
+            isBossActive = false;
+            boss = null;
+            enemies = []; // Clear goons
+            document.getElementById('boss-warning').style.display = 'none';
+            
+            // Evolve mechanic: The boss gatekeeps the next level.
+            // Once defeated, player "unlocks" the next tier.
+            // Let's give a small IQ bump to push over the threshold if exactly on it, 
+            // or just allow collection again.
+            
+            // Actually, prompt says "expect final one u get the study gun".
+            // If final boss (IQ 450 -> 500?), win game?
+            if (player.iq >= 450) {
+                // Victory? Or endless?
+                // Let's assume loop continues or win.
+                // Prompt doesn't specify win condition, just "last upgrade boss will be 100 times better".
+                // Let's keep playing but difficulty ramps.
+            }
+            
+            createFloatingText(player.x, player.y, "BOSS DEFEATED!", "#fbbf24", 40);
+            
+            // Allow farming again
+            // Maybe spawn a bunch of rewards
+            for(let i=0; i<5; i++) items.push(new Item('tutor'));
+        }
+
+        function gameOver() {
+            gameState = 'gameover';
+            if (player.iq > maxScore) maxScore = player.iq;
+            document.getElementById('final-score').innerText = `Max IQ Reached: ${player.iq} (${player.currentStats.name})`;
+            document.getElementById('game-over-screen').classList.remove('hidden');
+            document.getElementById('game-ui').classList.add('hidden');
+        }
+
+        function startGame() {
+            player = new Player();
+            bullets = [];
+            enemies = [];
+            items = [];
+            boss = null;
+            score = 0;
+            gameState = 'playing';
+            isBossActive = false;
+            
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('game-over-screen').classList.add('hidden');
+            document.getElementById('game-ui').classList.remove('hidden');
+            document.getElementById('boss-warning').style.display = 'none';
+            
+            // Initial items
+            for(let i=0; i<10; i++) spawnItem();
+            
+            // Game Loop
+            if (!animationId) loop();
+        }
+
+        function loop() {
+            const now = Date.now();
+            const dt = (now - lastTime) / 1000;
+            lastTime = now;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (gameState === 'playing' || gameState === 'boss') {
+                
+                // Spawn items periodically if in playing mode
+                if (gameState === 'playing' && Math.random() < 0.02 && items.length < 15) {
+                    spawnItem();
+                }
+
+                // Update Entities
+                player.update(dt);
+                
+                bullets.forEach((b, i) => {
+                    b.update();
+                    if (b.markedForDeletion) bullets.splice(i, 1);
+                });
+                
+                items.forEach(item => item.update());
+                
+                if (gameState === 'boss' && boss) {
+                    boss.update();
+                }
+                
+                enemies.forEach(e => e.update());
+                
+                checkCollisions();
+
+                // Draw Entities
+                items.forEach(item => item.draw());
+                
+                if (gameState === 'boss' && boss) {
+                    boss.draw();
+                }
+                
+                enemies.forEach(e => e.draw());
+                bullets.forEach(b => b.draw());
+                player.draw();
+                
+                // Floating texts
+                floatingTexts.forEach((ft, i) => {
+                    ft.y += ft.vy;
+                    ft.life--;
+                    ctx.globalAlpha = ft.life / 60;
+                    ctx.fillStyle = ft.color;
+                    ctx.font = `bold ${ft.size}px Arial`;
+                    ctx.fillText(ft.text, ft.x, ft.y);
+                    ctx.globalAlpha = 1;
+                    if (ft.life <= 0) floatingTexts.splice(i, 1);
+                });
+            }
+
+            animationId = requestAnimationFrame(loop);
+        }
+
+    </script>
+</body>
+</html>
