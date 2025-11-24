@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Be A Failure or Asian IQ Brain-minded</title>
+    <style>
+        body { margin:0; padding:0; background:#111; display:flex; justify-content:center; }
+        canvas { image-rendering: pixelated; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+</head>
+<body>
+<script>
+const LEVELS = [
+    { iq: 0,   name: "Saharsh Gobinath (Game Addict)", tint: 0xff3333, speed: 120, jump: -350, power: 5 },
+    { iq: 50,  name: "Hamster",                       tint: 0xff9933, speed: 160, jump: -450, power: 12 },
+    { iq: 100, name: "Toddler",                       tint: 0xffff33, speed: 180, jump: -500, power: 20 },
+    { iq: 150, name: "Anbu (kinda dumb)",             tint: 0x66ff33, speed: 200, jump: -550, power: 30 },
+    { iq: 200, name: "Calvin (Coding TROLLER)",       tint: 0x33ffff, speed: 240, jump: -600, power: 50 },
+    { iq: 250, name: "Teacher",                       tint: 0x3366ff, speed: 280, jump: -650, power: 80 },
+    { iq: 300, name: "Stanford Student",              tint: 0x9933ff, speed: 320, jump: -700, power: 120 },
+    { iq: 350, name: "Professor",                     tint: 0xffffff, speed: 360, jump: -750, power: 180 },
+    { iq: 400, name: "Stephen Hawking",               tint: 0xaaaaaa, speed: 400, jump: -800, power: 300 },
+    { iq: 450, name: "Asian Doctor (FINAL FORM)",     tint: 0xff69b4, speed: 500, jump: -900, power: 600 }
+];
+
+class PlayScene extends Phaser.Scene {
+    constructor() { super("Play"); }
+
+    preload() {
+        this.load.image("saharsh", "https://asset-cdn.schoology.com/system/files/imagecache/profile_big/pictures/picture-c0b09cdead19788fb0f8be0d53b5c572_68c34cd700b90.jpg");
+        this.load.image("platform", "https://labs.phaser.io/assets/sprites/platform.png");
+        this.load.image("homework", "https://labs.phaser.io/assets/sprites/candy.png");
+        this.load.image("tutor", "https://labs.phaser.io/assets/sprites/star.png");
+    }
+
+    create() {
+        this.iq = 0;
+        this.level = 0;
+        this.nextIQ = 50;
+        this.inBoss = false;
+        this.playerHP = 100;
+
+        this.add.rectangle(400, 300, 800, 600, 0x001133);
+
+        this.platforms = this.physics.add.staticGroup();
+        let ground = this.platforms.create(400, 580, "platform").setScale(2, 0.5).refreshBody();
+        this.platforms.create(200, 450, "platform").setScale(0.8, 0.5).refreshBody();
+        this.platforms.create(600, 350, "platform").setScale(0.8, 0.5).refreshBody();
+        this.platforms.create(400, 220, "platform").setScale(0.6, 0.5).refreshBody();
+
+        this.player = this.physics.add.sprite(100, 400, "saharsh").setScale(0.25).setCollideWorldBounds(true).setBounce(0.1);
+        this.physics.add.collider(this.player, this.platforms);
+
+        this.updatePlayer();
+
+        this.homeworks = this.physics.add.group({ bounceX: 1, bounceY: 1, collideWorldBounds: true });
+        this.tutors    = this.physics.add.group({ bounceX: 1, bounceY: 1, collideWorldBounds: true });
+        this.physics.add.collider([this.homeworks, this.tutors], this.platforms);
+        this.physics.add.overlap(this.player, this.homeworks, this.collectHW, null, this);
+        this.physics.add.overlap(this.player, this.tutors,    this.collectTutor, null, this);
+
+        this.time.addEvent({ delay: 4000, callback: this.spawnItems, callbackScope: this, loop: true });
+        this.spawnItems();
+
+        this.cursors = this.input.keyboard.createCursorKeys();
+        this.space   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+
+        this.iqText    = this.add.text(20, 20, "IQ: 0", { fontSize: "32px", color: "#fff" }).setDepth(10);
+        this.levelText = this.add.text(20, 60, LEVELS[0].name, { fontSize: "24px", color: "#fff" }).setDepth(10);
+
+        this.playerBullets = this.physics.add.group();
+        this.bossBullets   = this.physics.add.group();
+        this.goons         = this.physics.add.group();
+    }
+
+    spawnItems() {
+        if (this.inBoss) return;
+        for (let i = 0; i < 6; i++) {
+            let x = Phaser.Math.Between(50, 750);
+            let y = Phaser.Math.Between(50, 300);
+            this.homeworks.create(x, y, "homework").setTint(0x00ff00).setVelocity(Phaser.Math.Between(-80,80), -200).setScale(1.5);
+            this.tutors.create(x + 50, y, "tutor").setTint(0x00ffff).setVelocity(Phaser.Math.Between(-80,80), -200).setScale(1.5);
+        }
+    }
+
+    collectHW(_, hw) { hw.destroy(); this.iq += 10; this.checkUpgrade(); }
+    collectTutor(_, t) { t.destroy(); this.iq += 25; this.checkUpgrade(); }
+
+    checkUpgrade() {
+        this.iqText.setText("IQ: " + this.iq);
+        if (this.iq >= this.nextIQ) this.startBoss();
+    }
+
+    startBoss() {
+        this.inBoss = true;
+        this.homeworks.clear(true,true);
+        this.tutors.clear(true,true);
+
+        // Boss gets massively stronger each level, final is insane
+        let bossStrength = this.level + 1;
+        let health = 150 + this.level * 200;
+        if (this.level >= 8) health *= 100; // final boss 100× better
+
+        this.boss = this.physics.add.sprite(650, 300, null).setTint(0xff0033).setSize(120,120).setOffset(0,0).setBounce(0.8).setCollideWorldBounds(true);
+        this.boss.hp = health;
+        this.boss.maxHP = health;
+        this.physics.add.collider(this.boss, this.platforms);
+
+        this.bossHPText = this.add.text(500, 20, "CENTRX BOSS HP: " + health, { fontSize: "24px", color: "#f00" }).setDepth(10);
+        this.playerHPText = this.add.text(20, 100, "Your HP: 100", { fontSize: "24px", color: "#0f0" }).setDepth(10);
+
+        this.time.addEvent({ delay: Math.max(800, 2500 - this.level*200), callback: this.bossShoot, callbackScope: this, loop: true });
+        this.time.addEvent({ delay: Math.max(2000, 6000 - this.level*500), callback: this.spawnGoon, callbackScope: this, loop: true });
+    }
+
+    bossShoot() {
+        if (!this.boss?.active) return;
+        let bullet = this.bossBullets.create(this.boss.x, this.boss.y, null).setTint(0xffff00).setCircle(12);
+        this.physics.moveToObject(bullet, this.player, 300 + this.level*50);
+        this.physics.add.overlap(bullet, this.player, this.playerHit, null, this);
+    }
+
+    spawnGoon() {
+        if (!this.boss?.active) return;
+        let g = this.goons.create(this.boss.x + Phaser.Math.Between(-50,50), this.boss.y - 50, null).setTint(0xff00ff).setCircle(20);
+        g.hp = 20 + this.level*20;
+        g.setVelocity(Phaser.Math.Between(-200,200), -300);
+        g.setBounce(1).setCollideWorldBounds(true);
+        this.physics.add.collider(g, this.platforms);
+        this.physics.add.overlap(this.playerBullets, g, this.goonHit, null, this);
+        this.physics.add.overlap(this.player, g, this.playerHit, null, this);
+    }
+
+    update() {
+        if (!this.player.active) return;
+
+        const lv = LEVELS[this.level];
+        const onGround = this.player.body.touching.down;
+
+        // movement
+        if (this.cursors.left.isDown) this.player.setVelocityX(-lv.speed);
+        else if (this.cursors.right.isDown) this.player.setVelocityX(lv.speed);
+        else this.player.setVelocityX(this.player.body.velocity.x * 0.8);
+
+        if (this.cursors.up.isDown && onGround) this.player.setVelocityY(lv.jump);
+
+        // shooting (study gun!)
+        if (this.inBoss && Phaser.Input.Keyboard.JustDown(this.space) && lv.power > 0) {
+            let bx = this.player.x + (this.player.flipX ? -40 : 40);
+            let bullet = this.playerBullets.create(bx, this.player.y - 20, null).setTint(0x00ffff).setSize(30,10);
+            bullet.setVelocityX(this.player.flipX ? -600 : 600);
+            this.physics.add.overlap(bullet, this.boss, this.bossHit, null, this);
+            this.physics.add.overlap(bullet, this.goons, this.goonHit, null, this);
+        }
+
+        // simple boss AI
+        if (this.inBoss && this.boss?.active) {
+            this.physics.moveToObject(this.boss, this.player, 80 + this.level*20);
+        }
+
+        // fall death
+        if (this.player.y > 700) this.gameOver();
+    }
+
+    playerHit(_, __) {
+        this.playerHP -= 15 + this.level*5;
+        this.playerHPText.setText("Your HP: " + this.playerHP);
+        if (this.playerHP <= 0) this.gameOver();
+    }
+
+    bossHit(bullet, boss) {
+        bullet.destroy();
+        boss.hp -= LEVELS[this.level].power;
+        this.bossHPText.setText("CENTRX BOSS HP: " + Math.max(0, boss.hp));
+        if (boss.hp <= 0) this.victory();
+    }
+
+    goonHit(bullet, goon) {
+        bullet.destroy();
+        goon.hp -= LEVELS[this.level].power;
+        if (goon.hp <= 0) goon.destroy();
+    }
+
+    victory() {
+        this.boss.destroy();
+        this.level++;
+        this.iq = LEVELS[this.level].iq;
+        this.nextIQ = (this.level < LEVELS.length-1) ? LEVELS[this.level+1].iq : 99999;
+        this.inBoss = false;
+        this.playerHP = 100;
+        this.updatePlayer();
+
+        this.bossBullets.clear(true,true);
+        this.playerBullets.clear(true,true);
+        this.goons.clear(true,true);
+
+        if (this.level >= LEVELS.length-1) {
+            this.add.text(400, 300, "YOU WIN!\nASIAN DOCTOR ACHIEVED!", { fontSize: "48px", color: "#ff69b4", align: "center" }).setOrigin(0.5);
+        } else {
+            this.add.text(400, 200, "LEVEL UP!\nNow " + LEVELS[this.level].name, { fontSize: "40px", color: "#ffff00" }).setOrigin(0.5);
+            this.time.delayedCall(2000, () => { if (this.scene.isActive()) this.children.remove(this.children.getChildren().slice(-1)[0]); });
+        }
+    }
+
+    gameOver() {
+        this.add.text(400, 300, "FAILED!\nBack to Saharsh (0 IQ)", { fontSize: "48px", color: "#ff0000", align: "center" }).setOrigin(0.5);
+        this.time.delayedCall(3000, () => this.scene.restart());
+    }
+
+    updatePlayer() {
+        const lv = LEVELS[this.level];
+        this.player.setTint(lv.tint);
+        this.levelText.setText(lv.name + " - IQ: " + this.iq);
+        this.iqText.setText("IQ: " + this.iq);
+    }
+}
+
+const config = {
+    type: Phaser.AUTO,
+    width: 800,
+    height: 600,
+    physics: { default: "arcade", arcade: { gravity: { y: 800 } } },
+    scene: PlayScene
+};
+
+new Phaser.Game(config);
+</script>
+</body>
+</html>
