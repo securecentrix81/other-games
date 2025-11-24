@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hallway GPA Dash</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #020617;
+      color: #e5e7eb;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body class="antialiased">
+  <div class="w-full h-screen flex flex-col bg-slate-950 text-slate-100">
+    <header class="p-3 sm:p-4 text-center bg-slate-900/80 z-20 shadow-md">
+      <h1 class="text-xl sm:text-2xl font-bold tracking-wide">Hallway GPA Dash</h1>
+      <p class="text-xs sm:text-sm text-slate-300 mt-1">
+        Dodge teachers, grab A+ papers, and keep your GPA at the top.
+      </p>
+    </header>
+
+    <div id="gameContainer" class="relative flex-1 bg-gradient-to-b from-slate-900 via-slate-950 to-black overflow-hidden">
+      <!-- HUD -->
+      <div id="hud" class="pointer-events-none absolute inset-0 flex flex-col" style="z-index: 10;">
+        <div class="flex justify-between items-start p-3 sm:p-4 gap-3 text-[11px] sm:text-xs">
+          <div class="flex flex-wrap gap-2">
+            <div class="bg-slate-900/80 px-3 py-2 rounded-lg shadow border border-slate-800">
+              <div class="font-semibold text-[11px]">A+ Collected</div>
+              <div id="scoreValue" class="font-mono text-lg">0</div>
+            </div>
+
+            <div class="bg-slate-900/80 px-3 py-2 rounded-lg shadow border border-slate-800 w-40">
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="font-semibold">GPA</span>
+                <span id="gpaValue" class="font-mono">4.00</span>
+              </div>
+              <div class="h-2 rounded-full bg-slate-800 overflow-hidden">
+                <div id="gpaBar" class="h-full w-full bg-emerald-400 transition-[width,background-color] duration-200"></div>
+              </div>
+            </div>
+
+            <div class="bg-slate-900/80 px-3 py-2 rounded-lg shadow border border-slate-800">
+              <div class="font-semibold text-[11px]">Progress</div>
+              <div id="distanceValue" class="font-mono text-sm">0 m / 800 m</div>
+            </div>
+          </div>
+
+          <div class="hidden sm:flex flex-col bg-slate-900/80 px-3 py-2 rounded-lg border border-slate-800 text-[10px] leading-tight">
+            <div class="font-semibold mb-1">Legend</div>
+            <div class="flex items-center gap-1 mb-0.5">
+              <span class="inline-block w-3 h-3 rounded-sm bg-emerald-400"></span>
+              <span>A+ paper &mdash; boosts your score</span>
+            </div>
+            <div class="flex items-center gap-1 mb-0.5">
+              <span class="inline-block w-3 h-3 rounded-sm bg-yellow-400"></span>
+              <span>B paper &mdash; avoid, lowers GPA a bit</span>
+            </div>
+            <div class="flex items-center gap-1 mb-0.5">
+              <span class="inline-block w-3 h-3 rounded-sm bg-orange-400"></span>
+              <span>C paper &mdash; really hurts your GPA</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="inline-block w-3 h-3 rounded-sm bg-red-500"></span>
+              <span>Teacher &mdash; dodge or lose a chunk of GPA</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex-1 flex items-end justify-center pb-4">
+          <div id="statusMessage" class="pointer-events-none bg-slate-900/70 px-4 py-1 rounded-full text-[11px] sm:text-xs text-slate-200 min-h-[26px] max-w-[90%] text-center shadow"></div>
+        </div>
+      </div>
+
+      <!-- Main menu overlay -->
+      <div id="menuOverlay" class="absolute inset-0 flex items-center justify-center bg-slate-950/95" style="z-index: 20;">
+        <div class="bg-slate-900/90 border border-slate-700 rounded-2xl p-5 sm:p-6 max-w-md mx-4 text-center space-y-4 shadow-xl">
+          <h2 class="text-2xl sm:text-3xl font-extrabold tracking-wide">Hallway GPA Dash</h2>
+          <p class="text-xs sm:text-sm text-slate-300">
+            You pulled a silly prank before class and now the teachers are on high alert.
+            Sprint down the hallway, dodge them, and grab glowing A+ papers to keep your
+            GPA spotless.
+          </p>
+
+          <div class="text-left text-[11px] sm:text-xs bg-slate-950/70 rounded-lg p-3 space-y-1 border border-slate-800/80">
+            <div class="font-semibold text-slate-100 mb-1">Controls</div>
+            <ul class="list-disc list-inside space-y-0.5 text-slate-300">
+              <li><span class="font-mono">A / ←</span> &mdash; Move left</li>
+              <li><span class="font-mono">D / →</span> &mdash; Move right</li>
+              <li><span class="font-mono">Space / ↑</span> &mdash; Jump</li>
+              <li><span class="font-mono">P</span> &mdash; Pause / Resume</li>
+            </ul>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-3 justify-center pt-1">
+            <button id="startButton" class="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-semibold text-sm shadow">
+              Start Run
+            </button>
+            <button id="howToButton" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 font-semibold text-sm shadow text-slate-100">
+              How to Play
+            </button>
+          </div>
+
+          <p class="text-[10px] text-slate-400">
+            Best experienced on desktop with a keyboard.
+          </p>
+        </div>
+      </div>
+
+      <!-- How to play overlay -->
+      <div id="howToOverlay" class="absolute inset-0 hidden items-center justify-center bg-slate-950/95" style="z-index: 25;">
+        <div class="bg-slate-900/95 border border-slate-700 rounded-2xl p-5 sm:p-6 max-w-lg mx-4 text-sm sm:text-base text-slate-100 shadow-xl space-y-3">
+          <h2 class="text-xl sm:text-2xl font-bold mb-1">How to Play</h2>
+          <p class="text-xs sm:text-sm text-slate-300">
+            Stay in the hallway as long as you can without letting your GPA drop too low.
+            Make smart choices about which papers to collect and which to avoid.
+          </p>
+          <ul class="list-disc list-inside space-y-1 text-xs sm:text-sm text-slate-200">
+            <li><span class="font-semibold text-emerald-400">Green cubes</span> are A+ papers. Collect them to boost your score.</li>
+            <li><span class="font-semibold text-yellow-300">Yellow cubes</span> are B papers. Try to avoid them &mdash; they lower your GPA a bit.</li>
+            <li><span class="font-semibold text-orange-400">Orange cubes</span> are C papers. These really hurt your GPA.</li>
+            <li><span class="font-semibold text-red-400">Red characters</span> are teachers. Colliding with them costs a big chunk of GPA.</li>
+            <li>Reach the end of the hallway with a strong GPA to win the run.</li>
+          </ul>
+          <div class="border-t border-slate-700 pt-3 flex flex-col gap-2 text-xs sm:text-sm">
+            <div class="font-semibold">Tips</div>
+            <ul class="list-disc list-inside space-y-1 text-slate-300">
+              <li>Look ahead and line up with A+ papers early.</li>
+              <li>Sometimes it&apos;s safer to skip a paper than to risk hitting a teacher.</li>
+              <li>Use jumps to clear tricky rows of obstacles.</li>
+            </ul>
+          </div>
+          <div class="flex justify-end pt-1">
+            <button id="closeHowToButton" class="px-4 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-semibold text-xs sm:text-sm shadow">
+              Back
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Game over overlay -->
+      <div id="gameOverOverlay" class="absolute inset-0 hidden items-center justify-center bg-slate-950/95" style="z-index: 30;">
+        <div class="bg-slate-900/95 border border-red-500/60 rounded-2xl p-5 sm:p-6 max-w-md mx-4 text-center space-y-4 shadow-xl">
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-red-400">GPA Dropped Too Low</h2>
+          <p class="text-xs sm:text-sm text-slate-200">
+            The pressure finally caught up. Take a breather, refocus, and try another run.
+          </p>
+          <div class="bg-slate-950/70 border border-slate-800 rounded-lg p-3 text-xs sm:text-sm text-left space-y-1">
+            <div><span class="font-semibold">Final GPA:</span> <span id="finalGpa"></span></div>
+            <div><span class="font-semibold">A+ Collected:</span> <span id="finalScore"></span></div>
+            <div><span class="font-semibold">Distance Reached:</span> <span id="finalDistance"></span></div>
+          </div>
+          <div class="flex flex-col sm:flex-row gap-3 justify-center">
+            <button id="retryButton" class="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-semibold text-sm shadow">
+              Run Again
+            </button>
+            <button id="gameOverMenuButton" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 font-semibold text-sm shadow text-slate-100">
+              Main Menu
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-400">
+            Tip: Sometimes dodging risky papers is the smartest move.
+          </p>
+        </div>
+      </div>
+
+      <!-- Victory overlay -->
+      <div id="victoryOverlay" class="absolute inset-0 hidden items-center justify-center bg-slate-950/95" style="z-index: 30;">
+        <div class="bg-slate-900/95 border border-emerald-500/60 rounded-2xl p-5 sm:p-6 max-w-md mx-4 text-center space-y-4 shadow-xl">
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-emerald-400">Day Completed!</h2>
+          <p class="text-xs sm:text-sm text-slate-200">
+            You navigated the hallway chaos and kept your GPA solid. Nicely done.
+          </p>
+          <div class="bg-slate-950/70 border border-slate-800 rounded-lg p-3 text-xs sm:text-sm text-left space-y-1">
+            <div><span class="font-semibold">Final GPA:</span> <span id="victoryGpa"></span></div>
+            <div><span class="font-semibold">A+ Collected:</span> <span id="victoryScore"></span></div>
+            <div><span class="font-semibold">Distance Run:</span> <span id="victoryDistance"></span></div>
+          </div>
+          <div class="flex flex-col sm:flex-row gap-3 justify-center">
+            <button id="victoryRetryButton" class="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-semibold text-sm shadow">
+              Run Again
+            </button>
+            <button id="victoryMenuButton" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 font-semibold text-sm shadow text-slate-100">
+              Main Menu
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-400">
+            Can you finish the day with an even higher GPA?
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <footer class="text-center text-[10px] sm:text-[11px] text-slate-500 p-2 bg-slate-900/80 border-t border-slate-800">
+      Use a desktop browser and keyboard for the smoothest experience. No data is saved.
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script>
+    (function () {
+      const container = document.getElementById('gameContainer');
+
+      // HUD elements
+      const scoreValue = document.getElementById('scoreValue');
+      const gpaValue = document.getElementById('gpaValue');
+      const gpaBar = document.getElementById('gpaBar');
+      const distanceValue = document.getElementById('distanceValue');
+      const statusMessage = document.getElementById('statusMessage');
+
+      // Overlays & buttons
+      const menuOverlay = document.getElementById('menuOverlay');
+      const howToOverlay = document.getElementById('howToOverlay');
+      const gameOverOverlay = document.getElementById('gameOverOverlay');
+      const victoryOverlay = document.getElementById('victoryOverlay');
+
+      const startButton = document.getElementById('startButton');
+      const howToButton = document.getElementById('howToButton');
+      const closeHowToButton = document.getElementById('closeHowToButton');
+      const retryButton = document.getElementById('retryButton');
+      const gameOverMenuButton = document.getElementById('gameOverMenuButton');
+      const victoryRetryButton = document.getElementById('victoryRetryButton');
+      const victoryMenuButton = document.getElementById('victoryMenuButton');
+
+      const finalGpaEl = document.getElementById('finalGpa');
+      const finalScoreEl = document.getElementById('finalScore');
+      const finalDistanceEl = document.getElementById('finalDistance');
+
+      const victoryGpaEl = document.getElementById('victoryGpa');
+      const victoryScoreEl = document.getElementById('victoryScore');
+      const victoryDistanceEl = document.getElementById('victoryDistance');
+
+      // Three.js core
+      let scene, camera, renderer;
+      let player;
+      let floor;
+      let clock;
+
+      const teachers = [];
+      const grades = [];
+
+      // Lanes for movement
+      const lanes = [-4, 0, 4];
+      let currentLaneIndex = 1;
+      let targetLaneIndex = 1;
+
+      // Player physics
+      let playerVelocityY = 0;
+      const gravity = -30;
+      const jumpStrength = 13;
+      const floorHeight = 0;
+
+      // Game state
+      let gameState = 'menu'; // 'menu' | 'playing' | 'paused' | 'gameover' | 'victory'
+      let score = 0;
+      let gpa = 4.0;
+      const maxGpa = 4.0;
+      const minGpa = 0.0;
+      let distance = 0;
+      const targetDistance = 800; // meters
+      const runSpeed = 18; // world units per second
+      let spawnTimer = 0;
+      let spawnInterval = 0.9;
+
+      // For responsive rendering
+      function initThree() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x020617);
+
+        const aspect = container.clientWidth / container.clientHeight;
+        camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 200);
+        camera.position.set(0, 7, 13);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio || 1);
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        clock = new THREE.Clock();
+
+        // Lights
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x111827, 0.6);
+        scene.add(hemiLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+        dirLight.position.set(5, 10, 5);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.set(2048, 2048);
+        scene.add(dirLight);
+
+        createEnvironment();
+        createPlayer();
+
+        window.addEventListener('resize', onWindowResize);
+      }
+
+      function createEnvironment() {
+        // Long floor
+        const floorGeometry = new THREE.BoxGeometry(16, 0.5, 220);
+        const floorMaterial = new THREE.MeshStandardMaterial({
+          color: 0x020617,
+          metalness: 0.2,
+          roughness: 0.7,
+        });
+        floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.position.set(0, floorHeight - 0.25, 80);
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // Side walls
+        const wallGeometry = new THREE.BoxGeometry(1, 6, 220);
+        const leftWall = new THREE.Mesh(
+          wallGeometry,
+          new THREE.MeshStandardMaterial({ color: 0x0f172a })
+        );
+        leftWall.position.set(-8.5, 3, 80);
+        leftWall.receiveShadow = true;
+        leftWall.castShadow = true;
+
+        const rightWall = leftWall.clone();
+        rightWall.position.x = 8.5;
+
+        scene.add(leftWall);
+        scene.add(rightWall);
+
+        // Ceiling beams / lights
+        const beamGeometry = new THREE.BoxGeometry(14, 0.2, 0.6);
+        for (let i = 0; i < 16; i++) {
+          const beam = new THREE.Mesh(
+            beamGeometry,
+            new THREE.MeshStandardMaterial({ color: 0x1f2937, emissive: 0x0f172a })
+          );
+          beam.position.set(0, 6, 10 + i * 12);
+          beam.receiveShadow = false;
+          beam.castShadow = false;
+          scene.add(beam);
+
+          const strip = new THREE.Mesh(
+            new THREE.BoxGeometry(8, 0.05, 0.2),
+            new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x22d3ee, emissiveIntensity: 0.4 })
+          );
+          strip.position.set(0, 6.1, 10 + i * 12);
+          scene.add(strip);
+        }
+
+        // Subtle fog
+        scene.fog = new THREE.FogExp2(0x020617, 0.015);
+      }
+
+      function createPlayer() {
+        const bodyGeometry = new THREE.BoxGeometry(1, 1.6, 1);
+        const bodyMaterial = new THREE.MeshStandardMaterial({
+          color: 0x38bdf8,
+          metalness: 0.1,
+          roughness: 0.5,
+        });
+        player = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        player.castShadow = true;
+        player.receiveShadow = false;
+        player.position.set(lanes[currentLaneIndex], 0.8, 0);
+
+        // Add a backpack-like cube to make the character more readable
+        const backpack = new THREE.Mesh(
+          new THREE.BoxGeometry(0.8, 1, 0.4),
+          new THREE.MeshStandardMaterial({ color: 0x0f172a })
+        );
+        backpack.position.set(0, 0.2, -0.6);
+        player.add(backpack);
+
+        scene.add(player);
+      }
+
+      function clearObstacles() {
+        while (teachers.length) {
+          const t = teachers.pop();
+          scene.remove(t);
+        }
+        while (grades.length) {
+          const g = grades.pop();
+          scene.remove(g);
+        }
+      }
+
+      function resetGame() {
+        clearObstacles();
+        score = 0;
+        gpa = 4.0;
+        distance = 0;
+        spawnTimer = 0;
+        spawnInterval = 0.9;
+        currentLaneIndex = 1;
+        targetLaneIndex = 1;
+        playerVelocityY = 0;
+        if (player) {
+          player.position.set(lanes[currentLaneIndex], 0.8, 0);
+        }
+        updateUI();
+        setStatusMessage('Run started! Aim for A+ papers and keep that GPA high.', '#a5b4fc');
+      }
+
+      function onWindowResize() {
+        if (!renderer || !camera) return;
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height);
+      }
+
+      function moveLane(direction) {
+        if (gameState !== 'playing') return;
+        if (direction === 'left') {
+          targetLaneIndex = Math.max(0, targetLaneIndex - 1);
+        } else {
+          targetLaneIndex = Math.min(lanes.length - 1, targetLaneIndex + 1);
+        }
+      }
+
+      function jump() {
+        if (gameState !== 'playing') return;
+        // Simple grounded check
+        const epsilon = 0.05;
+        if (player.position.y <= 0.8 + epsilon) {
+          playerVelocityY = jumpStrength;
+          setStatusMessage('Jump!', '#fbbf24');
+        }
+      }
+
+      function setStatusMessage(text, color) {
+        if (!statusMessage) return;
+        statusMessage.textContent = text || '';
+        statusMessage.style.color = color || '#e5e7eb';
+        if (statusMessage._timeout) {
+          clearTimeout(statusMessage._timeout);
+        }
+        if (text) {
+          statusMessage._timeout = setTimeout(function () {
+            statusMessage.textContent = '';
+          }, 2200);
+        }
+      }
+
+      function updateUI() {
+        scoreValue.textContent = score.toString();
+        gpaValue.textContent = gpa.toFixed(2);
+        distanceValue.textContent = Math.floor(distance) + ' m / ' + targetDistance + ' m';
+
+        const ratio = Math.max(0, Math.min(1, gpa / maxGpa));
+        gpaBar.style.width = (ratio * 100).toFixed(1) + '%';
+        let color;
+        if (ratio > 0.75) color = '#22c55e';
+        else if (ratio > 0.5) color = '#eab308';
+        else if (ratio > 0.25) color = '#fb923c';
+        else color = '#ef4444';
+        gpaBar.style.backgroundColor = color;
+      }
+
+      function adjustGpa(delta, reason) {
+        gpa = Math.max(minGpa, Math.min(maxGpa, gpa + delta));
+        updateUI();
+        if (reason) {
+          const color = delta >= 0 ? '#4ade80' : '#fb7185';
+          setStatusMessage(reason + ' GPA ' + (delta >= 0 ? '+' : '') + delta.toFixed(2), color);
+        }
+        if (gpa <= 1.5) {
+          endGame(false);
+        }
+      }
+
+      function spawnRow() {
+        const baseZ = 90 + Math.random() * 10;
+        const laneIndices = [0, 1, 2];
+        for (let i = laneIndices.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          const temp = laneIndices[i];
+          laneIndices[i] = laneIndices[j];
+          laneIndices[j] = temp;
+        }
+
+        const count = 1 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < count; i++) {
+          const laneIndex = laneIndices[i];
+          const x = lanes[laneIndex];
+          const roll = Math.random();
+
+          if (roll < 0.35) {
+            createTeacher(x, baseZ + i * 3);
+          } else {
+            let type;
+            if (roll < 0.65) type = 'A';
+            else if (roll < 0.85) type = 'B';
+            else type = 'C';
+            createGrade(type, x, baseZ + i * 3);
+          }
+        }
+      }
+
+      function createTeacher(x, z) {
+        const geometry = new THREE.BoxGeometry(1.2, 2.2, 1.2);
+        const material = new THREE.MeshStandardMaterial({
+          color: 0xef4444,
+          metalness: 0.2,
+          roughness: 0.5,
+        });
+        const teacher = new THREE.Mesh(geometry, material);
+        teacher.castShadow = true;
+        teacher.receiveShadow = true;
+        teacher.position.set(x, 1.1, z);
+        teacher.userData = { kind: 'teacher' };
+        scene.add(teacher);
+        teachers.push(teacher);
+      }
+
+      function createGrade(type, x, z) {
+        const geometry = new THREE.BoxGeometry(0.9, 0.9, 0.9);
+        let color;
+        if (type === 'A') color = 0x22c55e;
+        else if (type === 'B') color = 0xeab308;
+        else color = 0xf97316;
+        const material = new THREE.MeshStandardMaterial({
+          color,
+          emissive: color,
+          emissiveIntensity: 0.25,
+          metalness: 0.1,
+          roughness: 0.4,
+        });
+        const grade = new THREE.Mesh(geometry, material);
+        grade.castShadow = true;
+        grade.receiveShadow = false;
+        grade.position.set(x, 1.1, z);
+        grade.userData = { kind: 'grade', type: type };
+        scene.add(grade);
+        grades.push(grade);
+      }
+
+      function updateGame(delta) {
+        // Update player lateral movement
+        const targetX = lanes[targetLaneIndex];
+        const lerpFactor = 10;
+        player.position.x += (targetX - player.position.x) * Math.min(1, lerpFactor * delta);
+
+        // Update vertical movement (jump & gravity)
+        playerVelocityY += gravity * delta;
+        player.position.y += playerVelocityY * delta;
+        if (player.position.y <= 0.8) {
+          player.position.y = 0.8;
+          playerVelocityY = 0;
+        }
+
+        // Slight bobbing to make running feel alive
+        const time = performance.now() * 0.005;
+        const bobAmount = 0.05;
+        player.position.y += Math.sin(time) * bobAmount * delta * 60;
+
+        // Camera follows player smoothly
+        const desiredCameraPos = new THREE.Vector3(player.position.x * 0.4, 7, 13);
+        camera.position.lerp(desiredCameraPos, 0.08);
+        camera.lookAt(new THREE.Vector3(player.position.x, 1.2, 10));
+
+        // Move obstacles toward player
+        const moveDistance = runSpeed * delta;
+        for (let i = teachers.length - 1; i >= 0; i--) {
+          const t = teachers[i];
+          t.position.z -= moveDistance;
+          t.position.y = 1.1 + Math.sin(time + t.position.z * 0.4) * 0.1;
+          if (t.position.z < -10) {
+            scene.remove(t);
+            teachers.splice(i, 1);
+          }
+        }
+
+        for (let i = grades.length - 1; i >= 0; i--) {
+          const g = grades[i];
+          g.position.z -= moveDistance;
+          g.rotation.y += delta * 2;
+          if (g.position.z < -10) {
+            scene.remove(g);
+            grades.splice(i, 1);
+          }
+        }
+
+        // Update distance & spawn
+        distance += moveDistance * 0.8; // convert to "meters" feel
+        spawnTimer += delta;
+        if (spawnTimer >= spawnInterval) {
+          spawnTimer = 0;
+          spawnRow();
+          spawnInterval = Math.max(0.45, spawnInterval - 0.01); // gradually harder
+        }
+
+        // Collisions
+        checkCollisions();
+
+        updateUI();
+
+        // Win condition
+        if (distance >= targetDistance && gameState === 'playing') {
+          endGame(true);
+        }
+      }
+
+      function checkCollisions() {
+        const px = player.position.x;
+        const py = player.position.y;
+        const pz = player.position.z;
+
+        // Teacher collisions
+        for (let i = teachers.length - 1; i >= 0; i--) {
+          const t = teachers[i];
+          const dx = Math.abs(px - t.position.x);
+          const dy = Math.abs(py - t.position.y);
+          const dz = Math.abs(pz - t.position.z);
+          if (dx < 0.9 && dy < 1.4 && dz < 1.0) {
+            scene.remove(t);
+            teachers.splice(i, 1);
+            adjustGpa(-0.6, 'Ouch, you bumped into a teacher.');
+          }
+        }
+
+        // Grade collisions
+        for (let i = grades.length - 1; i >= 0; i--) {
+          const g = grades[i];
+          const dx = Math.abs(px - g.position.x);
+          const dy = Math.abs(py - g.position.y);
+          const dz = Math.abs(pz - g.position.z);
+          if (dx < 0.8 && dy < 1.2 && dz < 1.0) {
+            const type = g.userData.type;
+            scene.remove(g);
+            grades.splice(i, 1);
+
+            if (type === 'A') {
+              score += 1;
+              adjustGpa(0.05, 'Nice! A+ paper collected.');
+            } else if (type === 'B') {
+              adjustGpa(-0.15, 'That B paper stings a bit.');
+            } else if (type === 'C') {
+              adjustGpa(-0.3, 'Tough C paper &mdash; GPA took a hit.');
+            }
+          }
+        }
+      }
+
+      function endGame(victory) {
+        if (gameState !== 'playing') return;
+        gameState = victory ? 'victory' : 'gameover';
+
+        if (!victory) {
+          finalGpaEl.textContent = gpa.toFixed(2);
+          finalScoreEl.textContent = score.toString();
+          finalDistanceEl.textContent = Math.floor(distance) + ' m';
+          gameOverOverlay.classList.remove('hidden');
+          gameOverOverlay.classList.add('flex');
+          setStatusMessage('Run over. Your GPA couldn\'t handle any more hits.', '#fb7185');
+        } else {
+          victoryGpaEl.textContent = gpa.toFixed(2);
+          victoryScoreEl.textContent = score.toString();
+          victoryDistanceEl.textContent = Math.floor(distance) + ' m';
+          victoryOverlay.classList.remove('hidden');
+          victoryOverlay.classList.add('flex');
+          setStatusMessage('You reached the end of the hallway with your GPA intact!', '#4ade80');
+        }
+      }
+
+      function startGame() {
+        menuOverlay.classList.add('hidden');
+        menuOverlay.classList.remove('flex');
+        howToOverlay.classList.add('hidden');
+        howToOverlay.classList.remove('flex');
+        gameOverOverlay.classList.add('hidden');
+        gameOverOverlay.classList.remove('flex');
+        victoryOverlay.classList.add('hidden');
+        victoryOverlay.classList.remove('flex');
+
+        resetGame();
+        gameState = 'playing';
+
+        if (clock) clock.getDelta(); // reset clock delta
+      }
+
+      function showMenu() {
+        gameState = 'menu';
+        clearObstacles();
+        menuOverlay.classList.remove('hidden');
+        menuOverlay.classList.add('flex');
+        howToOverlay.classList.add('hidden');
+        howToOverlay.classList.remove('flex');
+        gameOverOverlay.classList.add('hidden');
+        gameOverOverlay.classList.remove('flex');
+        victoryOverlay.classList.add('hidden');
+        victoryOverlay.classList.remove('flex');
+        setStatusMessage('Welcome back to the hallway.', '#a5b4fc');
+      }
+
+      function togglePause() {
+        if (gameState === 'playing') {
+          gameState = 'paused';
+          setStatusMessage('Paused. Press P to resume.', '#e5e7eb');
+        } else if (gameState === 'paused') {
+          gameState = 'playing';
+          if (clock) clock.getDelta();
+          setStatusMessage('Back to the run!', '#a5b4fc');
+        }
+      }
+
+      function animate() {
+        requestAnimationFrame(animate);
+        if (!clock) return;
+        const delta = clock.getDelta();
+        if (gameState === 'playing') {
+          updateGame(delta);
+        }
+        renderer.render(scene, camera);
+      }
+
+      // Input handling
+      window.addEventListener('keydown', function (event) {
+        const code = event.code;
+        if (code === 'ArrowLeft' || code === 'KeyA') {
+          event.preventDefault();
+          moveLane('left');
+        } else if (code === 'ArrowRight' || code === 'KeyD') {
+          event.preventDefault();
+          moveLane('right');
+        } else if (code === 'Space' || code === 'ArrowUp') {
+          event.preventDefault();
+          if (gameState === 'menu') {
+            startGame();
+          } else if (gameState === 'gameover' || gameState === 'victory') {
+            startGame();
+          } else {
+            jump();
+          }
+        } else if (code === 'KeyP') {
+          event.preventDefault();
+          if (gameState === 'playing' || gameState === 'paused') {
+            togglePause();
+          }
+        }
+      });
+
+      // Button bindings
+      startButton.addEventListener('click', function () {
+        startGame();
+      });
+
+      howToButton.addEventListener('click', function () {
+        howToOverlay.classList.remove('hidden');
+        howToOverlay.classList.add('flex');
+      });
+
+      closeHowToButton.addEventListener('click', function () {
+        howToOverlay.classList.add('hidden');
+        howToOverlay.classList.remove('flex');
+      });
+
+      retryButton.addEventListener('click', function () {
+        startGame();
+      });
+
+      gameOverMenuButton.addEventListener('click', function () {
+        showMenu();
+      });
+
+      victoryRetryButton.addEventListener('click', function () {
+        startGame();
+      });
+
+      victoryMenuButton.addEventListener('click', function () {
+        showMenu();
+      });
+
+      // Initialize
+      initThree();
+      updateUI();
+      setStatusMessage('Use A/D or ←/→ to switch lanes, Space to jump. Press Start to begin.', '#a5b4fc');
+      animate();
+    })();
+  </script>
+</body>
+</html>
