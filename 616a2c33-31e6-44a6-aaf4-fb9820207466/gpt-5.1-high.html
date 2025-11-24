@@ -562,9 +562,16 @@
         player.position.y += Math.sin(time) * bobAmount * delta * 60;
 
         // Camera follows player smoothly
-        const desiredCameraPos = new THREE.Vector3(player.position.x * 0.4, 7, 13);
+        const desiredCameraPos = new THREE.Vector3(player.position.x * 0.4, 7, -13);
         camera.position.lerp(desiredCameraPos, 0.08);
-        camera.lookAt(new THREE.Vector3(player.position.x, 1.2, 10));
+      
+        // Look at the player (slightly ahead)
+        const lookTarget = new THREE.Vector3(
+          player.position.x,
+          player.position.y,          // a bit above their center
+          player.position.z             // slightly in front of the player
+        );
+        camera.lookAt(lookTarget);
 
         // Move obstacles toward player
         const moveDistance = runSpeed * delta;
@@ -724,10 +731,10 @@
       // Input handling
       window.addEventListener('keydown', function (event) {
         const code = event.code;
-        if (code === 'ArrowLeft' || code === 'KeyA') {
+        if (code === 'ArrowRight' || code === 'KeyD') {
           event.preventDefault();
           moveLane('left');
-        } else if (code === 'ArrowRight' || code === 'KeyD') {
+        } else if (code === 'ArrowLeft' || code === 'KeyA') {
           event.preventDefault();
           moveLane('right');
         } else if (code === 'Space' || code === 'ArrowUp') {
