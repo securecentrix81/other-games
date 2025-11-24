@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>durr yussef sux</title>
+    <style>
+        body { margin:0; overflow:hidden; background:#000; }
+        #overlay { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; color:#fff; font-family:Arial, Helvetica, sans-serif; z-index:10; }
+        #gpa, #prompt { position:absolute; padding:10px; font-size:24px; background:rgba(0,0,0,0.5); border-radius:8px; }
+        #gpa { top:10px; left:10px; }
+        #prompt { bottom:10px; left:10px; display:none; }
+        #instructions { position:absolute; bottom:10px; right:10px; font-size:18px; background:rgba(0,0,0,0.5); padding:10px; border-radius:8px; }
+        .screen { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.9); padding:40px; border-radius:15px; text-align:center; display:none; pointer-events:auto; }
+        button { margin-top:20px; padding:15px 30px; font-size:22px; cursor:pointer; background:#4CAF50; border:none; border-radius:8px; }
+        button:hover { background:#45a049; }
+    </style>
+</head>
+<body>
+<div id="overlay">
+    <div id="gpa">GPA: 4.0</div>
+    <div id="prompt"></div>
+    <div id="instructions">WASD → Move SPACE → Jump Click → Lock mouse E → Bully (when close) F → Punch teachers</div>
+    
+    <div id="menu" class="screen">
+        <h1>durr yussef sux</h1>
+        <p>Bully Saharsh, then run from the teachers!<br>Collect green A+ orbs, avoid red ones, keep GPA high, punch teachers, reach the exit.</p>
+        <button onclick="startGame()">START GAME</button>
+    </div>
+    
+    <div id="gameOver" class="screen">
+        <h1>GAME OVER</h1>
+        <p id="goMsg"></p>
+        <button onclick="location.reload()">Play Again</button>
+    </div>
+    
+    <div id="victory" class="screen">
+        <h1>YOU ESCAPED!</h1>
+        <p>Congrats Yussef, you bullied Saharsh and still got away with good grades!</p>
+        <button onclick="location.reload()">Play Again</button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/PointerLockControls.js"></script>
+<script>
+    let camera, scene, renderer, controls;
+    const objects = []; // platforms/ground for raycasting
+    const velocity = new THREE.Vector3();
+    const direction = new THREE.Vector3();
+    let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+    let canJump = false;
+    let prevTime = performance.now();
+    let gpa = 4.0;
+    let bullied = false;
+    let saharsh, exit;
+    const teachers = [];
+    const goodGrades = [];
+    const badGrades = [];
+
+    const gpaDiv = document.getElementById('gpa');
+    const promptDiv = document.getElementById('prompt');
+    const menuDiv = document.getElementById('menu');
+    const gameOverDiv = document.getElementById('gameOver');
+    const victoryDiv = document.getElementById('victory');
+    const goMsg = document.getElementById('goMsg');
+
+    const GRAVITY = 45;
+    const JUMP = 16;
+    const PLAYER_HEIGHT = 2;
+
+    let bullyPressed = false;
+    let punchPressed = false;
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xa0d8ef);
+
+        camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
+        controls = new THREE.PointerLockControls(camera, document.body);
+
+        renderer = new THREE.WebGLRenderer({antialias:true});
+        renderer.setSize(innerWidth, innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // lights
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(50, 100, 50);
+        scene.add(dirLight);
+
+        // ground
+        const ground = new THREE.Mesh(
+            new THREE.BoxGeometry(300, 1, 300),
+            new THREE.MeshStandardMaterial({color:0x88aa77})
+        );
+        ground.position.y = -0.5;
+        scene.add(ground);
+        objects.push(ground);
+
+        // some platforms to make it a real platformer
+        addPlatform(0, 0, -40, 30, 3, 30, 0x8b7355);
+        addPlatform(40, 4, -80, 25, 3, 40, 0x8b7355);
+        addPlatform(-40, 8, -120, 30, 3, 30, 0x8b7355);
+        addPlatform(0, 12, -160, 40, 3, 50, 0x8b7355);
+
+        // exit
+        exit = new THREE.Mesh(
+            new THREE.BoxGeometry(15, 15, 15),
+            new THREE.MeshBasicMaterial({color:0x00ff00, wireframe:true})
+        );
+        exit.position.set(0, 8, -200);
+        scene.add(exit);
+
+        // Saharsh (real photo sprite)
+        const tex = new THREE.TextureLoader().load('https://asset-cdn.schoology.com/system/files/imagecache/profile_big/pictures/picture-c0b09cdead19788fb0f8be0d53b5c572_68c34cd700b90.jpg');
+        saharsh = new THREE.Sprite(new THREE.SpriteMaterial({map:tex}));
+        saharsh.scale.set(8,8,1);
+        saharsh.position.set(0, 4, -15);
+        scene.add(saharsh);
+
+        // grades
+        for(let i=0; i<40; i++) addGood(Math.random()*200-100, Math.random()*15+1, Math.random()*200-150);
+        for(let i=0; i<20; i++) addBad(Math.random()*200-100, Math.random()*15+1, Math.random()*200-150);
+
+        camera.position.set(0, 10, 10);
+
+        document.addEventListener('keydown', onKeyDown);
+        document.addEventListener('keyup', onKeyUp);
+        window.addEventListener('resize', ()=> {
+            camera.aspect = innerWidth/innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(innerWidth, innerHeight);
+        });
+
+        menuDiv.style.display = 'block';
+    }
+
+    function addPlatform(x,y,z,w,h,d,c) {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshStandardMaterial({color:c}));
+        m.position.set(x, y + h/2, z);
+        scene.add(m);
+        objects.push(m);
+    }
+    function addGood(x,y,z) { const m = new THREE.Mesh(new THREE.SphereGeometry(1.2,16,16), new THREE.MeshBasicMaterial({color:0x00ff00})); m.position.set(x,y,z); scene.add(m); goodGrades.push(m); }
+    function addBad(x,y,z) { const m = new THREE.Mesh(new THREE.SphereGeometry(1.2,16,16), new THREE.MeshBasicMaterial({color:0xff0000})); m.position.set(x,y,z); scene.add(m); badGrades.push(m); }
+
+    function spawnTeacher(x,z) {
+        const t = new THREE.Mesh(new THREE.CylinderGeometry(1,1,4,12), new THREE.MeshStandardMaterial({color:0xff0000}));
+        t.position.set(x,2,z);
+        scene.add(t);
+        teachers.push(t);
+    }
+
+    function onKeyDown(e) {
+        switch(e.code) {
+            case 'KeyW': moveForward = true; break;
+            case 'KeyS': moveBackward = true; break;
+            case 'KeyA': moveLeft = true; break;
+            case 'KeyD': moveRight = true; break;
+            case 'Space': if(canJump) velocity.y = JUMP; canJump = false; break;
+            case 'KeyE': bullyPressed = true; break;
+            case 'KeyF': punchPressed = true; break;
+        }
+    }
+    function onKeyUp(e) {
+        switch(e.code) {
+            case 'KeyW': moveForward = false; break;
+            case 'KeyS': moveBackward = false; break;
+            case 'KeyA': moveLeft = false; break;
+            case 'KeyD': moveRight = false; break;
+        }
+    }
+
+    function startGame() {
+        menuDiv.style.display = 'none';
+        gameOverDiv.style.display = 'none';
+        victoryDiv.style.display = 'none';
+        gpa = 4.0; updateGPA();
+        bullied = false;
+        teachers.forEach(t=>scene.remove(t)); teachers.length = 0;
+        camera.position.set(0,10,10);
+        controls.lock();
+        animate();
+    }
+
+    function updateGPA() {
+        gpaDiv.innerText = `GPA: ${gpa.toFixed(2)}`;
+        if(gpa <= 0) endGame("GPA hit rock bottom — parents screamed at Yussef!");
+    }
+    function endGame(msg) {
+        goMsg.innerText = msg;
+        gameOverDiv.style.display = 'block';
+        controls.unlock();
+    }
+    function winGame() {
+        victoryDiv.style.display = 'block';
+        controls.unlock();
+    }
+
+    const raycaster = new THREE.Raycaster();
+    function animate() {
+        if(menuDiv.style.display === 'block') return;
+        requestAnimationFrame(animate);
+
+        const time = performance.now();
+        const delta = (time - prevTime) / 1000;
+
+        if(controls.isLocked) {
+            velocity.x -= velocity.x * 10 * delta;
+            velocity.z -= velocity.z * 10 * delta;
+            velocity.y -= GRAVITY * delta;
+
+            direction.z = Number(moveForward) - Number(moveBackward);
+            direction.x = Number(moveRight) - Number(moveLeft);
+            direction.normalize();
+
+            if(moveForward || moveBackward) velocity.z -= direction.z * 120 * delta;
+            if(moveLeft || moveRight) velocity.x -= direction.x * 120 * delta;
+
+            controls.moveRight(-velocity.x * delta);
+            controls.moveForward(-velocity.z * delta);
+            camera.position.y += velocity.y * delta;
+
+            // platform / ground collision
+            raycaster.set(camera.position, new THREE.Vector3(0,-1,0));
+            const hits = raycaster.intersectObjects(objects);
+            if(hits.length > 0 && hits[0].distance <= PLAYER_HEIGHT + 0.2) {
+                camera.position.y = hits[0].point.y + PLAYER_HEIGHT;
+                velocity.y = 0;
+                canJump = true;
+            }
+
+            if(camera.position.y < -30) endGame("Yussef fell into the void!");
+
+            // bully Saharsh
+            if(saharsh && !bullied) {
+                const dist = camera.position.distanceTo(saharsh.position);
+                if(dist < 10) {
+                    promptDiv.style.display = 'block';
+                    promptDiv.innerText = 'Press E to bully Saharsh';
+                    if(bullyPressed) {
+                        bullied = true;
+                        scene.remove(saharsh);
+                        promptDiv.style.display = 'none';
+                        // spawn angry teachers
+                        spawnTeacher(30,-30); spawnTeacher(-30,-30); spawnTeacher(0,-50); spawnTeacher(50,-70); spawnTeacher(-50,-70);
+                    }
+                } else if(promptDiv.innerText.includes('Saharsh')) {
+                    promptDiv.style.display = 'none';
+                }
+            }
+
+            // punch teachers
+            if(punchPressed && bullied) {
+                for(let i=teachers.length-1; i>=0; i--) {
+                    if(camera.position.distanceTo(teachers[i].position) < 6) {
+                        scene.remove(teachers[i]);
+                        teachers.splice(i,1);
+                    }
+                }
+                punchPressed = false;
+            }
+
+            // chase
+            if(bullied) {
+                teachers.forEach(t => {
+                    const dir = new THREE.Vector3().subVectors(camera.position, t.position);
+                    dir.y = 0; dir.normalize();
+                    t.position.addScaledVector(dir, 12 * delta);
+                    if(dir.lengthSq() < 9) { gpa -= 0.6; updateGPA(); }
+                });
+            }
+
+            // collectibles
+            for(let i=goodGrades.length-1; i>=0; i--) {
+                if(camera.position.distanceTo(goodGrades[i].position) < 4) {
+                    scene.remove(goodGrades[i]);
+                    goodGrades.splice(i,1);
+                    gpa = Math.min(4.0, gpa + 0.25);
+                    updateGPA();
+                }
+            }
+            for(let i=badGrades.length-1; i>=0; i--) {
+                if(camera.position.distanceTo(badGrades[i].position) < 4) {
+                    scene.remove(badGrades[i]);
+                    badGrades.splice(i,1);
+                    gpa -= 0.5;
+                    updateGPA();
+                }
+            }
+
+            // victory check
+            if(exit && camera.position.distanceTo(exit.position) < 15) {
+                if(gpa >= 3.0) winGame();
+                else endGame("Exit reached but GPA too low — parents are furious!");
+            }
+        }
+
+        prevTime = time;
+        renderer.render(scene, camera);
+    }
+
+    init();
+</script>
+</body>
+</html>
