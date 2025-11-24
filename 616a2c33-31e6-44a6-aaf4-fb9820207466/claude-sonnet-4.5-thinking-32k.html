@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>durr yussef sux</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100vh;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            color: white;
+            font-weight: bold;
+        }
+        
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 18px;
+        }
+        
+        #gpaBar {
+            width: 200px;
+            height: 30px;
+            background: #333;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 10px;
+            border: 2px solid #fff;
+        }
+        
+        #gpaFill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444, #ffaa44, #44ff44);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+        
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px;
+            border-radius: 20px;
+            font-size: 24px;
+            max-width: 600px;
+        }
+        
+        #startButton, #restartButton {
+            pointer-events: all;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+        
+        #startButton:hover, #restartButton:hover {
+            background: #45a049;
+            transform: scale(1.05);
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 30px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        #parentsYell {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            font-size: 32px;
+            font-weight: bold;
+            text-align: center;
+            display: none;
+            animation: shake 0.5s;
+            z-index: 100;
+            border: 5px solid #ff0000;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
+            25% { transform: translate(-48%, -50%) rotate(-5deg); }
+            75% { transform: translate(-52%, -50%) rotate(5deg); }
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        #cutscene {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        #saharshImage {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: 5px solid #fff;
+            margin-bottom: 30px;
+            object-fit: cover;
+        }
+        
+        #cutsceneText {
+            font-size: 28px;
+            text-align: center;
+            max-width: 600px;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div id="hud">
+            <div>Score: <span id="score">0</span></div>
+            <div>GPA: <span id="gpa">4.0</span></div>
+            <div id="gpaBar">
+                <div id="gpaFill" style="width: 100%;">4.0</div>
+            </div>
+            <div style="margin-top: 10px;">A+ Collected: <span id="grades">0</span></div>
+            <div style="margin-top: 5px; font-size: 14px;">Avoid Teachers!</div>
+        </div>
+        
+        <div id="message" class="hidden">
+            <h1 id="messageTitle">durr yussef sux</h1>
+            <p id="messageText">Run from teachers and collect A+ grades!</p>
+            <button id="startButton">Start Game</button>
+        </div>
+        
+        <div id="controls">
+            <div>WASD/Arrow Keys - Move | SPACE - Jump</div>
+        </div>
+        
+        <div id="parentsYell">
+            😡 YOUR PARENTS ARE DISAPPOINTED! 😡<br>
+            <span style="font-size: 20px;">You collected a bad grade!</span>
+        </div>
+        
+        <div id="cutscene" class="hidden">
+            <img id="saharshImage" src="https://asset-cdn.schoology.com/system/files/imagecache/profile_big/pictures/picture-c0b09cdead19788fb0f8be0d53b5c572_68c34cd700b90.jpg" alt="Saharsh">
+            <div id="cutsceneText">
+                Yussef encounters Saharsh...<br>
+                <span style="font-size: 20px; color: #ff6666;">*bullying happens*</span><br>
+                Uh oh! Teachers saw that!<br>
+                <span style="font-size: 22px; color: #ffaa44;">RUN!</span>
+            </div>
+            <button id="skipCutscene" style="pointer-events: all; background: #2196F3; color: white; border: none; padding: 15px 40px; font-size: 18px; border-radius: 10px; cursor: pointer;">Continue</button>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script>
+        // Game State
+        const gameState = {
+            scene: null,
+            camera: null,
+            renderer: null,
+            player: null,
+            teachers: [],
+            grades: [],
+            obstacles: [],
+            score: 0,
+            gpa: 4.0,
+            gradesCollected: 0,
+            gameStarted: false,
+            gameOver: false,
+            playerSpeed: 0.15,
+            jumpPower: 0,
+            gravity: 0.015,
+            isJumping: false,
+            playerVelocity: { x: 0, z: 0, y: 0 },
+            keys: {},
+            timeElapsed: 0,
+            spawnTimer: 0
+        };
+        
+        // Initialize Three.js
+        function init() {
+            // Scene
+            gameState.scene = new THREE.Scene();
+            gameState.scene.background = new THREE.Color(0x87CEEB);
+            gameState.scene.fog = new THREE.Fog(0x87CEEB, 1, 100);
+            
+            // Camera
+            gameState.camera = new THREE.PerspectiveCamera(
+                75,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                1000
+            );
+            gameState.camera.position.set(0, 10, 15);
+            gameState.camera.lookAt(0, 0, 0);
+            
+            // Renderer
+            gameState.renderer = new THREE.WebGLRenderer({ antialias: true });
+            gameState.renderer.setSize(window.innerWidth, window.innerHeight);
+            gameState.renderer.shadowMap.enabled = true;
+            document.body.appendChild(gameState.renderer.domElement);
+            
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            gameState.scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 10);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            gameState.scene.add(directionalLight);
+            
+            // Ground
+            const groundGeometry = new THREE.PlaneGeometry(100, 100);
+            const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            gameState.scene.add(ground);
+            
+            // Grid pattern on ground
+            const gridHelper = new THREE.GridHelper(100, 50, 0x444444, 0x888888);
+            gameState.scene.add(gridHelper);
+            
+            // Create player (Yussef)
+            createPlayer();
+            
+            // Create initial environment
+            createEnvironment();
+            
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('keydown', (e) => gameState.keys[e.key.toLowerCase()] = true);
+            document.addEventListener('keyup', (e) => gameState.keys[e.key.toLowerCase()] = false);
+            
+            document.getElementById('startButton').addEventListener('click', showCutscene);
+            document.getElementById('skipCutscene').addEventListener('click', startGame);
+            
+            // Start animation loop
+            animate();
+        }
+        
+        function createPlayer() {
+            const playerGroup = new THREE.Group();
+            
+            // Body
+            const bodyGeometry = new THREE.BoxGeometry(1, 1.5, 0.5);
+            const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x3366FF });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 0.75;
+            body.castShadow = true;
+            playerGroup.add(body);
+            
+            // Head
+            const headGeometry = new THREE.SphereGeometry(0.4, 16, 16);
+            const headMaterial = new THREE.MeshLambertMaterial({ color: 0xFFDBAC });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 1.8;
+            head.castShadow = true;
+            playerGroup.add(head);
+            
+            // Eyes
+            const eyeGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+            const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
+            const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            leftEye.position.set(-0.15, 1.9, 0.35);
+            playerGroup.add(leftEye);
+            const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            rightEye.position.set(0.15, 1.9, 0.35);
+            playerGroup.add(rightEye);
+            
+            playerGroup.position.set(0, 0, 0);
+            gameState.scene.add(playerGroup);
+            gameState.player = playerGroup;
+        }
+        
+        function createTeacher(x, z) {
+            const teacherGroup = new THREE.Group();
+            
+            // Body
+            const bodyGeometry = new THREE.BoxGeometry(1, 1.5, 0.5);
+            const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0xFF4444 });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 0.75;
+            body.castShadow = true;
+            teacherGroup.add(body);
+            
+            // Head
+            const headGeometry = new THREE.SphereGeometry(0.4, 16, 16);
+            const headMaterial = new THREE.MeshLambertMaterial({ color: 0xFFDBAC });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 1.8;
+            head.castShadow = true;
+            teacherGroup.add(head);
+            
+            // Angry eyes
+            const eyeGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+            const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0xFF0000 });
+            const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            leftEye.position.set(-0.15, 1.9, 0.35);
+            teacherGroup.add(leftEye);
+            const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            rightEye.position.set(0.15, 1.9, 0.35);
+            teacherGroup.add(rightEye);
+            
+            teacherGroup.position.set(x, 0, z);
+            gameState.scene.add(teacherGroup);
+            gameState.teachers.push({ mesh: teacherGroup, speed: 0.08 + Math.random() * 0.04 });
+        }
+        
+        function createGrade(isGood) {
+            const gradeGroup = new THREE.Group();
+            
+            // Letter background
+            const geometry = new THREE.BoxGeometry(0.8, 1, 0.1);
+            const material = new THREE.MeshLambertMaterial({ 
+                color: isGood ? 0x00FF00 : (Math.random() > 0.5 ? 0xFFAA00 : 0xFF0000)
+            });
+            const box = new THREE.Mesh(geometry, material);
+            box.castShadow = true;
+            gradeGroup.add(box);
+            
+            // Position randomly
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 10 + Math.random() * 30;
+            gradeGroup.position.set(
+                Math.cos(angle) * distance,
+                1 + Math.sin(Date.now() * 0.001) * 0.5,
+                Math.sin(angle) * distance
+            );
+            
+            gradeGroup.userData = { 
+                isGood, 
+                rotationSpeed: 0.02,
+                floatOffset: Math.random() * Math.PI * 2,
+                letter: isGood ? 'A+' : (Math.random() > 0.5 ? 'B' : (Math.random() > 0.5 ? 'C' : 'F'))
+            };
+            
+            gameState.scene.add(gradeGroup);
+            gameState.grades.push(gradeGroup);
+        }
+        
+        function createEnvironment() {
+            // Create some decorative obstacles/buildings
+            for (let i = 0; i < 15; i++) {
+                const height = 2 + Math.random() * 4;
+                const width = 1 + Math.random() * 2;
+                const depth = 1 + Math.random() * 2;
+                
+                const geometry = new THREE.BoxGeometry(width, height, depth);
+                const material = new THREE.MeshLambertMaterial({ 
+                    color: new THREE.Color().setHSL(Math.random(), 0.5, 0.5)
+                });
+                const obstacle = new THREE.Mesh(geometry, material);
+                
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 15 + Math.random() * 30;
+                obstacle.position.set(
+                    Math.cos(angle) * distance,
+                    height / 2,
+                    Math.sin(angle) * distance
+                );
+                
+                obstacle.castShadow = true;
+                obstacle.receiveShadow = true;
+                gameState.scene.add(obstacle);
+                gameState.obstacles.push(obstacle);
+            }
+        }
+        
+        function showCutscene() {
+            document.getElementById('message').classList.add('hidden');
+            document.getElementById('cutscene').classList.remove('hidden');
+        }
+        
+        function startGame() {
+            document.getElementById('cutscene').classList.add('hidden');
+            gameState.gameStarted = true;
+            gameState.gameOver = false;
+            gameState.score = 0;
+            gameState.gpa = 4.0;
+            gameState.gradesCollected = 0;
+            
+            // Clear old teachers and grades
+            gameState.teachers.forEach(t => gameState.scene.remove(t.mesh));
+            gameState.grades.forEach(g => gameState.scene.remove(g));
+            gameState.teachers = [];
+            gameState.grades = [];
+            
+            // Spawn initial teachers
+            for (let i = 0; i < 3; i++) {
+                const angle = (i / 3) * Math.PI * 2;
+                createTeacher(Math.cos(angle) * 15, Math.sin(angle) * 15);
+            }
+            
+            // Spawn initial grades
+            for (let i = 0; i < 10; i++) {
+                createGrade(Math.random() > 0.3); // 70% good grades
+            }
+            
+            updateUI();
+        }
+        
+        function updatePlayer() {
+            if (!gameState.gameStarted || gameState.gameOver) return;
+            
+            // Movement
+            const moveSpeed = gameState.playerSpeed;
+            let moveX = 0;
+            let moveZ = 0;
+            
+            if (gameState.keys['w'] || gameState.keys['arrowup']) moveZ -= moveSpeed;
+            if (gameState.keys['s'] || gameState.keys['arrowdown']) moveZ += moveSpeed;
+            if (gameState.keys['a'] || gameState.keys['arrowleft']) moveX -= moveSpeed;
+            if (gameState.keys['d'] || gameState.keys['arrowright']) moveX += moveSpeed;
+            
+            // Apply movement
+            gameState.playerVelocity.x = moveX;
+            gameState.playerVelocity.z = moveZ;
+            
+            gameState.player.position.x += gameState.playerVelocity.x;
+            gameState.player.position.z += gameState.playerVelocity.z;
+            
+            // Jumping
+            if ((gameState.keys[' '] || gameState.keys['space']) && !gameState.isJumping && gameState.player.position.y <= 0.1) {
+                gameState.isJumping = true;
+                gameState.playerVelocity.y = 0.3;
+            }
+            
+            // Apply gravity
+            if (gameState.player.position.y > 0 || gameState.playerVelocity.y > 0) {
+                gameState.playerVelocity.y -= gameState.gravity;
+                gameState.player.position.y += gameState.playerVelocity.y;
+                
+                if (gameState.player.position.y <= 0) {
+                    gameState.player.position.y = 0;
+                    gameState.playerVelocity.y = 0;
+                    gameState.isJumping = false;
+                }
+            }
+            
+            // Keep player in bounds
+            const bound = 45;
+            gameState.player.position.x = Math.max(-bound, Math.min(bound, gameState.player.position.x));
+            gameState.player.position.z = Math.max(-bound, Math.min(bound, gameState.player.position.z));
+            
+            // Rotate player based on movement
+            if (moveX !== 0 || moveZ !== 0) {
+                const angle = Math.atan2(moveX, moveZ);
+                gameState.player.rotation.y = angle;
+            }
+            
+            // Update camera to follow player
+            const cameraOffset = 15;
+            const cameraHeight = 10;
+            gameState.camera.position.x = gameState.player.position.x;
+            gameState.camera.position.y = gameState.player.position.y + cameraHeight;
+            gameState.camera.position.z = gameState.player.position.z + cameraOffset;
+            gameState.camera.lookAt(gameState.player.position);
+        }
+        
+        function updateTeachers() {
+            if (!gameState.gameStarted || gameState.gameOver) return;
+            
+            gameState.teachers.forEach(teacher => {
+                // Chase player
+                const dx = gameState.player.position.x - teacher.mesh.position.x;
+                const dz = gameState.player.position.z - teacher.mesh.position.z;
+                const distance = Math.sqrt(dx * dx + dz * dz);
+                
+                if (distance > 0.5) {
+                    teacher.mesh.position.x += (dx / distance) * teacher.speed;
+                    teacher.mesh.position.z += (dz / distance) * teacher.speed;
+                    
+                    // Rotate to face player
+                    teacher.mesh.rotation.y = Math.atan2(dx, dz);
+                }
+                
+                // Check collision with player
+                if (distance < 1.5) {
+                    endGame(false);
+                }
+            });
+        }
+        
+        function updateGrades() {
+            if (!gameState.gameStarted || gameState.gameOver) return;
+            
+            gameState.grades.forEach((grade, index) => {
+                // Rotate and float
+                grade.rotation.y += grade.userData.rotationSpeed;
+                grade.position.y = 1 + Math.sin(Date.now() * 0.001 + grade.userData.floatOffset) * 0.5;
+                
+                // Check collision with player
+                const dx = gameState.player.position.x - grade.position.x;
+                const dz = gameState.player.position.z - grade.position.z;
+                const distance = Math.sqrt(dx * dx + dz * dz);
+                
+                if (distance < 1.5) {
+                    // Collect grade
+                    if (grade.userData.isGood) {
+                        gameState.score += 100;
+                        gameState.gradesCollected++;
+                        gameState.gpa = Math.min(4.0, gameState.gpa + 0.05);
+                    } else {
+                        // Bad grade
+                        gameState.score = Math.max(0, gameState.score - 50);
+                        gameState.gpa = Math.max(0, gameState.gpa - 0.3);
+                        showParentsYell();
+                    }
+                    
+                    gameState.scene.remove(grade);
+                    gameState.grades.splice(index, 1);
+                    updateUI();
+                    
+                    // Check win/lose
+                    if (gameState.gpa <= 0) {
+                        endGame(false);
+                    }
+                    if (gameState.gradesCollected >= 20) {
+                        endGame(true);
+                    }
+                }
+            });
+        }
+        
+        function showParentsYell() {
+            const yellDiv = document.getElementById('parentsYell');
+            yellDiv.style.display = 'block';
+            setTimeout(() => {
+                yellDiv.style.display = 'none';
+            }, 1500);
+        }
+        
+        function spawnNewContent() {
+            if (!gameState.gameStarted || gameState.gameOver) return;
+            
+            gameState.spawnTimer++;
+            
+            // Spawn new grades periodically
+            if (gameState.spawnTimer % 120 === 0) {
+                createGrade(Math.random() > 0.3);
+            }
+            
+            // Spawn new teachers periodically
+            if (gameState.spawnTimer % 300 === 0 && gameState.teachers.length < 8) {
+                const angle = Math.random() * Math.PI * 2;
+                createTeacher(Math.cos(angle) * 40, Math.sin(angle) * 40);
+            }
+        }
+        
+        function updateUI() {
+            document.getElementById('score').textContent = gameState.score;
+            document.getElementById('gpa').textContent = gameState.gpa.toFixed(2);
+            document.getElementById('grades').textContent = gameState.gradesCollected;
+            
+            const gpaPercent = (gameState.gpa / 4.0) * 100;
+            const gpaFill = document.getElementById('gpaFill');
+            gpaFill.style.width = gpaPercent + '%';
+            gpaFill.textContent = gameState.gpa.toFixed(2);
+        }
+        
+        function endGame(won) {
+            gameState.gameOver = true;
+            gameState.gameStarted = false;
+            
+            const message = document.getElementById('message');
+            const title = document.getElementById('messageTitle');
+            const text = document.getElementById('messageText');
+            const button = document.getElementById('startButton');
+            
+            message.classList.remove('hidden');
+            
+            if (won) {
+                title.textContent = '🎉 Victory! 🎉';
+                text.textContent = `Yussef escaped! Final Score: ${gameState.score} | GPA: ${gameState.gpa.toFixed(2)} | A+ Grades: ${gameState.gradesCollected}`;
+                button.textContent = 'Play Again';
+            } else {
+                title.textContent = '😢 Game Over!';
+                if (gameState.gpa <= 0) {
+                    text.textContent = `Your GPA dropped to 0! Your parents are very disappointed. Final Score: ${gameState.score}`;
+                } else {
+                    text.textContent = `The teachers caught you! Final Score: ${gameState.score} | GPA: ${gameState.gpa.toFixed(2)}`;
+                }
+                button.textContent = 'Try Again';
+            }
+            
+            button.onclick = () => {
+                showCutscene();
+            };
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            updatePlayer();
+            updateTeachers();
+            updateGrades();
+            spawnNewContent();
+            
+            gameState.renderer.render(gameState.scene, gameState.camera);
+        }
+        
+        function onWindowResize() {
+            gameState.camera.aspect = window.innerWidth / window.innerHeight;
+            gameState.camera.updateProjectionMatrix();
+            gameState.renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Start the game
+        init();
+    </script>
+</body>
+</html>
