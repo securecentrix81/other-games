@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saharsh's School Escape - Secure Centrix81</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+        }
+        #gameCanvas {
+            display: block;
+        }
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            font-size: 18px;
+        }
+        #hud div {
+            margin: 8px 0;
+            background: rgba(0,0,0,0.5);
+            padding: 8px 15px;
+            border-radius: 8px;
+            border-left: 4px solid #00ff88;
+        }
+        #stealthMeter {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            height: 30px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 15px;
+            overflow: hidden;
+            border: 2px solid #fff;
+        }
+        #stealthFill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #00cc66);
+            transition: width 0.3s;
+            width: 100%;
+        }
+        #stealthLabel {
+            position: absolute;
+            top: 25px;
+            right: 230px;
+            color: white;
+            font-size: 14px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        #menu, #gameOver, #victory, #instructions {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            pointer-events: auto;
+        }
+        #menu {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 40px 60px;
+            border-radius: 20px;
+            border: 3px solid #00ff88;
+            box-shadow: 0 0 50px rgba(0,255,136,0.3);
+        }
+        #menu h1 {
+            font-size: 42px;
+            margin-bottom: 10px;
+            color: #00ff88;
+            text-shadow: 0 0 20px rgba(0,255,136,0.5);
+        }
+        #menu h2 {
+            font-size: 24px;
+            color: #aaa;
+            margin-bottom: 30px;
+        }
+        #playerPhoto {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 4px solid #00ff88;
+            margin: 20px auto;
+            object-fit: cover;
+            box-shadow: 0 0 30px rgba(0,255,136,0.4);
+        }
+        .btn {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc66 100%);
+            color: #1a1a2e;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            margin: 10px;
+            font-weight: bold;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+        .btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(0,255,136,0.6);
+        }
+        #gameOver, #victory {
+            background: rgba(0,0,0,0.9);
+            padding: 50px;
+            border-radius: 20px;
+            display: none;
+        }
+        #gameOver {
+            border: 3px solid #ff4444;
+        }
+        #gameOver h1 {
+            color: #ff4444;
+            font-size: 48px;
+        }
+        #victory {
+            border: 3px solid #00ff88;
+        }
+        #victory h1 {
+            color: #00ff88;
+            font-size: 48px;
+        }
+        #instructions {
+            background: rgba(0,0,0,0.95);
+            padding: 40px;
+            border-radius: 20px;
+            border: 3px solid #00aaff;
+            display: none;
+            max-width: 500px;
+        }
+        #instructions h2 {
+            color: #00aaff;
+            margin-bottom: 20px;
+        }
+        #instructions p {
+            margin: 10px 0;
+            text-align: left;
+            font-size: 16px;
+        }
+        #instructions .key {
+            background: #333;
+            padding: 3px 10px;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+        #levelIndicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: #00ff88;
+            text-shadow: 0 0 30px rgba(0,255,136,0.8);
+            display: none;
+            animation: levelPulse 2s ease-out;
+        }
+        @keyframes levelPulse {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+        }
+        #minimap {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 150px;
+            height: 150px;
+            background: rgba(0,0,0,0.7);
+            border: 2px solid #00ff88;
+            border-radius: 10px;
+        }
+        #objective {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px 20px;
+            border-radius: 10px;
+            color: #fff;
+            border-left: 4px solid #00aaff;
+            max-width: 300px;
+        }
+        #objective h3 {
+            color: #00aaff;
+            margin-bottom: 5px;
+        }
+        #message {
+            position: absolute;
+            top: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 15px 30px;
+            border-radius: 10px;
+            color: #00ff88;
+            font-size: 20px;
+            display: none;
+            animation: fadeInOut 2s ease-out;
+        }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+            20% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            80% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        #pauseMenu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95);
+            padding: 40px;
+            border-radius: 20px;
+            border: 3px solid #ffaa00;
+            display: none;
+            pointer-events: auto;
+        }
+        #pauseMenu h1 {
+            color: #ffaa00;
+            margin-bottom: 20px;
+        }
+        #interactPrompt {
+            position: absolute;
+            bottom: 200px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 15px 30px;
+            border-radius: 10px;
+            color: #ffff00;
+            font-size: 20px;
+            display: none;
+            border: 2px solid #ffff00;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.05); }
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div id="hud" style="display: none;">
+            <div>📚 Failed Tests: <span id="testsCollected">0</span> / <span id="testsTotal">5</span></div>
+            <div>💻 Computers Hacked: <span id="computersHacked">0</span> / <span id="computersTotal">3</span></div>
+            <div>⭐ Score: <span id="score">0</span></div>
+            <div>🎮 Level: <span id="level">1</span></div>
+        </div>
+        <div id="stealthLabel" style="display: none;">STEALTH</div>
+        <div id="stealthMeter" style="display: none;">
+            <div id="stealthFill"></div>
+        </div>
+        <div id="objective" style="display: none;">
+            <h3>📋 Objective</h3>
+            <p id="objectiveText">Collect failed tests and hack computers to play SecureCentrix!</p>
+        </div>
+        <canvas id="minimap"></canvas>
+        <div id="message"></div>
+        <div id="levelIndicator"></div>
+        <div id="interactPrompt">Press E to interact</div>
+        
+        <div id="menu">
+            <img id="playerPhoto" src="https://asset-cdn.schoology.com/system/files/imagecache/profile_big/pictures/picture-c0b09cdead19788fb0f8be0d53b5c572_68c34cd700b90.jpg" alt="Saharsh">
+            <h1>🎮 Saharsh's School Escape</h1>
+            <h2>A Secure Centrix81 Production</h2>
+            <p style="color: #888; margin-bottom: 20px;">Help Saharsh avoid teachers, collect his failed tests,<br>and find computers to play on SecureCentrix!</p>
+            <button class="btn" onclick="startGame()">▶ PLAY</button>
+            <button class="btn" onclick="showInstructions()">📖 HOW TO PLAY</button>
+        </div>
+        
+        <div id="instructions">
+            <h2>🎮 How To Play</h2>
+            <p><span class="key">W A S D</span> - Move around</p>
+            <p><span class="key">SHIFT</span> - Sprint (drains stealth faster)</p>
+            <p><span class="key">E</span> - Interact with objects</p>
+            <p><span class="key">ESC</span> - Pause game</p>
+            <hr style="margin: 20px 0; border-color: #333;">
+            <p>🎯 <strong>Goals:</strong></p>
+            <p>• Collect all your failed test papers scattered around</p>
+            <p>• Find computers to "hack" and play SecureCentrix</p>
+            <p>• Avoid teachers - they will catch you!</p>
+            <p>• Stay hidden to keep your stealth meter high</p>
+            <br>
+            <button class="btn" onclick="hideInstructions()">GOT IT!</button>
+        </div>
+        
+        <div id="pauseMenu">
+            <h1>⏸️ PAUSED</h1>
+            <button class="btn" onclick="resumeGame()">▶ RESUME</button>
+            <button class="btn" onclick="restartGame()">🔄 RESTART</button>
+        </div>
+        
+        <div id="gameOver">
+            <h1>😱 CAUGHT!</h1>
+            <p style="font-size: 24px; margin: 20px 0;">A teacher caught you!</p>
+            <p style="font-size: 18px; color: #888;">Final Score: <span id="finalScore">0</span></p>
+            <button class="btn" onclick="restartGame()">🔄 TRY AGAIN</button>
+        </div>
+        
+        <div id="victory">
+            <h1>🎉 VICTORY!</h1>
+            <p style="font-size: 24px; margin: 20px 0;">You escaped and played SecureCentrix all day!</p>
+            <p style="font-size: 18px; color: #888;">Final Score: <span id="victoryScore">0</span></p>
+            <button class="btn" onclick="nextLevel()">➡️ NEXT LEVEL</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script>
+        // Game State
+        let gameState = 'menu';
+        let score = 0;
+        let currentLevel = 1;
+        let stealth = 100;
+        let testsCollected = 0;
+        let computersHacked = 0;
+        let testsRequired = 5;
+        let computersRequired = 3;
+        
+        // Three.js Setup
+        let scene, camera, renderer;
+        let player, playerTexture;
+        let teachers = [];
+        let tests = [];
+        let computers = [];
+        let walls = [];
+        let decorations = [];
+        
+        // Controls
+        let keys = {};
+        let playerSpeed = 0.15;
+        let sprintMultiplier = 1.8;
+        
+        // Minimap
+        let minimapCanvas, minimapCtx;
+        
+        // Level configurations
+        const levels = [
+            { tests: 5, computers: 2, teachers: 2, mapSize: 40 },
+            { tests: 7, computers: 3, teachers: 3, mapSize: 50 },
+            { tests: 10, computers: 4, teachers: 5, mapSize: 60 }
+        ];
+        
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+            scene.fog = new THREE.Fog(0x1a1a2e, 20, 60);
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 15, 15);
+            camera.lookAt(0, 0, 0);
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.insertBefore(renderer.domElement, document.getElementById('ui'));
+            renderer.domElement.id = 'gameCanvas';
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(20, 40, 20);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            directionalLight.shadow.camera.near = 0.5;
+            directionalLight.shadow.camera.far = 100;
+            directionalLight.shadow.camera.left = -50;
+            directionalLight.shadow.camera.right = 50;
+            directionalLight.shadow.camera.top = 50;
+            directionalLight.shadow.camera.bottom = -50;
+            scene.add(directionalLight);
+            
+            // Point lights for atmosphere
+            const pointLight1 = new THREE.PointLight(0x00ff88, 0.5, 30);
+            pointLight1.position.set(10, 5, 10);
+            scene.add(pointLight1);
+            
+            const pointLight2 = new THREE.PointLight(0x00aaff, 0.5, 30);
+            pointLight2.position.set(-10, 5, -10);
+            scene.add(pointLight2);
+            
+            // Minimap setup
+            minimapCanvas = document.getElementById('minimap');
+            minimapCtx = minimapCanvas.getContext('2d');
+            minimapCanvas.width = 150;
+            minimapCanvas.height = 150;
+            
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('keydown', (e) => {
+                keys[e.key.toLowerCase()] = true;
+                if (e.key === 'Escape' && gameState === 'playing') togglePause();
+                if (e.key.toLowerCase() === 'e' && gameState === 'playing') interact();
+            });
+            window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
+            
+            animate();
+        }
+        
+        function createLevel() {
+            // Clear previous level
+            teachers.forEach(t => scene.remove(t.mesh));
+            tests.forEach(t => scene.remove(t));
+            computers.forEach(c => scene.remove(c.mesh));
+            walls.forEach(w => scene.remove(w));
+            decorations.forEach(d => scene.remove(d));
+            teachers = [];
+            tests = [];
+            computers = [];
+            walls = [];
+            decorations = [];
+            
+            const config = levels[Math.min(currentLevel - 1, levels.length - 1)];
+            testsRequired = config.tests;
+            computersRequired = config.computers;
+            const mapSize = config.mapSize;
+            
+            // Floor
+            const floorGeometry = new THREE.PlaneGeometry(mapSize * 2, mapSize * 2);
+            const floorMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x2a2a4a,
+                roughness: 0.8
+            });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+            decorations.push(floor);
+            
+            // Floor tiles pattern
+            for (let x = -mapSize; x < mapSize; x += 4) {
+                for (let z = -mapSize; z < mapSize; z += 4) {
+                    if ((Math.floor(x/4) + Math.floor(z/4)) % 2 === 0) {
+                        const tile = new THREE.Mesh(
+                            new THREE.PlaneGeometry(4, 4),
+                            new THREE.MeshStandardMaterial({ color: 0x3a3a5a })
+                        );
+                        tile.rotation.x = -Math.PI / 2;
+                        tile.position.set(x + 2, 0.01, z + 2);
+                        scene.add(tile);
+                        decorations.push(tile);
+                    }
+                }
+            }
+            
+            // Outer walls
+            createWall(-mapSize, 0, 1, mapSize * 2);
+            createWall(mapSize, 0, 1, mapSize * 2);
+            createWall(0, -mapSize, mapSize * 2, 1);
+            createWall(0, mapSize, mapSize * 2, 1);
+            
+            // Interior walls (classrooms)
+            for (let i = 0; i < 5 + currentLevel * 2; i++) {
+                const x = (Math.random() - 0.5) * mapSize * 1.5;
+                const z = (Math.random() - 0.5) * mapSize * 1.5;
+                const isHorizontal = Math.random() > 0.5;
+                const length = 5 + Math.random() * 10;
+                
+                if (isHorizontal) {
+                    createWall(x, z, length, 0.5);
+                } else {
+                    createWall(x, z, 0.5, length);
+                }
+            }
+            
+            // Create desks
+            for (let i = 0; i < 20 + currentLevel * 5; i++) {
+                const desk = createDesk();
+                desk.position.set(
+                    (Math.random() - 0.5) * mapSize * 1.5,
+                    0,
+                    (Math.random() - 0.5) * mapSize * 1.5
+                );
+                scene.add(desk);
+                decorations.push(desk);
+            }
+            
+            // Create lockers
+            for (let i = 0; i < 10 + currentLevel * 3; i++) {
+                const locker = createLocker();
+                locker.position.set(
+                    (Math.random() - 0.5) * mapSize * 1.5,
+                    0,
+                    (Math.random() - 0.5) * mapSize * 1.5
+                );
+                scene.add(locker);
+                decorations.push(locker);
+            }
+            
+            // Player
+            if (!player) {
+                const loader = new THREE.TextureLoader();
+                loader.load(
+                    'https://asset-cdn.schoology.com/system/files/imagecache/profile_big/pictures/picture-c0b09cdead19788fb0f8be0d53b5c572_68c34cd700b90.jpg',
+                    (texture) => {
+                        playerTexture = texture;
+                        updatePlayerTexture();
+                    },
+                    undefined,
+                    () => {
+                        // Fallback if image doesn't load
+                        createPlayerFallback();
+                    }
+                );
+                createPlayerMesh();
+            }
+            player.position.set(0, 0.5, 0);
+            
+            // Teachers
+            for (let i = 0; i < config.teachers; i++) {
+                createTeacher();
+            }
+            
+            // Tests
+            for (let i = 0; i < config.tests; i++) {
+                createTest();
+            }
+            
+            // Computers
+            for (let i = 0; i < config.computers; i++) {
+                createComputer();
+            }
+            
+            // Update UI
+            document.getElementById('testsTotal').textContent = testsRequired;
+            document.getElementById('computersTotal').textContent = computersRequired;
+            document.getElementById('level').textContent = currentLevel;
+        }
+        
+        function createPlayerMesh() {
+            const group = new THREE.Group();
+            
+            // Body
+            const bodyGeometry = new THREE.CylinderGeometry(0.4, 0.5, 1.2, 8);
+            const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x4444ff });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 0.6;
+            body.castShadow = true;
+            group.add(body);
+            
+            // Head with photo
+            const headGeometry = new THREE.BoxGeometry(0.7, 0.7, 0.1);
+            const headMaterial = new THREE.MeshStandardMaterial({ color: 0xffcc99 });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 1.5;
+            head.castShadow = true;
+            head.name = 'head';
+            group.add(head);
+            
+            // Back of head
+            const headBack = new THREE.Mesh(
+                new THREE.SphereGeometry(0.35, 8, 8),
+                new THREE.MeshStandardMaterial({ color: 0x333333 })
+            );
+            headBack.position.set(0, 1.5, 0.1);
+            group.add(headBack);
+            
+            player = group;
+            scene.add(player);
+        }
+        
+        function updatePlayerTexture() {
+            if (player && playerTexture) {
+                const head = player.getObjectByName('head');
+                if (head) {
+                    head.material = new THREE.MeshStandardMaterial({ map: playerTexture });
+                }
+            }
+        }
+        
+        function createPlayerFallback() {
+            const head = player.getObjectByName('head');
+            if (head) {
+                head.material = new THREE.MeshStandardMaterial({ color: 0xffcc99 });
+            }
+        }
+        
+        function createWall(x, z, width, depth) {
+            const geometry = new THREE.BoxGeometry(width, 4, depth);
+            const material = new THREE.MeshStandardMaterial({ 
+                color: 0x555577,
+                roughness: 0.7
+            });
+            const wall = new THREE.Mesh(geometry, material);
+            wall.position.set(x, 2, z);
+            wall.castShadow = true;
+            wall.receiveShadow = true;
+            scene.add(wall);
+            walls.push(wall);
+            
+            // Wall is also a collision object
+            wall.userData = { width, depth };
+            return wall;
+        }
+        
+        function createDesk() {
+            const group = new THREE.Group();
+            
+            // Table top
+            const top = new THREE.Mesh(
+                new THREE.BoxGeometry(1.5, 0.1, 1),
+                new THREE.MeshStandardMaterial({ color: 0x8B4513 })
+            );
+            top.position.y = 0.8;
+            top.castShadow = true;
+            group.add(top);
+            
+            // Legs
+            const legGeom = new THREE.CylinderGeometry(0.05, 0.05, 0.8);
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            [[-0.6, -0.4], [-0.6, 0.4], [0.6, -0.4], [0.6, 0.4]].forEach(([x, z]) => {
+                const leg = new THREE.Mesh(legGeom, legMat);
+                leg.position.set(x, 0.4, z);
+                group.add(leg);
+            });
+            
+            return group;
+        }
+        
+        function createLocker() {
+            const group = new THREE.Group();
+            
+            const locker = new THREE.Mesh(
+                new THREE.BoxGeometry(0.8, 2, 0.5),
+                new THREE.MeshStandardMaterial({ color: 0x4488aa })
+            );
+            locker.position.y = 1;
+            locker.castShadow = true;
+            group.add(locker);
+            
+            // Vent lines
+            for (let i = 0; i < 3; i++) {
+                const vent = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.5, 0.05, 0.01),
+                    new THREE.MeshStandardMaterial({ color: 0x336688 })
+                );
+                vent.position.set(0, 0.5 + i * 0.2, 0.26);
+                group.add(vent);
+            }
+            
+            return group;
+        }
+        
+        function createTeacher() {
+            const group = new THREE.Group();
+            
+            // Body
+            const body = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.5, 0.6, 1.5, 8),
+                new THREE.MeshStandardMaterial({ color: 0x8B0000 })
+            );
+            body.position.y = 0.75;
+            body.castShadow = true;
+            group.add(body);
+            
+            // Head
+            const head = new THREE.Mesh(
+                new THREE.SphereGeometry(0.4, 8, 8),
+                new THREE.MeshStandardMaterial({ color: 0xffcc99 })
+            );
+            head.position.y = 1.8;
+            head.castShadow = true;
+            group.add(head);
+            
+            // Evil eyes
+            const eyeGeom = new THREE.SphereGeometry(0.08, 8, 8);
+            const eyeMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.5 });
+            const leftEye = new THREE.Mesh(eyeGeom, eyeMat);
+            leftEye.position.set(-0.15, 1.85, 0.35);
+            group.add(leftEye);
+            const rightEye = new THREE.Mesh(eyeGeom, eyeMat);
+            rightEye.position.set(0.15, 1.85, 0.35);
+            group.add(rightEye);
+            
+            // Glasses
+            const glasses = new THREE.Mesh(
+                new THREE.TorusGeometry(0.15, 0.02, 8, 16),
+                new THREE.MeshStandardMaterial({ color: 0x333333 })
+            );
+            glasses.position.set(0, 1.85, 0.35);
+            glasses.rotation.y = Math.PI / 2;
+            group.add(glasses);
+            
+            // Spotlight for detection cone
+            const spotlight = new THREE.SpotLight(0xff4444, 0.5, 15, Math.PI / 6);
+            spotlight.position.y = 2;
+            spotlight.target.position.set(0, 0, 5);
+            group.add(spotlight);
+            group.add(spotlight.target);
+            
+            const config = levels[Math.min(currentLevel - 1, levels.length - 1)];
+            group.position.set(
+                (Math.random() - 0.5) * config.mapSize * 1.5,
+                0,
+                (Math.random() - 0.5) * config.mapSize * 1.5
+            );
+            
+            group.userData = {
+                speed: 0.03 + Math.random() * 0.02 + currentLevel * 0.005,
+                direction: Math.random() * Math.PI * 2,
+                turnTimer: 0,
+                patrolRadius: 10 + Math.random() * 10,
+                startPos: group.position.clone(),
+                alertLevel: 0
+            };
+            
+            scene.add(group);
+            teachers.push({ mesh: group, ...group.userData });
+        }
+        
+        function createTest() {
+            const group = new THREE.Group();
+            
+            // Paper
+            const paper = new THREE.Mesh(
+                new THREE.BoxGeometry(0.8, 0.02, 1),
+                new THREE.MeshStandardMaterial({ color: 0xffffff })
+            );
+            paper.castShadow = true;
+            group.add(paper);
+            
+            // Big red F
+            const fMark = new THREE.Mesh(
+                new THREE.BoxGeometry(0.3, 0.03, 0.4),
+                new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.2 })
+            );
+            fMark.position.y = 0.02;
+            group.add(fMark);
+            
+            // Glow effect
+            const glow = new THREE.PointLight(0xff0000, 0.5, 3);
+            glow.position.y = 0.5;
+            group.add(glow);
+            
+            const config = levels[Math.min(currentLevel - 1, levels.length - 1)];
+            group.position.set(
+                (Math.random() - 0.5) * config.mapSize * 1.5,
+                0.5 + Math.sin(Date.now() * 0.001) * 0.2,
+                (Math.random() - 0.5) * config.mapSize * 1.5
+            );
+            
+            group.userData = { type: 'test', collected: false };
+            scene.add(group);
+            tests.push(group);
+        }
+        
+        function createComputer() {
+            const group = new THREE.Group();
+            
+            // Desk
+            const desk = new THREE.Mesh(
+                new THREE.BoxGeometry(1.5, 0.8, 1),
+                new THREE.MeshStandardMaterial({ color: 0x8B4513 })
+            );
+            desk.position.y = 0.4;
+            desk.castShadow = true;
+            group.add(desk);
+            
+            // Monitor
+            const monitor = new THREE.Mesh(
+                new THREE.BoxGeometry(1, 0.8, 0.1),
+                new THREE.MeshStandardMaterial({ color: 0x222222 })
+            );
+            monitor.position.set(0, 1.2, -0.3);
+            monitor.castShadow = true;
+            group.add(monitor);
+            
+            // Screen with SecureCentrix glow
+            const screen = new THREE.Mesh(
+                new THREE.BoxGeometry(0.9, 0.7, 0.05),
+                new THREE.MeshStandardMaterial({ 
+                    color: 0x00ff88, 
+                    emissive: 0x00ff88, 
+                    emissiveIntensity: 0.5 
+                })
+            );
+            screen.position.set(0, 1.2, -0.27);
+            group.add(screen);
+            
+            // Keyboard
+            const keyboard = new THREE.Mesh(
+                new THREE.BoxGeometry(0.8, 0.05, 0.3),
+                new THREE.MeshStandardMaterial({ color: 0x333333 })
+            );
+            keyboard.position.set(0, 0.85, 0.2);
+            group.add(keyboard);
+            
+            // Glow
+            const glow = new THREE.PointLight(0x00ff88, 1, 5);
+            glow.position.set(0, 1.5, 0);
+            group.add(glow);
+            
+            const config = levels[Math.min(currentLevel - 1, levels.length - 1)];
+            group.position.set(
+                (Math.random() - 0.5) * config.mapSize * 1.5,
+                0,
+                (Math.random() - 0.5) * config.mapSize * 1.5
+            );
+            
+            group.userData = { type: 'computer', hacked: false };
+            scene.add(group);
+            computers.push({ mesh: group, hacked: false });
+        }
+        
+        function updatePlayer() {
+            if (!player || gameState !== 'playing') return;
+            
+            const moveVector = new THREE.Vector3();
+            const isSprinting = keys['shift'];
+            const speed = isSprinting ? playerSpeed * sprintMultiplier : playerSpeed;
+            
+            if (keys['w']) moveVector.z -= speed;
+            if (keys['s']) moveVector.z += speed;
+            if (keys['a']) moveVector.x -= speed;
+            if (keys['d']) moveVector.x += speed;
+            
+            // Apply movement
+            const newPos = player.position.clone().add(moveVector);
+            
+            // Simple collision with walls
+            let canMove = true;
+            walls.forEach(wall => {
+                const dx = Math.abs(newPos.x - wall.position.x);
+                const dz = Math.abs(newPos.z - wall.position.z);
+                const halfWidth = (wall.userData.width || 1) / 2 + 0.5;
+                const halfDepth = (wall.userData.depth || 1) / 2 + 0.5;
+                
+                if (dx < halfWidth && dz < halfDepth) {
+                    canMove = false;
+                }
+            });
+            
+            if (canMove) {
+                player.position.copy(newPos);
+            }
+            
+            // Rotate player to face movement direction
+            if (moveVector.length() > 0) {
+                const angle = Math.atan2(moveVector.x, moveVector.z);
+                player.rotation.y = angle;
+            }
+            
+            // Stealth drain
+            if (isSprinting && (keys['w'] || keys['a'] || keys['s'] || keys['d'])) {
+                stealth = Math.max(0, stealth - 0.3);
+            } else {
+                stealth = Math.min(100, stealth + 0.1);
+            }
+            
+            document.getElementById('stealthFill').style.width = stealth + '%';
+            document.getElementById('stealthFill').style.background = 
+                stealth > 50 ? 'linear-gradient(90deg, #00ff88, #00cc66)' :
+                stealth > 25 ? 'linear-gradient(90deg, #ffaa00, #ff8800)' :
+                'linear-gradient(90deg, #ff4444, #cc0000)';
+            
+            // Camera follow
+            camera.position.x = player.position.x;
+            camera.position.z = player.position.z + 15;
+            camera.position.y = 15;
+            camera.lookAt(player.position.x, 0, player.position.z);
+        }
+        
+        function updateTeachers() {
+            if (gameState !== 'playing') return;
+            
+            teachers.forEach(teacher => {
+                const mesh = teacher.mesh;
+                
+                // Update patrol timer
+                teacher.turnTimer += 0.016;
+                if (teacher.turnTimer > 3 + Math.random() * 2) {
+                    teacher.turnTimer = 0;
+                    teacher.direction += (Math.random() - 0.5) * Math.PI;
+                }
+                
+                // Move in patrol direction
+                mesh.position.x += Math.sin(teacher.direction) * teacher.speed;
+                mesh.position.z += Math.cos(teacher.direction) * teacher.speed;
+                mesh.rotation.y = teacher.direction;
+                
+                // Stay within patrol radius
+                const distFromStart = mesh.position.distanceTo(teacher.startPos);
+                if (distFromStart > teacher.patrolRadius) {
+                    teacher.direction = Math.atan2(
+                        teacher.startPos.x - mesh.position.x,
+                        teacher.startPos.z - mesh.position.z
+                    );
+                }
+                
+                // Detect player
+                if (player) {
+                    const distToPlayer = mesh.position.distanceTo(player.position);
+                    const detectionRange = stealth > 50 ? 5 : stealth > 25 ? 7 : 10;
+                    
+                    if (distToPlayer < detectionRange) {
+                        // Check if facing player
+                        const toPlayer = new THREE.Vector3().subVectors(player.position, mesh.position);
+                        const facing = new THREE.Vector3(Math.sin(mesh.rotation.y), 0, Math.cos(mesh.rotation.y));
+                        const dot = toPlayer.normalize().dot(facing);
+                        
+                        if (dot > 0.5 || distToPlayer < 3) {
+                            teacher.alertLevel += 0.02;
+                            
+                            if (teacher.alertLevel > 1) {
+                                // Chase player!
+                                teacher.direction = Math.atan2(
+                                    player.position.x - mesh.position.x,
+                                    player.position.z - mesh.position.z
+                                );
+                                teacher.speed = 0.08;
+                            }
+                            
+                            if (distToPlayer < 2) {
+                                gameOver();
+                            }
+                        }
+                    } else {
+                        teacher.alertLevel = Math.max(0, teacher.alertLevel - 0.01);
+                        teacher.speed = 0.03 + currentLevel * 0.005;
+                    }
+                }
+            });
+        }
+        
+        // Helper function for 2D distance (ignoring Y axis)
+        function getDistance2D(pos1, pos2) {
+            const dx = pos1.x - pos2.x;
+            const dz = pos1.z - pos2.z;
+            return Math.sqrt(dx * dx + dz * dz);
+        }
+        
+        function updateCollectibles() {
+            if (gameState !== 'playing' || !player) return;
+            
+            let nearInteractable = false;
+            let interactType = '';
+            
+            // Animate tests and check proximity
+            tests.forEach(test => {
+                if (!test.userData.collected) {
+                    test.position.y = 0.5 + Math.sin(Date.now() * 0.003) * 0.2;
+                    test.rotation.y += 0.02;
+                    
+                    // Check if player is near - use 2D distance
+                    const dist = getDistance2D(player.position, test.position);
+                    if (dist < 4) {
+                        nearInteractable = true;
+                        interactType = '📄 Press E to collect test';
+                    }
+                    
+                    // Auto-collect if very close
+                    if (dist < 1.5) {
+                        collectTest(test);
+                    }
+                }
+            });
+            
+            // Animate computer screens and check proximity
+            computers.forEach(comp => {
+                if (!comp.hacked) {
+                    const screen = comp.mesh.children[2];
+                    if (screen) {
+                        screen.material.emissiveIntensity = 0.3 + Math.sin(Date.now() * 0.005) * 0.2;
+                    }
+                    
+                    // Check if player is near - use 2D distance
+                    const dist = getDistance2D(player.position, comp.mesh.position);
+                    if (dist < 5) {
+                        nearInteractable = true;
+                        interactType = '💻 Press E to hack computer';
+                    }
+                }
+            });
+            
+            // Show/hide interact prompt
+            const prompt = document.getElementById('interactPrompt');
+            if (nearInteractable) {
+                prompt.textContent = interactType;
+                prompt.style.display = 'block';
+            } else {
+                prompt.style.display = 'none';
+            }
+        }
+        
+        function collectTest(test) {
+            if (test.userData.collected) return;
+            test.userData.collected = true;
+            scene.remove(test);
+            testsCollected++;
+            score += 100 * currentLevel;
+            showMessage('📄 Collected Failed Test! (-100 to GPA, +100 to Score)');
+            updateHUD();
+            checkWinCondition();
+        }
+        
+        function hackComputer(comp) {
+            if (comp.hacked) return;
+            comp.hacked = true;
+            comp.mesh.userData.hacked = true;
+            computersHacked++;
+            score += 250 * currentLevel;
+            
+            // Change screen color
+            const screen = comp.mesh.children[2];
+            if (screen) {
+                screen.material.color.setHex(0x00aaff);
+                screen.material.emissive.setHex(0x00aaff);
+            }
+            
+            showMessage('💻 Hacked! Now playing SecureCentrix! +250 Score');
+            updateHUD();
+            checkWinCondition();
+        }
+        
+        function interact() {
+            if (!player) return;
+            
+            let interacted = false;
+            
+            // Check for nearby tests
+            tests.forEach(test => {
+                if (!test.userData.collected && !interacted) {
+                    const dist = getDistance2D(player.position, test.position);
+                    if (dist < 4) {
+                        collectTest(test);
+                        interacted = true;
+                    }
+                }
+            });
+            
+            // Check for nearby computers
+            if (!interacted) {
+                computers.forEach(comp => {
+                    if (!comp.hacked && !interacted) {
+                        const dist = getDistance2D(player.position, comp.mesh.position);
+                        if (dist < 5) {
+                            hackComputer(comp);
+                            interacted = true;
+                        }
+                    }
+                });
+            }
+        }
+        
+        function updateMinimap() {
+            if (!minimapCtx || !player) return;
+            
+            const config = levels[Math.min(currentLevel - 1, levels.length - 1)];
+            const scale = 150 / (config.mapSize * 2);
+            
+            minimapCtx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            minimapCtx.fillRect(0, 0, 150, 150);
+            
+            // Draw walls
+            minimapCtx.fillStyle = '#555';
+            walls.forEach(wall => {
+                const x = (wall.position.x + config.mapSize) * scale;
+                const z = (wall.position.z + config.mapSize) * scale;
+                const w = (wall.userData.width || 1) * scale;
+                const d = (wall.userData.depth || 1) * scale;
+                minimapCtx.fillRect(x - w/2, z - d/2, w, d);
+            });
+            
+            // Draw tests
+            minimapCtx.fillStyle = '#ff4444';
+            tests.forEach(test => {
+                if (!test.userData.collected) {
+                    const x = (test.position.x + config.mapSize) * scale;
+                    const z = (test.position.z + config.mapSize) * scale;
+                    minimapCtx.beginPath();
+                    minimapCtx.arc(x, z, 3, 0, Math.PI * 2);
+                    minimapCtx.fill();
+                }
+            });
+            
+            // Draw computers
+            minimapCtx.fillStyle = '#00ff88';
+            computers.forEach(comp => {
+                if (!comp.hacked) {
+                    const x = (comp.mesh.position.x + config.mapSize) * scale;
+                    const z = (comp.mesh.position.z + config.mapSize) * scale;
+                    minimapCtx.fillRect(x - 4, z - 4, 8, 8);
+                }
+            });
+            
+            // Draw teachers
+            minimapCtx.fillStyle = '#ff0000';
+            teachers.forEach(teacher => {
+                const x = (teacher.mesh.position.x + config.mapSize) * scale;
+                const z = (teacher.mesh.position.z + config.mapSize) * scale;
+                minimapCtx.beginPath();
+                minimapCtx.arc(x, z, 5, 0, Math.PI * 2);
+                minimapCtx.fill();
+            });
+            
+            // Draw player
+            minimapCtx.fillStyle = '#00aaff';
+            const px = (player.position.x + config.mapSize) * scale;
+            const pz = (player.position.z + config.mapSize) * scale;
+            minimapCtx.beginPath();
+            minimapCtx.arc(px, pz, 5, 0, Math.PI * 2);
+            minimapCtx.fill();
+        }
+        
+        function updateHUD() {
+            document.getElementById('testsCollected').textContent = testsCollected;
+            document.getElementById('computersHacked').textContent = computersHacked;
+            document.getElementById('score').textContent = score;
+        }
+        
+        function showMessage(text) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.style.display = 'block';
+            setTimeout(() => msg.style.display = 'none', 2000);
+        }
+        
+        function checkWinCondition() {
+            if (testsCollected >= testsRequired && computersHacked >= computersRequired) {
+                victory();
+            }
+        }
+        
+        function startGame() {
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('hud').style.display = 'block';
+            document.getElementById('stealthMeter').style.display = 'block';
+            document.getElementById('stealthLabel').style.display = 'block';
+            document.getElementById('objective').style.display = 'block';
+            document.getElementById('minimap').style.display = 'block';
+            
+            gameState = 'playing';
+            score = 0;
+            currentLevel = 1;
+            stealth = 100;
+            testsCollected = 0;
+            computersHacked = 0;
+            
+            createLevel();
+            updateHUD();
+            
+            showLevelIndicator();
+        }
+        
+        function showLevelIndicator() {
+            const indicator = document.getElementById('levelIndicator');
+            indicator.textContent = `LEVEL ${currentLevel}`;
+            indicator.style.display = 'block';
+            setTimeout(() => indicator.style.display = 'none', 2000);
+        }
+        
+        function showInstructions() {
+            document.getElementById('instructions').style.display = 'block';
+        }
+        
+        function hideInstructions() {
+            document.getElementById('instructions').style.display = 'none';
+        }
+        
+        function togglePause() {
+            if (gameState === 'playing') {
+                gameState = 'paused';
+                document.getElementById('pauseMenu').style.display = 'block';
+            } else if (gameState === 'paused') {
+                resumeGame();
+            }
+        }
+        
+        function resumeGame() {
+            gameState = 'playing';
+            document.getElementById('pauseMenu').style.display = 'none';
+        }
+        
+        function gameOver() {
+            gameState = 'gameover';
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+        
+        function victory() {
+            gameState = 'victory';
+            document.getElementById('victoryScore').textContent = score;
+            document.getElementById('victory').style.display = 'block';
+        }
+        
+        function nextLevel() {
+            document.getElementById('victory').style.display = 'none';
+            currentLevel++;
+            testsCollected = 0;
+            computersHacked = 0;
+            stealth = 100;
+            gameState = 'playing';
+            
+            createLevel();
+            updateHUD();
+            showLevelIndicator();
+            
+            document.getElementById('objectiveText').textContent = 
+                `Level ${currentLevel}: Collect ${testsRequired} tests and hack ${computersRequired} computers!`;
+        }
+        
+        function restartGame() {
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('victory').style.display = 'none';
+            document.getElementById('pauseMenu').style.display = 'none';
+            
+            currentLevel = 1;
+            score = 0;
+            testsCollected = 0;
+            computersHacked = 0;
+            stealth = 100;
+            gameState = 'playing';
+            
+            createLevel();
+            updateHUD();
+            showLevelIndicator();
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (gameState === 'playing') {
+                updatePlayer();
+                updateTeachers();
+                updateCollectibles();
+                updateMinimap();
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Initialize
+        init();
+    </script>
+</body>
+</html>
