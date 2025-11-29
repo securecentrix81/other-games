@@ -1,5 +1,4 @@
 // player.js
-import * as THREE from 'three';
 import { clamp } from './utils.js';
 
 export class Player {
