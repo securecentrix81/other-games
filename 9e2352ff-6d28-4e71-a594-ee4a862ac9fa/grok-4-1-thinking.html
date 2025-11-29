@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saharsh Life</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .hidden { display: none; }
+        #log { max-height: 300px; overflow-y: auto; background: rgba(0,0,0,0.4); }
+        canvas { background: #000; border: 4px solid #0f0; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center">
+
+    <!-- MAIN MENU -->
+    <div id="menu" class="text-center">
+        <h1 class="text-7xl font-bold mb-8 text-red-500">Saharsh Life</h1>
+        <img src="https://asset-cdn.schoology.com/system/files/imagecache/profile_big/pictures/picture-c0b09cdead19788fb0f8be0d53b5c572_68c34cd700b90.jpg" alt="Saharsh" class="w-80 h-80 rounded-full mx-auto mb-8 border-8 border-purple-600">
+        <button onclick="startGame()" class="bg-gradient-to-r from-green-500 to-blue-600 px-12 py-6 text-3xl rounded-full hover:scale-110 transition">Start the Chaos</button>
+    </div>
+
+    <!-- MAIN GAME SCREEN -->
+    <div id="game-screen" class="hidden max-w-6xl mx-auto p-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <!-- Avatar + Stats -->
+            <div class="text-center">
+                <img src="https://asset-cdn.schoology.com/system/files/imagecache/profile_big/pictures/picture-c0b09cdead19788fb0f8be0d53b5c572_68c34cd700b90.jpg" alt="Saharsh" class="w-64 h-64 rounded-full mx-auto border-4 border-red-600">
+                <div class="mt-6 bg-gray-800 p-6 rounded-xl">
+                    <p class="text-2xl">Day <span id="day">1</span>/7</p>
+                    <p>Grades: <span id="grades">80</span></p>
+                    <p>Health: <span id="health">100</span></p>
+                    <p>Annoyance: <span id="annoyance">0</span></p>
+                    <p>Bullied: <span id="bullied">0</span></p>
+                    <p class="text-green-400">Centrix Points: <span id="centrix">0</span></p>
+                </div>
+            </div>
+
+            <!-- Game Area -->
+            <div class="lg:col-span-3">
+                <h2 id="situation" class="text-4xl mb-6 text-yellow-400"></h2>
+                <div id="log" class="bg-gray-800 p-6 rounded-xl mb-6 text-lg"></div>
+                <div id="actions" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECURE CENTRIX81 MINI-GAME -->
+    <div id="mini-game" class="hidden text-center">
+        <h1 class="text-6xl font-bold mb-8 text-green-500 glitch">SECURE CENTRIX81</h1>
+        <p class="text-5xl mb-8">Points: <span id="mini-points">0</span></p>
+        <canvas id="click-canvas" width="500" height="500" class="mx-auto cursor-crosshair"></canvas>
+        <div class="mt-8 text-2xl">
+            <p>Auto-Hackers: <span id="auto-hackers">0</span> | Cost: <span id="hacker-cost">50</span></p>
+            <button onclick="buyHacker()" class="bg-yellow-500 text-black px-8 py-4 mt-4 rounded text-xl hover:bg-yellow-400">Buy Auto-Hacker</button>
+        </div>
+        <p id="timer" class="mt-8 text-3xl text-red-500"></p>
+        <button onclick="backToLife()" class="bg-red-600 px-10 py-5 mt-8 text-2xl rounded hover:bg-red-500">Back to Real Life</button>
+    </div>
+
+    <!-- ENDING SCREEN -->
+    <div id="ending" class="hidden text-center">
+        <h1 class="text-7xl font-bold mb-8 text-red-600">Final Result</h1>
+        <p id="ending-text" class="text-3xl max-w-4xl mx-auto leading-relaxed"></p>
+        <button onclick="location.reload()" class="bg-green-600 px-12 py-6 mt-12 text-3xl rounded-full hover:scale-110 transition">Play Again</button>
+    </div>
+
+    <script>
+        const situations = [
+            "Math class. The teacher is writing equations you don't understand.",
+            "Lunch break. Everyone is talking except you.",
+            "Hallway chaos. Lockers slamming, people running.",
+            "English class. The teacher is forcing everyone to read aloud.",
+            "Finally home! Time to do absolutely nothing productive."
+        ];
+
+        let stats = { day: 1, grades: 80, health: 100, annoyance: 0, bullied: 0, centrixPoints: 0 };
+        let clickPower = 1, autoHackers = 0, hackerCost = 50;
+        let turnsThisDay = 0, turnsPerDay = 5, inSchool = true;
+        let sessionStartPoints = 0, miniTimer, autoInterval;
+
+        const canvas = document.getElementById('click-canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.src = "https://asset-cdn.schoology.com/system/files/imagecache/profile_big/pictures/picture-c0b09cdead19788fb0f8be0d53b5c572_68c34cd700b90.jpg";
+
+        function drawCanvas() {
+            ctx.clearRect(0, 0, 500, 500);
+            ctx.drawImage(img, 150, 100, 200, 200);
+            ctx.font = '40px Arial';
+            ctx.fillStyle = '#0f0';
+            ctx.fillText('CLICK ME', 150, 350);
+        }
+        img.onload = drawCanvas;
+
+        canvas.addEventListener('click', () => {
+            stats.centrixPoints += clickPower;
+            updateMiniDisplay();
+        });
+
+        function updateMiniDisplay() {
+            document.getElementById('mini-points').innerText = Math.floor(stats.centrixPoints);
+            document.getElementById('auto-hackers').innerText = autoHackers;
+            document.getElementById('hacker-cost').innerText = Math.floor(hackerCost);
+        }
+
+        function buyHacker() {
+            if (stats.centrixPoints >= hackerCost) {
+                stats.centrixPoints -= hackerCost;
+                autoHackers++;
+                hackerCost = Math.floor(hackerCost * 1.5);
+                updateMiniDisplay();
+            }
+        }
+
+        function startAutoHack() {
+            clearInterval(autoInterval);
+            autoInterval = setInterval(() => {
+                stats.centrixPoints += autoHackers * 0.1;
+                updateMiniDisplay();
+            }, 100);
+        }
+
+        function addLog(text) {
+            const log = document.getElementById('log');
+            const p = document.createElement('p');
+            p.innerText = "> " + text;
+            p.className = "text-green-400";
+            log.appendChild(p);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function updateStats() {
+            document.getElementById('day').innerText = stats.day;
+            document.getElementById('grades').innerText = stats.grades;
+            document.getElementById('health').innerText = stats.health;
+            document.getElementById('annoyance').innerText = stats.annoyance;
+            document.getElementById('bullied').innerText = stats.bullied;
+            document.getElementById('centrix').innerText = Math.floor(stats.centrixPoints);
+        }
+
+        function checkDeath() {
+            if (stats.health <= 0) {
+                endGame("The bullying finally broke you. You couldn't take it anymore... Game Over.");
+                return true;
+            }
+            return false;
+        }
+
+        function randomBully() {
+            if (Math.random() < stats.annoyance / 800) {
+                stats.health -= 25;
+                stats.bullied++;
+                addLog("Bully found you! They took your lunch money and your dignity. -25 Health");
+                checkDeath();
+            }
+        }
+
+        function teacherCatch() {
+            if (Math.random() < 0.4) {
+                stats.grades -= 25;
+                addLog("Teacher caught you! Detention + grades destroyed.");
+            }
+        }
+
+        function startGame() {
+            document.getElementById('menu').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            nextTurn();
+        }
+
+        function nextTurn() {
+            if (checkDeath()) return;
+            turnsThisDay++;
+            if (turnsThisDay > turnsPerDay) { endDay(); return; }
+
+            const sit = situations[Math.floor(Math.random() * situations.length)];
+            inSchool = !sit.includes("home");
+            document.getElementById('situation').innerText = sit;
+
+            const actionsDiv = document.getElementById('actions');
+            actionsDiv.innerHTML = '';
+
+            const actions = [
+                {text: "✏️ Try to pay attention", effect: () => { stats.grades += 20; addLog("You accidentally learned something... disgusting."); }},
+                {text: "😴 Slack off completely", effect: () => { stats.grades -= 15; stats.health += 10; addLog("Perfect. Another wasted period."); if(inSchool) teacherCatch(); }},
+                {text: "😈 Annoy everyone nearby", effect: () => { stats.annoyance += 40; addLog("You made weird noises and threw stuff. Legendary."); randomBully(); }},
+                {text: "🎮 Play Secure Centrix81", effect: playCentrix}
+            ];
+
+            actions.forEach(a => {
+                const btn = document.createElement('button');
+                btn.innerText = a.text;
+                btn.className = "bg-purple-700 hover:bg-purple-900 p-6 text-2xl rounded-xl transition";
+                btn.onclick = () => { a.effect(); updateStats(); nextTurn(); };
+                actionsDiv.appendChild(btn);
+            });
+        }
+
+        function endDay() {
+            turnsThisDay = 0;
+            stats.day++;
+            addLog(`--- Day ${stats.day-1} ended. You survived... somehow. ---`);
+            if (stats.day > 7) { calculateEnding(); return; }
+            nextTurn();
+        }
+
+        function playCentrix() {
+            sessionStartPoints = stats.centrixPoints;
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('mini-game').classList.remove('hidden');
+            drawCanvas();
+            updateMiniDisplay();
+            startAutoHack();
+
+            if (inSchool) {
+                let time = 30;
+                document.getElementById('timer').innerText = `Hiding phone... ${time}s until teacher looks`;
+                miniTimer = setInterval(() => {
+                    time--;
+                    document.getElementById('timer').innerText = `Hiding phone... ${time}s until teacher looks`;
+                    if (time <= 0) { clearInterval(miniTimer); backToLife(true); }
+                }, 1000);
+            } else {
+                document.getElementById('timer').innerText = "UNLIMITED TIME AT HOME BABY";
+            }
+        }
+
+        function backToLife(forced = false) {
+            clearInterval(autoInterval);
+            if (miniTimer) clearInterval(miniTimer);
+            const gained = Math.floor(stats.centrixPoints - sessionStartPoints);
+            addLog(`Played Secure Centrix81 → +${gained} points${forced ? " (forced back by teacher!)" : ""}`);
+            if (forced && Math.random() < 0.6) teacherCatch();
+
+            document.getElementById('mini-game').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            updateStats();
+        }
+
+        function calculateEnding() {
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('ending').classList.remove('hidden');
+
+            const failScore = Math.max(0, 100 - stats.grades);
+            const saharshScore = failScore + stats.annoyance + (stats.bullied * 50) + (stats.centrixPoints / 5);
+
+            let text = `Grades: ${stats.grades} | Annoyance: ${stats.annoyance} | Times Bullied: ${stats.bullied} | Centrix Points: ${Math.floor(stats.centrixPoints)}<br>Saharsh Score: ${Math.floor(saharshScore)}<br><br>`;
+
+            if (saharshScore > 1500) text += "🗿 LEGENDARY SAHARSH 🗿<br>You perfectly embodied the life: failing everything, annoying literally everyone, getting bullied daily, and grinding Secure Centrix81 like a pro. Absolute legend.";
+            else if (saharshScore > 800) text += "Solid Saharsh moment. Lots of failing, decent annoying, got bullied a bunch, and played way too much Centrix.";
+            else if (stats.grades > 80) text += "bro actually tried in school 💀<br>massive skill issue";
+            else text += "Mid performance. You kinda failed and annoyed some people, but step it up.";
+
+            document.getElementById('ending-text').innerHTML = text;
+        }
+
+        // Start with canvas ready
+        drawCanvas();
+    </script>
+</body>
+</html>
