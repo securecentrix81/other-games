@@ -1,77 +1,154 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Saharsh Life</title>
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        background-color: #f0f0f0;
-        text-align: center;
-    }
-    h1 {
-        color: #333;
-    }
-    .game-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 80vh;
-    }
-    .game {
-        width: 300px;
-        height: 200px;
-        background-color: #fff;
-        border: 2px solid #333;
-        border-radius: 10px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-    }
-    button {
-        padding: 10px 20px;
-        margin: 10px;
-        background-color: #007bff;
-        color: #fff;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-    }
-</style>
-</head>
-<body>
-    <h1>Welcome to Saharsh Life</h1>
-    <div class="game-container">
-        <div class="game">
-            <p>Live as Saharsh and navigate through the challenges of failing classes, getting bullied, and playing Secure Centrix81.</p>
-            <button onclick="playGame()">Start</button>
-        </div>
-    </div>
-    <script>
-        function playGame() {
-            alert("You are now living as Saharsh. Good luck navigating through the challenges!");
-            // Game logic
-            let classesFailed = 0;
-            let bulliesEncountered = 0;
-            let gamesPlayed = 0;
-            
-            function failClass() {
-                classesFailed++;
-                alert("You failed a class. Total classes failed: " + classesFailed);
-            }
-            
-            function encounterBully() {
-                bulliesEncountered++;
-                alert("You encountered a bully. Total bullies encountered: " + bulliesEncountered);
-            }
-            
-            function playSecureCentrix() {
-                gamesPlayed++;
-                alert("You played Secure Centrix81. Total games played: " + gamesPlayed);
-            }
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saharsh Life - The Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
         }
+
+        #gameContainer {
+            text-align: center;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+
+        #saharsh {
+            width: 200px;
+            height: 300px;
+            background-image: url('https://asset-cdn.schoology.com/system/files/imagecache/profile_big/pictures/picture-c0b09cdead19788fb0f8be0d53b5c572_68c34cd700b90.jpg');
+            background-size: cover;
+            background-position: center;
+            margin: 20px auto;
+            border-radius: 10px;
+        }
+
+        #stats {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+
+        .event {
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            background-color: #eee;
+            border-radius: 5px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background-color: #3e8e41;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="gameContainer">
+        <h1>Saharsh Life - The Game</h1>
+        <div id="saharsh"></div>
+
+        <div id="stats">
+            <div>Classes Failed: <span id="failedClasses">0</span></div>
+            <div>Bullied Count: <span id="bulliedCount">0</span></div>
+            <div>SecurCentrix Time (hours): <span id="securcentrixTime">0</span></div>
+            <div>Annoyance Level: <span id="annoyanceLevel">0</span></div>
+        </div>
+
+        <div id="eventLog">
+            <h2>Event Log</h2>
+        </div>
+
+        <button onclick="nextDay()">Next Day</button>
+    </div>
+
+    <script>
+        let failedClasses = 0;
+        let bulliedCount = 0;
+        let securcentrixTime = 0;
+        let annoyanceLevel = 0;
+        let day = 1;
+
+        const eventLog = document.getElementById('eventLog');
+
+        function logEvent(message) {
+            const eventDiv = document.createElement('div');
+            eventDiv.classList.add('event');
+            eventDiv.textContent = `Day ${day}: ${message}`;
+            eventLog.prepend(eventDiv); // Add to the top of the log
+        }
+
+        function updateStats() {
+            document.getElementById('failedClasses').textContent = failedClasses;
+            document.getElementById('bulliedCount').textContent = bulliedCount;
+            document.getElementById('securcentrixTime').textContent = securcentrixTime;
+            document.getElementById('annoyanceLevel').textContent = annoyanceLevel;
+        }
+
+        function nextDay() {
+          day++;
+
+          const randomEvent = Math.random();
+
+          if (randomEvent < 0.1) {
+              failedClasses++;
+              logEvent("Failed another class! Oops!");
+          } else if (randomEvent < 0.2) {
+              bulliedCount++;
+              logEvent("Encountered bullies in the hallway.");
+          } else if (randomEvent < 0.3) {
+              securcentrixTime += Math.floor(Math.random() * 4); // 0-3 hours
+              logEvent("Spent hours playing SecurCentrix.");
+          } else if (randomEvent < 0.4) {
+              annoyanceLevel += Math.floor(Math.random() * 6);
+              logEvent("Annoyed other students.");
+          } else if (randomEvent < 0.5) {
+              logEvent("Received a surprise test in class!");
+          } else if (randomEvent < 0.55) {
+              logEvent("Found a secret shortcut in the school.");
+          } else if (randomEvent < 0.6) {
+              logEvent("Participated in a school talent show.");
+          } else if (randomEvent < 0.65) {
+              logEvent("Got detention for being late to class.");
+          } else if (randomEvent < 0.7) {
+              logEvent("Helped a classmate with their homework.");
+          } else if (randomEvent < 0.75) {
+              logEvent("Discovered a new glitch in SecurCentrix.");
+              securcentrixTime += 1;
+          } else if (randomEvent < 0.8) {
+              logEvent("The school had a fire drill today.");
+          } else if (randomEvent < 0.85) {
+              logEvent("Received an award for academic excellence!");
+          } else if (randomEvent < 0.9) {
+              logEvent("Lost your homework and had to redo it.");
+          } else {
+              logEvent("Took part in a school charity event.");
+          }
+
+          updateStats();
+      }
     </script>
 </body>
+
 </html>
