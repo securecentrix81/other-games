@@ -1,6 +1,5 @@
 // game.js
 
-import * as THREE from 'three';
 import { Player } from './player.js';
 import { NPC } from './npc.js';
 import { updateHUD } from './ui.js';
