@@ -1,1 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saharsh and Anbu Dating Sim</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
+        body {
+            font-family: 'Georgia', serif;
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .game-container {
+            width: 90vw;
+            max-width: 900px;
+            height: 90vh;
+            max-height: 600px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .game-header {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a6f);
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background: rgba(255, 107, 107, 0.1);
+            border-bottom: 2px solid #ff6b6b;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .relationship-bar {
+            width: 200px;
+            height: 20px;
+            background: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid #ff6b6b;
+        }
+
+        .relationship-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #ff8e8e);
+            transition: width 0.5s ease;
+            border-radius: 8px;
+        }
+
+        .game-scene {
+            flex: 1;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98FB98 100%);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .tree-scene {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: linear-gradient(to bottom, #87CEEB 0%, #90EE90 70%, #228B22 100%);
+        }
+
+        .tree {
+            position: absolute;
+            bottom: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .tree-trunk {
+            width: 60px;
+            height: 200px;
+            background: #8B4513;
+            margin: 0 auto;
+            border-radius: 30px 30px 0 0;
+            position: relative;
+        }
+
+        .tree-branches {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 40px solid transparent;
+            border-right: 40px solid transparent;
+            border-bottom: 60px solid #228B22;
+        }
+
+        .tree-leaves {
+            position: absolute;
+            top: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 80px;
+            background: #32CD32;
+            border-radius: 50px;
+        }
+
+        .character {
+            position: absolute;
+            font-size: 3em;
+            transition: all 0.5s ease;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .saharsh {
+            bottom: 25%;
+            left: 40%;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .anbu {
+            bottom: 25%;
+            right: 40%;
+            animation: float 3s ease-in-out infinite 1.5s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .heart {
+            position: absolute;
+            font-size: 2em;
+            animation: heartFloat 2s ease-in-out infinite;
+            color: #ff6b6b;
+        }
+
+        @keyframes heartFloat {
+            0%, 100% { transform: translateY(0px) scale(1); opacity: 1; }
+            50% { transform: translateY(-20px) scale(1.2); opacity: 0.8; }
+        }
+
+        .dialogue-box {
+            background: rgba(255, 255, 255, 0.95);
+            border: 3px solid #ff6b6b;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .character-name {
+            font-weight: bold;
+            color: #ff6b6b;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .dialogue-text {
+            line-height: 1.6;
+            margin-bottom: 15px;
+            min-height: 60px;
+        }
+
+        .choices {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .choice-button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a6f);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .choice-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .choice-button:active {
+            transform: translateY(0);
+        }
+
+        .game-menu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .menu-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 500px;
+        }
+
+        .menu-title {
+            font-size: 2.5em;
+            color: #ff6b6b;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .menu-subtitle {
+            font-size: 1.2em;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .menu-button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a6f);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1.1em;
+            margin: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .menu-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .score-display {
+            font-weight: bold;
+            color: #ff6b6b;
+        }
+
+        .level-display {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .end-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1001;
+        }
+
+        .end-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 600px;
+        }
+
+        .end-title {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+
+        .success { color: #4CAF50; }
+        .failure { color: #f44336; }
+
+        .heart-animation {
+            animation: heartPop 1s ease-in-out infinite;
+        }
+
+        @keyframes heartPop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+
+        .kiss-scene {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 4em;
+            animation: kissAnimation 2s ease-in-out;
+        }
+
+        @keyframes kissAnimation {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">💕 Saharsh & Anbu Dating Sim 💕</div>
+        
+        <div class="status-bar">
+            <div class="status-item">
+                <span>Relationship:</span>
+                <div class="relationship-bar">
+                    <div class="relationship-fill" id="relationshipFill"></div>
+                </div>
+                <span class="score-display" id="relationshipScore">0</span>
+            </div>
+            <div class="status-item">
+                <span>Level:</span>
+                <span class="level-display" id="currentLevel">1</span>
+            </div>
+        </div>
+
+        <div class="game-scene">
+            <div class="tree-scene" id="treeScene">
+                <div class="tree">
+                    <div class="tree-leaves"></div>
+                    <div class="tree-branches"></div>
+                    <div class="tree-trunk"></div>
+                </div>
+                <div class="character saharsh" id="saharsh">🌳</div>
+                <div class="character anbu" id="anbu">👦</div>
+            </div>
+        </div>
+
+        <div class="dialogue-box" id="dialogueBox">
+            <div class="character-name" id="characterName"></div>
+            <div class="dialogue-text" id="dialogueText"></div>
+            <div class="choices" id="choices"></div>
+        </div>
+
+        <div class="game-menu" id="mainMenu">
+            <div class="menu-content">
+                <div class="menu-title">💕 Saharsh & Anbu 💕</div>
+                <div class="menu-subtitle">A romantic adventure under the tree</div>
+                <p style="margin-bottom: 20px; color: #666;">
+                    Help Saharsh and Anbu navigate their feelings while sitting in their favorite tree! 
+                    Make choices to build their relationship and see if love blooms.
+                </p>
+                <button class="menu-button" onclick="startGame()">Start Game</button>
+                <button class="menu-button" onclick="showInstructions()">How to Play</button>
+            </div>
+        </div>
+
+        <div class="end-screen" id="endScreen">
+            <div class="end-content">
+                <div class="end-title" id="endTitle"></div>
+                <div id="endMessage"></div>
+                <button class="menu-button" onclick="restartGame()">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class DatingSim {
+            constructor() {
+                this.relationship = 0;
+                this.currentLevel = 1;
+                this.currentDialogue = 0;
+                this.gameState = 'menu';
+                this.characters = {
+                    saharsh: { name: 'Saharsh', emoji: '🌳', affection: 0 },
+                    anbu: { name: 'Anbu', emoji: '👦', affection: 0 }
+                };
+                this.initializeGame();
+            }
+
+            initializeGame() {
+                this.setupEventListeners();
+                this.updateUI();
+            }
+
+            setupEventListeners() {
+                // Character interaction
+                document.getElementById('saharsh').addEventListener('click', () => {
+                    this.interactWithCharacter('saharsh');
+                });
+
+                document.getElementById('anbu').addEventListener('click', () => {
+                    this.interactWithCharacter('anbu');
+                });
+
+                // Keyboard navigation
+                document.addEventListener('keydown', (e) => {
+                    if (this.gameState === 'playing') {
+                        this.handleKeyPress(e);
+                    }
+                });
+            }
+
+            handleKeyPress(e) {
+                const key = e.key;
+                const choices = document.querySelectorAll('.choice-button');
+                
+                if (key >= '1' && key <= '9') {
+                    const index = parseInt(key) - 1;
+                    if (choices[index]) {
+                        choices[index].click();
+                    }
+                }
+                
+                if (key === 'Enter' && choices[0]) {
+                    choices[0].click();
+                }
+            }
+
+            startGame() {
+                this.gameState = 'playing';
+                this.relationship = 0;
+                this.currentLevel = 1;
+                this.currentDialogue = 0;
+                this.characters.saharsh.affection = 0;
+                this.characters.anbu.affection = 0;
+                
+                document.getElementById('mainMenu').style.display = 'none';
+                this.updateUI();
+                this.showDialogue('Saharsh', 'Hey Anbu! Want to sit in our favorite tree today?', 'saharsh');
+            }
+
+            showDialogue(speaker, text, character) {
+                document.getElementById('characterName').textContent = speaker;
+                document.getElementById('dialogueText').textContent = text;
+                this.updateChoices(character);
+            }
+
+            updateChoices(character) {
+                const choicesContainer = document.getElementById('choices');
+                choicesContainer.innerHTML = '';
+
+                const choiceSets = {
+                    saharsh: [
+                        { text: "I'd love to! *smile warmly*", effect: 15, next: 'anbu1' },
+                        { text: "Sure, but don't push me off the branch!", effect: 5, next: 'anbu1' },
+                        { text: "Maybe some other time...", effect: -10, next: 'anbu1' }
+                    ],
+                    anbu1: [
+                        { text: "You look really handsome today 😊", effect: 20, next: 'saharsh2' },
+                        { text: "This tree has seen so many of our memories", effect: 10, next: 'saharsh2' },
+                        { text: "I was just being polite earlier", effect: -15, next: 'saharsh2' }
+                    ],
+                    saharsh2: [
+                        { text: "Want to share some snacks with me?", effect: 8, next: 'anbu2' },
+                        { text: "Remember when we used to climb trees as kids?", effect: 12, next: 'anbu2' },
+                        { text: "You know what? I think I need to go home", effect: -12, next: 'anbu2' }
+                    ],
+                    anbu2: [
+                        { text: "I'd love to share! *move closer*", effect: 18, next: 'saharsh3' },
+                        { text: "Tell me more about those memories", effect: 8, next: 'saharsh3' },
+                        { text: "Actually, I think I'm getting dizzy up here", effect: -8, next: 'saharsh3' }
+                    ],
+                    saharsh3: [
+                        { text: "Anbu... I think I have feelings for you ❤️", effect: 25, next: 'anbu3' },
+                        { text: "Look at that sunset! Beautiful, isn't it?", effect: 10, next: 'anbu3' },
+                        { text: "We should head back before it gets dark", effect: 0, next: 'anbu3' }
+                    ],
+                    anbu3: [
+                        { text: "I feel the same way! *lean in*", effect: 30, next: 'kiss' },
+                        { text: "The sunset is beautiful, like you", effect: 20, next: 'saharsh4' },
+                        { text: "Yeah, you're right. Let's go", effect: -10, next: 'saharsh4' }
+                    ],
+                    saharsh4: [
+                        { text: "Wait! Before we go... *take your hand*", effect: 15, next: 'anbu3' },
+                        { text: "Okay, let's climb down carefully", effect: 5, next: 'ending_neutral' }
+                    ]
+                };
+
+                const choices = choiceSets[character] || [];
+                choices.forEach((choice, index) => {
+                    const button = document.createElement('button');
+                    button.className = 'choice-button';
+                    button.textContent = `${index + 1}. ${choice.text}`;
+                    button.onclick = () => this.makeChoice(choice.effect, choice.next);
+                    choicesContainer.appendChild(button);
+                });
+            }
+
+            makeChoice(effect, nextScene) {
+                this.relationship = Math.max(0, Math.min(100, this.relationship + effect));
+                this.characters.saharsh.affection = this.relationship;
+                this.characters.anbu.affection = this.relationship;
+
+                // Check for special scenes
+                if (nextScene === 'kiss') {
+                    this.showKissScene();
+                    return;
+                }
+
+                if (nextScene === 'ending_neutral') {
+                    this.showEnding(false, "You both climbed down safely, but the moment was lost. Maybe next time?");
+                    return;
+                }
+
+                // Continue dialogue
+                setTimeout(() => {
+                    this.continueDialogue(nextScene);
+                }, 500);
+
+                this.updateUI();
+            }
+
+            continueDialogue(scene) {
+                const dialogues = {
+                    anbu1: () => this.showDialogue('Anbu', 'That sounds nice! I\'ve been looking forward to some quality time with you.', 'anbu1'),
+                    saharsh2: () => this.showDialogue('Saharsh', 'Thanks! You always know how to make me smile. This tree feels like our special place.', 'saharsh2'),
+                    anbu2: () => this.showDialogue('Anbu', 'I\'d love to! Getting to know each other better is the best part.', 'anbu2'),
+                    saharsh3: () => this.showDialogue('Saharsh', 'Anbu, sitting here with you makes me feel so peaceful. You mean a lot to me.', 'saharsh3'),
+                    anbu3: () => this.showDialogue('Anbu', 'Saharsh... I feel something special too. This tree will always remind me of you.', 'anbu3'),
+                    saharsh4: () => this.showDialogue('Saharsh', 'You know what? Let\'s enjoy this moment a little longer. The sunset is perfect.', 'saharsh4')
+                };
+
+                if (dialogues[scene]) {
+                    dialogues[scene]();
+                } else {
+                    this.checkEnding();
+                }
+            }
+
+            showKissScene() {
+                this.relationship = Math.min(100, this.relationship + 20);
+                this.updateUI();
+
+                // Create kiss animation
+                const kissElement = document.createElement('div');
+                kissElement.className = 'kiss-scene';
+                kissElement.textContent = '💕';
+                document.getElementById('treeScene').appendChild(kissElement);
+
+                // Move characters closer
+                document.getElementById('saharsh').style.left = '45%';
+                document.getElementById('anbu').style.right = '45%';
+
+                setTimeout(() => {
+                    this.showEnding(true, "Under the branches of your favorite tree, Saharsh and Anbu shared their first kiss. Love bloomed that day, and they knew their friendship had blossomed into something beautiful. 💕");
+                }, 2500);
+            }
+
+            showEnding(success, message) {
+                this.gameState = 'ended';
+                const endScreen = document.getElementById('endScreen');
+                const endTitle = document.getElementById('endTitle');
+                const endMessage = document.getElementById('endMessage');
+
+                if (success) {
+                    endTitle.textContent = '💕 True Love Blooms! 💕';
+                    endTitle.className = 'end-title success';
+                } else {
+                    endTitle.textContent = '🌳 A Peaceful Day 🌳';
+                    endTitle.className = 'end-title';
+                }
+
+                endMessage.innerHTML = `
+                    <p style="margin: 20px 0; font-size: 1.1em; line-height: 1.6;">${message}</p>
+                    <p style="margin: 20px 0; color: #666;">Final Relationship Score: <strong>${this.relationship}/100</strong></p>
+                    <p style="margin: 10px 0; color: #888;">Level Reached: ${this.currentLevel}</p>
+                `;
+
+                endScreen.style.display = 'flex';
+            }
+
+            checkEnding() {
+                if (this.relationship >= 80) {
+                    this.showEnding(true, "The connection between Saharsh and Anbu is undeniable! Their relationship has blossomed beautifully under the tree.");
+                } else if (this.relationship <= 20) {
+                    this.showEnding(false, "Sometimes friendship is the most beautiful thing. Saharsh and Anbu enjoyed a peaceful day together.");
+                } else {
+                    this.currentLevel++;
+                    this.continueToNextLevel();
+                }
+            }
+
+            continueToNextLevel() {
+                const levelDialogues = {
+                    2: () => {
+                        this.showDialogue('Saharsh', 'This feels like the beginning of something wonderful...', 'saharsh2');
+                    },
+                    3: () => {
+                        this.showDialogue('Anbu', 'I hope we can come back to this tree often', 'anbu2');
+                    }
+                };
+
+                if (levelDialogues[this.currentLevel]) {
+                    levelDialogues[this.currentLevel]();
+                } else {
+                    // Max level reached, show good ending
+                    this.showEnding(true, "Saharsh and Anbu have built a beautiful relationship. Their love story continues under the tree where it all began! 💕");
+                }
+            }
+
+            interactWithCharacter(character) {
+                if (this.gameState !== 'playing') return;
+
+                const interactions = {
+                    saharsh: [
+                        "Saharsh smiles warmly at you! 💕",
+                        "Saharsh winks playfully! 😏",
+                        "Saharsh seems happy to see you! 😊"
+                    ],
+                    anbu: [
+                        "Anbu gives you a friendly wave! 👋",
+                        "Anbu blushes slightly! 😳",
+                        "Anbu looks excited to talk to you! 😄"
+                    ]
+                };
+
+                const messages = interactions[character];
+                const message = messages[Math.floor(Math.random() * messages.length)];
+                
+                this.showDialogue(this.characters[character].name, message, character);
+                
+                // Small relationship boost for interaction
+                this.relationship = Math.min(100, this.relationship + 2);
+                this.updateUI();
+            }
+
+            updateUI() {
+                document.getElementById('relationshipFill').style.width = this.relationship + '%';
+                document.getElementById('relationshipScore').textContent = this.relationship;
+                document.getElementById('currentLevel').textContent = this.currentLevel;
+
+                // Add floating hearts when relationship is high
+                if (this.relationship > 60) {
+                    this.createFloatingHearts();
+                }
+            }
+
+            createFloatingHearts() {
+                if (Math.random() > 0.7) { // 30% chance
+                    const heart = document.createElement('div');
+                    heart.className = 'heart';
+                    heart.textContent = '💕';
+                    heart.style.left = Math.random() * 80 + 10 + '%';
+                    heart.style.bottom = Math.random() * 40 + 20 + '%';
+                    
+                    document.getElementById('treeScene').appendChild(heart);
+                    
+                    setTimeout(() => {
+                        if (heart.parentNode) {
+                            heart.parentNode.removeChild(heart);
+                        }
+                    }, 2000);
+                }
+            }
+        }
+
+        // Game control functions
+        let game;
+
+        function startGame() {
+            game = new DatingSim();
+            game.startGame();
+        }
+
+        function showInstructions() {
+            alert(`💕 How to Play Saharsh & Anbu Dating Sim 💕
+
+🎯 OBJECTIVE: Help Saharsh and Anbu build their relationship while sitting in their favorite tree!
+
+🎮 CONTROLS:
+• Click on characters to interact with them
+• Click numbered choices (1-9) or click buttons directly
+• Press Enter to select the first choice
+• Use keyboard numbers to select choices quickly
+
+💖 GAMEPLAY:
+• Make dialogue choices to build relationship points
+• Each choice affects how Saharsh and Anbu feel about each other
+• Higher relationship scores unlock romantic scenes
+• Multiple story paths lead to different endings
+• Collect 80+ relationship points for the true love ending!
+
+🌟 FEATURES:
+• Beautiful tree setting with floating animations
+• Character interactions and personality
+• Multiple dialogue paths and outcomes
+• Relationship tracking and scoring
+• Romantic scenes and happy endings
+
+Try to get the perfect score and see Saharsh and Anbu's first kiss! 💕`);
+        }
+
+        function restartGame() {
+            document.getElementById('endScreen').style.display = 'none';
+            document.getElementById('mainMenu').style.display = 'flex';
+            
+            // Reset character positions
+            document.getElementById('saharsh').style.left = '40%';
+            document.getElementById('anbu').style.right = '40%';
+            
+            // Remove any kiss elements
+            const kissElements = document.querySelectorAll('.kiss-scene');
+            kissElements.forEach(el => el.remove());
+        }
+
+        // Initialize game when page loads
+        window.addEventListener('load', () => {
+            game = new DatingSim();
+        });
+    </script>
+</body>
+</html>
