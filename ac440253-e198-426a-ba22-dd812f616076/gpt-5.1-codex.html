@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MiscellaneousCraft - Redstone Builder</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+</head>
+<body class="m-0 overflow-hidden bg-gray-900 text-white">
+  <div id="menu" class="fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-black text-center gap-4 z-20">
+    <h1 class="text-4xl font-bold">MiscellaneousCraft</h1>
+    <p class="max-w-xl text-gray-200">A fast-paced mini 3D voxel builder. Place and wire redstone to power the goal lamp and open the gate. WASD to move, mouse to look. Left click breaks, right click places, 1-7 to change block. Press Start to lock the mouse.</p>
+    <button id="startBtn" class="px-6 py-3 rounded bg-emerald-500 hover:bg-emerald-600 text-lg font-semibold">Start Building</button>
+  </div>
+
+  <div id="hud" class="pointer-events-none hidden">
+    <div class="absolute top-2 left-2 bg-black/50 px-3 py-2 rounded shadow text-sm space-y-1">
+      <div class="font-semibold">Objective</div>
+      <div>Power the <span class="text-yellow-300">goal lamp</span> with redstone to open the gate.</div>
+      <div>Left click: break • Right click: place • 1-7: hotbar • Shift: sprint • Space: jump</div>
+      <div>Redstone: torch/switch output 15, wires decay each step, lamps/doors power on with any signal.</div>
+    </div>
+    <div class="absolute top-2 right-2 bg-black/50 px-3 py-2 rounded shadow text-sm text-right space-y-1">
+      <div>Time: <span id="timer">0.0s</span></div>
+      <div>Best: <span id="best">--</span></div>
+      <div>Selected: <span id="selected">Redstone Wire</span></div>
+    </div>
+    <div id="crosshair" class="absolute inset-0 flex items-center justify-center">
+      <div class="w-1 h-6 bg-white"></div>
+      <div class="w-6 h-1 bg-white absolute"></div>
+    </div>
+    <div id="hotbar" class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2"></div>
+  </div>
+
+  <div id="win" class="fixed inset-0 hidden items-center justify-center bg-black/70 z-30">
+    <div class="bg-gray-800 border border-emerald-400 rounded p-6 text-center space-y-3 shadow-xl">
+      <h2 class="text-2xl font-bold text-emerald-300">Gate Opened!</h2>
+      <p>You powered the goal lamp. Time: <span id="winTime"></span>. Best: <span id="winBest"></span></p>
+      <button id="restartBtn" class="px-5 py-2 rounded bg-emerald-500 hover:bg-emerald-600 font-semibold">Play Again</button>
+    </div>
+  </div>
+
+  <canvas id="canvas"></canvas>
+
+  <script>
+    // Prevent scroll on space/arrow keys
+    window.addEventListener('keydown', e => {
+      if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)){
+        e.preventDefault();
+      }
+    }, {passive:false});
+
+    const canvas = document.getElementById('canvas');
+    const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.shadowMap.enabled = true;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1b1b1f);
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 2.5, 8);
+
+    const ambient = new THREE.AmbientLight(0xffffff, 0.4); scene.add(ambient);
+    const dir = new THREE.DirectionalLight(0xffffff, 0.8); dir.position.set(5,10,5); dir.castShadow=true; scene.add(dir);
+
+    const blockGeo = new THREE.BoxGeometry(1,1,1);
+    const materials = {
+      grass: new THREE.MeshStandardMaterial({color:0x6cac48, roughness:0.9}),
+      stone: new THREE.MeshStandardMaterial({color:0x8d8d8d, roughness:1}),
+      wood: new THREE.MeshStandardMaterial({color:0x8a5a2d, roughness:0.8}),
+      redstone: new THREE.MeshStandardMaterial({color:0x731313, emissive:0x000000, emissiveIntensity:0.6}),
+      torch: new THREE.MeshStandardMaterial({color:0xd8a85f, emissive:0xffaa33, emissiveIntensity:0.8}),
+      lampOff: new THREE.MeshStandardMaterial({color:0x555522, emissive:0x111100}),
+      lampOn: new THREE.MeshStandardMaterial({color:0xffe38a, emissive:0xffdd66, emissiveIntensity:1}),
+      door: new THREE.MeshStandardMaterial({color:0x334455, roughness:0.6}),
+      switchOff: new THREE.MeshStandardMaterial({color:0x444444}),
+      switchOn: new THREE.MeshStandardMaterial({color:0x88cc55, emissive:0x66ff66, emissiveIntensity:0.6})
+    };
+
+    const hotbarItems = [
+      {key:'grass', name:'Grass'},
+      {key:'stone', name:'Stone'},
+      {key:'wood', name:'Wood'},
+      {key:'redstone', name:'Redstone Wire'},
+      {key:'torch', name:'Redstone Torch'},
+      {key:'lamp', name:'Lamp'},
+      {key:'switch', name:'Switch'}
+    ];
+    let selectedIndex = 3; // redstone by default
+    const hudSelected = document.getElementById('selected');
+
+    const hotbarEl = document.getElementById('hotbar');
+    const buildHotbar = () => {
+      hotbarEl.innerHTML = '';
+      hotbarItems.forEach((item,i)=>{
+        const div = document.createElement('div');
+        div.className = `pointer-events-auto px-3 py-2 rounded border ${i===selectedIndex?'border-emerald-400 bg-emerald-500/20':'border-white/30 bg-black/40'} text-sm backdrop-blur`;
+        div.textContent = `${i+1}. ${item.name}`;
+        div.onclick = ()=>{selectedIndex=i; updateSelected(); buildHotbar();};
+        hotbarEl.appendChild(div);
+      });
+    };
+    const updateSelected = () => { hudSelected.textContent = hotbarItems[selectedIndex].name; };
+    buildHotbar(); updateSelected();
+
+    const blocks = new Map(); // key -> {mesh,type,power,extra}
+    const keyFrom = (x,y,z)=>`${x},${y},${z}`;
+
+    function addBlock(x,y,z,type){
+      const key = keyFrom(x,y,z);
+      if(blocks.has(key)) return;
+      let mesh, extra={};
+      if(type==='torch'){
+        const geo = new THREE.CylinderGeometry(0.15,0.15,0.8,8);
+        mesh = new THREE.Mesh(geo, materials.torch);
+        mesh.position.y = 0.4;
+      } else if(type==='door'){
+        const geo = new THREE.BoxGeometry(1,2,0.2);
+        mesh = new THREE.Mesh(geo, materials.door);
+        mesh.position.y = 1;
+        extra.closedY = 1;
+      } else if(type==='switch'){
+        const geo = new THREE.BoxGeometry(0.6,0.2,0.6);
+        mesh = new THREE.Mesh(geo, materials.switchOff);
+        mesh.position.y = 0.6;
+        extra.on = false;
+      } else {
+        mesh = new THREE.Mesh(blockGeo, type==='lamp'?materials.lampOff:materials[type]||materials.stone);
+        mesh.position.y = 0.5;
+      }
+      mesh.castShadow = true; mesh.receiveShadow=true;
+      mesh.position.x = x; mesh.position.z = z;
+      mesh.position.y += y; // add base height
+      mesh.userData = {type};
+      scene.add(mesh);
+      blocks.set(key,{mesh,type,power:0,extra});
+    }
+    function removeBlock(x,y,z){
+      const key = keyFrom(x,y,z);
+      if(!blocks.has(key)) return;
+      const {mesh} = blocks.get(key);
+      scene.remove(mesh);
+      blocks.delete(key);
+    }
+
+    // World generation
+    function generateWorld(){
+      const size=14;
+      for(let x=-size; x<=size; x++){
+        for(let z=-size; z<=size; z++){
+          addBlock(x,0,z,'grass');
+          if(Math.random()<0.05) addBlock(x,1,z,'stone');
+        }
+      }
+      // Trees
+      for(let i=0;i<4;i++){
+        const tx = -6 + i*4;
+        addBlock(tx,1,-5,'wood'); addBlock(tx,2,-5,'wood'); addBlock(tx,3,-5,'wood');
+        for(let dx=-1; dx<=1; dx++) for(let dz=-1; dz<=1; dz++) addBlock(tx+dx,4,-5+dz,'grass');
+      }
+      // Gate area and goal lamp
+      addBlock(4,1,0,'door');
+      addBlock(4,0,0,'stone');
+      addBlock(4,1,1,'stone'); addBlock(4,1,-1,'stone');
+      addBlock(6,1,0,'lamp'); blocks.get(keyFrom(6,1,0)).extra.goal = true;
+      // A starter torch power source
+      addBlock(-4,1,0,'torch');
+      // Some starter redstone
+      addBlock(-3,1,0,'redstone'); addBlock(-2,1,0,'redstone'); addBlock(-1,1,0,'redstone');
+    }
+
+    generateWorld();
+
+    // Movement controls
+    const keys = {}; let velocity = new THREE.Vector3(); let canJump = false;
+    window.addEventListener('keydown', e=>{ keys[e.code]=true; const num=parseInt(e.key); if(num>=1 && num<=hotbarItems.length){ selectedIndex=num-1; updateSelected(); buildHotbar(); }});
+    window.addEventListener('keyup', e=>{ keys[e.code]=false; });
+
+    // Pointer lock
+    const menu = document.getElementById('menu');
+    const hud = document.getElementById('hud');
+    const winScreen = document.getElementById('win');
+    const startBtn = document.getElementById('startBtn');
+    const restartBtn = document.getElementById('restartBtn');
+
+    let playing=false; let startTime=null; let bestTime = localStorage.getItem(location.pathname+'-miscraft-best');
+    if(bestTime) document.getElementById('best').textContent = bestTime+'s';
+
+    startBtn.onclick = ()=>{ canvas.requestPointerLock(); };
+    restartBtn.onclick = ()=>{ location.reload(); };
+    document.addEventListener('pointerlockchange', ()=>{
+      if(document.pointerLockElement===canvas){ menu.classList.add('hidden'); hud.classList.remove('hidden'); playing=true; startTime=performance.now(); }
+    });
+
+    // Mouse look
+    const look = {pitch:0,yaw:0};
+    document.addEventListener('mousemove', e=>{
+      if(!playing) return;
+      const sens=0.0025;
+      look.yaw -= e.movementX*sens;
+      look.pitch -= e.movementY*sens;
+      look.pitch = Math.max(-Math.PI/2+0.01, Math.min(Math.PI/2-0.01, look.pitch));
+      updateCameraDir();
+    });
+    function updateCameraDir(){
+      const dir = new THREE.Vector3();
+      dir.x = Math.cos(look.pitch)*Math.sin(look.yaw);
+      dir.y = Math.sin(look.pitch);
+      dir.z = Math.cos(look.pitch)*Math.cos(look.yaw);
+      camera.lookAt(camera.position.clone().add(dir));
+    }
+    updateCameraDir();
+
+    // Physics: simple ground collision
+    const gravity = -30; let vy=0;
+
+    function isSolid(x,y,z){
+      const b = blocks.get(keyFrom(x,y,z));
+      if(!b) return false;
+      return b.type!=='torch' && b.type!=='redstone' && b.type!=='switch';
+    }
+
+    function updatePlayer(dt){
+      const speed = keys['ShiftLeft']?7:4.5;
+      const dir = new THREE.Vector3();
+      const forward = new THREE.Vector3();
+      forward.x = Math.sin(look.yaw); forward.z = Math.cos(look.yaw);
+      const right = new THREE.Vector3(forward.z,0,-forward.x);
+      if(keys['KeyW']) dir.add(forward);
+      if(keys['KeyS']) dir.sub(forward);
+      if(keys['KeyA']) dir.sub(right);
+      if(keys['KeyD']) dir.add(right);
+      dir.y=0; if(dir.length()>0) dir.normalize();
+      velocity.x = dir.x*speed; velocity.z = dir.z*speed;
+      if(keys['Space'] && canJump){ vy = 10; canJump=false; }
+      vy += gravity*dt; camera.position.y += vy*dt;
+      // ground collision
+      if(camera.position.y < 1.6){ camera.position.y = 1.6; vy=0; canJump=true; }
+      camera.position.x += velocity.x*dt; camera.position.z += velocity.z*dt;
+    }
+
+    // Raycasting for block interaction
+    const raycaster = new THREE.Raycaster();
+    function getTargetBlock(){
+      const dir = new THREE.Vector3();
+      camera.getWorldDirection(dir);
+      raycaster.set(camera.position, dir);
+      const intersects = raycaster.intersectObjects([...blocks.values()].map(b=>b.mesh), false);
+      if(intersects.length>0 && intersects[0].distance<8){
+        const hit = intersects[0];
+        const pos = hit.object.position.clone();
+        const type = hit.object.userData.type;
+        const normal = hit.face.normal;
+        return {pos,type,normal};
+      }
+      return null;
+    }
+
+    function worldToGrid(vec){
+      return {x:Math.round(vec.x), y:Math.round(vec.y-0.5), z:Math.round(vec.z)};
+    }
+
+    document.addEventListener('mousedown', e=>{
+      if(!playing) return;
+      const target = getTargetBlock();
+      if(!target) return;
+      const g = worldToGrid(target.pos);
+      if(e.button===0){ // break
+        if(g.y>0) removeBlock(g.x,g.y,g.z);
+      } else if(e.button===2){ // place
+        const placePos = target.pos.clone().add(target.normal);
+        const gp = worldToGrid(placePos);
+        const type = hotbarItems[selectedIndex].key;
+        if(gp.y>=0) addBlock(gp.x,gp.y,gp.z,type==='lamp'?'lamp':type);
+        if(type==='switch'){
+          const b = blocks.get(keyFrom(gp.x,gp.y,gp.z));
+          if(b) b.extra.on = false;
+        }
+      }
+    });
+    // Right click context menu off
+    document.addEventListener('contextmenu', e=>e.preventDefault());
+
+    document.addEventListener('mouseup', e=>{
+      if(!playing) return;
+      if(e.button===0){
+        // toggle switch if hit
+        const target = getTargetBlock();
+        if(target){
+          const g = worldToGrid(target.pos);
+          const b = blocks.get(keyFrom(g.x,g.y,g.z));
+          if(b && b.type==='switch'){
+            b.extra.on = !b.extra.on;
+            b.mesh.material = b.extra.on?materials.switchOn:materials.switchOff;
+          }
+        }
+      }
+    });
+
+    // Redstone simulation
+    function computeRedstone(){
+      // Reset power
+      blocks.forEach(b=>{b.power=0;});
+      const queue=[];
+      blocks.forEach((b,k)=>{
+        if(b.type==='torch' || (b.type==='switch' && b.extra.on)){
+          b.power=15; queue.push({key:k,p:15});
+        }
+      });
+      const dirs = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+      while(queue.length){
+        const {key,p} = queue.shift();
+        if(p<=1) continue;
+        const [x,y,z] = key.split(',').map(Number);
+        for(const d of dirs){
+          const nx=x+d[0], ny=y+d[1], nz=z+d[2];
+          const nk = keyFrom(nx,ny,nz);
+          const nb = blocks.get(nk);
+          if(!nb) continue;
+          if(nb.type==='redstone'){
+            const np = p-1;
+            if(np>nb.power){ nb.power=np; queue.push({key:nk,p:np}); }
+          }
+          if(['lamp','door','switch'].includes(nb.type)){
+            if(p>nb.power) nb.power=p;
+          }
+        }
+      }
+      // visuals and effects
+      let goalPowered=false;
+      blocks.forEach((b,k)=>{
+        if(b.type==='redstone'){
+          const intensity = b.power/15;
+          b.mesh.material = materials.redstone.clone();
+          b.mesh.material.emissive = new THREE.Color(0xff0000);
+          b.mesh.material.emissiveIntensity = intensity*1.1;
+        }
+        if(b.type==='lamp'){
+          b.mesh.material = b.power>0?materials.lampOn:materials.lampOff;
+          if(b.extra.goal && b.power>0) goalPowered=true;
+        }
+        if(b.type==='door'){
+          b.mesh.position.y = b.power>0?2.5:1;
+        }
+      });
+      if(goalPowered) handleWin();
+    }
+
+    let won=false;
+    function handleWin(){
+      if(won) return;
+      won=true; playing=false;
+      const time = ((performance.now()-startTime)/1000).toFixed(2);
+      document.exitPointerLock?.();
+      winScreen.classList.remove('hidden'); winScreen.classList.add('flex');
+      document.getElementById('winTime').textContent = time+'s';
+      let best = localStorage.getItem(location.pathname+'-miscraft-best');
+      if(!best || parseFloat(time)<parseFloat(best)){
+        localStorage.setItem(location.pathname+'-miscraft-best', time);
+        best=time;
+      }
+      document.getElementById('winBest').textContent = best?best+'s':'--';
+    }
+
+    function updateTimer(){
+      if(!playing || !startTime) return;
+      const t = ((performance.now()-startTime)/1000).toFixed(1);
+      document.getElementById('timer').textContent = t+'s';
+    }
+
+    // Main loop
+    let last = performance.now();
+    function animate(){
+      requestAnimationFrame(animate);
+      const now = performance.now();
+      const dt = Math.min(0.05,(now-last)/1000); last=now;
+      if(playing){
+        updatePlayer(dt);
+        computeRedstone();
+        updateTimer();
+      }
+      renderer.render(scene,camera);
+    }
+    animate();
+
+    // Resize
+    window.addEventListener('resize', ()=>{
+      camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
