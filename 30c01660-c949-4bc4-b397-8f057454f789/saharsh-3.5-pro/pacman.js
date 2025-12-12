@@ -1,10 +1,11 @@
-// Pac-Man Mini-Game Engine
+// Enhanced Pac-Man Mini-Game Engine
 class PacMan {
     constructor() {
         this.canvas = null;
         this.ctx = null;
         this.isRunning = false;
         this.isPaused = false;
+        this.isEndless = false;
         
         // Game state
         this.player = {
@@ -15,13 +16,22 @@ class PacMan {
             speed: 2,
             isPowered: false,
             powerTimer: 0,
-            animationFrame: 0
+            animationFrame: 0,
+            speedBoost: false,
+            speedBoostTimer: 0,
+            invincible: false,
+            invincibleTimer: 0,
+            coinMagnet: false,
+            coinMagnetTimer: 0,
+            doublePoints: false,
+            doublePointsTimer: 0
         };
         
         this.ghosts = [];
         this.maze = [];
         this.pellets = [];
         this.powerPellets = [];
+        this.powerUps = [];
         
         // Game stats
         this.score = 0;
@@ -29,6 +39,9 @@ class PacMan {
         this.timeLeft = 60;
         this.pelletsCollected = 0;
         this.totalPellets = 0;
+        this.wave = 1;
+        this.combo = 0;
+        this.maxCombo = 0;
         
         // Maze dimensions
         this.cellSize = 20;
@@ -62,8 +75,8 @@ class PacMan {
     }
 
     generateMaze() {
-        // Create a simple but interesting maze layout
-        // 0 = wall, 1 = pellet, 2 = power pellet, 3 = empty
+        // Create a more complex maze layout
+        // 0 = wall, 1 = pellet, 2 = power pellet, 3 = empty, 4 = power-up
         const mazeTemplate = [
             [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
             [0,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,0],
@@ -93,6 +106,7 @@ class PacMan {
         // Extract pellets and power pellets
         this.pellets = [];
         this.powerPellets = [];
+        this.powerUps = [];
         this.totalPellets = 0;
         
         for (let y = 0; y < this.mazeHeight; y++) {
@@ -106,6 +120,28 @@ class PacMan {
                 }
             }
         }
+        
+        // Add random power-ups
+        this.generatePowerUps();
+    }
+
+    generatePowerUps() {
+        const powerUpTypes = ['speed', 'invincible', 'magnet', 'double'];
+        const numPowerUps = this.isEndless ? 3 : 1;
+        
+        for (let i = 0; i < numPowerUps; i++) {
+            let placed = false;
+            while (!placed) {
+                const x = Math.floor(Math.random() * this.mazeWidth);
+                const y = Math.floor(Math.random() * this.mazeHeight);
+                
+                if (this.maze[y][x] === 3) { // Empty space
+                    const type = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+                    this.powerUps.push({x, y, type, collected: false});
+                    placed = true;
+                }
+            }
+        }
     }
 
     resetGame() {
@@ -116,6 +152,16 @@ class PacMan {
         this.player.nextDirection = 'right';
         this.player.isPowered = false;
         this.player.powerTimer = 0;
+        
+        // Reset power-up states
+        this.player.speedBoost = false;
+        this.player.speedBoostTimer = 0;
+        this.player.invincible = false;
+        this.player.invincibleTimer = 0;
+        this.player.coinMagnet = false;
+        this.player.coinMagnetTimer = 0;
+        this.player.doublePoints = false;
+        this.player.doublePointsTimer = 0;
         
         // Reset ghosts
         this.ghosts = [
@@ -154,23 +200,44 @@ class PacMan {
             }
         ];
         
+        // Add extra ghost for endless mode
+        if (this.isEndless && this.wave > 3) {
+            this.ghosts.push({
+                x: 9,
+                y: 8,
+                direction: 'down',
+                color: '#FFB851',
+                ai: 'patrol',
+                speed: 1.6,
+                isScared: false,
+                targetX: 9,
+                targetY: 8
+            });
+        }
+        
         // Reset game stats
-        this.score = 0;
-        this.lives = 3;
-        this.timeLeft = 60;
-        this.pelletsCollected = 0;
+        if (!this.isEndless) {
+            this.score = 0;
+            this.lives = 3 + upgrades.getUpgradeEffect('extra_life');
+            this.timeLeft = 60 + upgrades.getUpgradeEffect('time_bonus');
+            this.pelletsCollected = 0;
+            this.combo = 0;
+            this.maxCombo = 0;
+        }
         
         // Reset maze
         this.generateMaze();
     }
 
     startLevel(difficulty) {
+        this.isEndless = false;
+        this.wave = 1;
         this.resetGame();
         this.isRunning = true;
         this.isPaused = false;
         
         // Adjust difficulty
-        this.timeLeft = Math.max(30, 60 - difficulty * 5);
+        this.timeLeft = Math.max(30, 60 - difficulty * 5) + upgrades.getUpgradeEffect('time_bonus');
         this.ghosts.forEach(ghost => {
             ghost.speed = 1 + difficulty * 0.3;
         });
@@ -181,6 +248,46 @@ class PacMan {
         // Start game loop
         this.lastTime = performance.now();
         this.gameLoop();
+    }
+
+    startEndlessMode() {
+        this.isEndless = true;
+        this.wave = 1;
+        this.score = 0;
+        this.lives = 3;
+        this.timeLeft = 999999; // No time limit
+        this.resetGame();
+        this.isRunning = true;
+        this.isPaused = false;
+        
+        // Start game loop
+        this.lastTime = performance.now();
+        this.gameLoop();
+    }
+
+    nextWave() {
+        this.wave++;
+        this.lives = Math.min(this.lives + 1, 5); // Bonus life
+        
+        // Increase difficulty
+        this.ghosts.forEach(ghost => {
+            ghost.speed = Math.min(ghost.speed + 0.2, 3);
+        });
+        
+        // Reset positions
+        this.player.x = 9;
+        this.player.y = 15;
+        this.ghosts.forEach((ghost, index) => {
+            ghost.x = 9;
+            ghost.y = 9;
+            ghost.isScared = false;
+        });
+        
+        // Generate new maze
+        this.generateMaze();
+        
+        ui.showPacmanMessage(`Wave ${this.wave}!`, false);
+        setTimeout(() => ui.hidePacmanMessage(), 2000);
     }
 
     gameLoop() {
@@ -211,25 +318,108 @@ class PacMan {
         // Update ghosts
         this.updateGhosts();
         
+        // Update power-ups
+        this.updatePowerUps();
+        
         // Check collisions
         this.checkCollisions();
         
-        // Update power timer
-        if (this.player.isPowered) {
-            this.player.powerTimer--;
-            if (this.player.powerTimer <= 0) {
-                this.player.isPowered = false;
-                this.ghosts.forEach(ghost => ghost.isScared = false);
-            }
-        }
+        // Update power timers
+        this.updatePowerTimers();
         
         // Update animation
         this.player.animationFrame = (this.player.animationFrame + 1) % 2;
         
         // Check win condition
         if (this.pelletsCollected >= this.totalPellets) {
-            this.winLevel();
+            if (this.isEndless) {
+                this.nextWave();
+            } else {
+                this.winLevel();
+            }
         }
+    }
+
+    updatePowerTimers() {
+        // Update all power-up timers
+        if (this.player.speedBoostTimer > 0) {
+            this.player.speedBoostTimer--;
+            if (this.player.speedBoostTimer === 0) {
+                this.player.speedBoost = false;
+            }
+        }
+        
+        if (this.player.invincibleTimer > 0) {
+            this.player.invincibleTimer--;
+            if (this.player.invincibleTimer === 0) {
+                this.player.invincible = false;
+            }
+        }
+        
+        if (this.player.coinMagnetTimer > 0) {
+            this.player.coinMagnetTimer--;
+            if (this.player.coinMagnetTimer === 0) {
+                this.player.coinMagnet = false;
+            }
+        }
+        
+        if (this.player.doublePointsTimer > 0) {
+            this.player.doublePointsTimer--;
+            if (this.player.doublePointsTimer === 0) {
+                this.player.doublePoints = false;
+            }
+        }
+        
+        if (this.player.powerTimer > 0) {
+            this.player.powerTimer--;
+            if (this.player.powerTimer === 0) {
+                this.player.isPowered = false;
+                this.ghosts.forEach(ghost => ghost.isScared = false);
+            }
+        }
+    }
+
+    updatePowerUps() {
+        this.powerUps.forEach(powerUp => {
+            if (!powerUp.collected) {
+                // Check collection
+                const distance = Math.abs(powerUp.x - this.player.x) + Math.abs(powerUp.y - this.player.y);
+                if (distance < 0.5 || (this.player.coinMagnet && distance < 3)) {
+                    this.collectPowerUp(powerUp);
+                }
+            }
+        });
+    }
+
+    collectPowerUp(powerUp) {
+        powerUp.collected = true;
+        
+        // Apply power-up effect
+        switch(powerUp.type) {
+            case 'speed':
+                this.player.speedBoost = true;
+                this.player.speedBoostTimer = 150;
+                ui.showPowerUp('speed', 5000);
+                break;
+            case 'invincible':
+                this.player.invincible = true;
+                this.player.invincibleTimer = 100;
+                ui.showPowerUp('invincible', 3000);
+                break;
+            case 'magnet':
+                this.player.coinMagnet = true;
+                this.player.coinMagnetTimer = 200;
+                ui.showPowerUp('magnet', 4000);
+                break;
+            case 'double':
+                this.player.doublePoints = true;
+                this.player.doublePointsTimer = 150;
+                ui.showPowerUp('double', 5000);
+                break;
+        }
+        
+        // Bonus score
+        this.addScore(100);
     }
 
     updatePlayer() {
@@ -398,6 +588,11 @@ class PacMan {
                         ghost.direction = ambushDir;
                         break;
                         
+                    case 'patrol':
+                        // Patrol specific areas
+                        ghost.direction = validDirections[Math.floor(Math.random() * validDirections.length)];
+                        break;
+                        
                     case 'random':
                     default:
                         ghost.direction = validDirections[Math.floor(Math.random() * validDirections.length)];
@@ -414,14 +609,19 @@ class PacMan {
         // Check for regular pellet
         if (this.maze[y][x] === 1) {
             this.maze[y][x] = 3;
-            this.score += 10;
+            this.addScore(10);
             this.pelletsCollected++;
+            this.combo++;
+            
+            if (this.combo > this.maxCombo) {
+                this.maxCombo = this.combo;
+            }
         }
         
         // Check for power pellet
         if (this.maze[y][x] === 2) {
             this.maze[y][x] = 3;
-            this.score += 50;
+            this.addScore(50);
             this.pelletsCollected++;
             
             // Activate power mode
@@ -431,19 +631,29 @@ class PacMan {
         }
     }
 
+    addScore(points) {
+        let multiplier = 1;
+        
+        if (this.player.doublePoints) multiplier *= 2;
+        if (game.state.comboMultiplier > 1) multiplier *= game.state.comboMultiplier;
+        
+        this.score += Math.floor(points * multiplier);
+    }
+
     checkCollisions() {
         this.ghosts.forEach((ghost, index) => {
             const distance = Math.abs(ghost.x - this.player.x) + Math.abs(ghost.y - this.player.y);
             
             if (distance < 0.5) {
-                if (ghost.isScared) {
+                if (ghost.isScared || this.player.invincible) {
                     // Eat ghost
-                    this.score += 200;
+                    this.addScore(200);
                     ghost.x = 9;
                     ghost.y = 9;
                     ghost.isScared = false;
                     ui.createFloatingText('+200', ghost.x * this.cellSize, ghost.y * this.cellSize, '#FFD700');
-                } else {
+                    this.combo += 5;
+                } else if (!this.player.invincible) {
                     // Player caught
                     this.loseLife();
                 }
@@ -453,6 +663,7 @@ class PacMan {
 
     loseLife() {
         this.lives--;
+        this.combo = 0;
         
         if (this.lives <= 0) {
             this.gameOver();
@@ -511,6 +722,19 @@ class PacMan {
             }
         }
         
+        // Draw power-ups
+        this.powerUps.forEach(powerUp => {
+            if (!powerUp.collected) {
+                this.ctx.fillStyle = this.getPowerUpColor(powerUp.type);
+                this.ctx.fillRect(
+                    powerUp.x * this.cellSize + 2,
+                    powerUp.y * this.cellSize + 2,
+                    this.cellSize - 4,
+                    this.cellSize - 4
+                );
+            }
+        });
+        
         // Draw ghosts
         this.ghosts.forEach(ghost => {
             this.ctx.fillStyle = ghost.isScared ? '#0000FF' : ghost.color;
@@ -527,7 +751,7 @@ class PacMan {
         });
         
         // Draw Pac-Man
-        this.ctx.fillStyle = '#FFFF00';
+        this.ctx.fillStyle = this.player.invincible ? '#FFD700' : '#FFFF00';
         this.ctx.beginPath();
         
         let startAngle = 0;
@@ -558,12 +782,22 @@ class PacMan {
         this.ctx.fill();
         
         // Update UI
-        ui.updatePacmanUI(this.score, this.lives, this.timeLeft);
+        ui.updatePacmanUI(this.score, this.lives, this.isEndless ? '∞' : this.timeLeft, this.wave);
+    }
+
+    getPowerUpColor(type) {
+        switch(type) {
+            case 'speed': return '#00FF00';
+            case 'invincible': return '#FFD700';
+            case 'magnet': return '#FF00FF';
+            case 'double': return '#00FFFF';
+            default: return '#FFFFFF';
+        }
     }
 
     startTimer() {
         const timerInterval = setInterval(() => {
-            if (!this.isRunning) {
+            if (!this.isRunning || this.isEndless) {
                 clearInterval(timerInterval);
                 return;
             }
@@ -581,23 +815,43 @@ class PacMan {
 
     winLevel() {
         this.isRunning = false;
-        ui.showPacmanMessage('Level Complete! You won Saharsh\'s heart!', true);
+        
+        // Calculate bonus
+        const timeBonus = this.timeLeft * 10;
+        const lifeBonus = this.lives * 100;
+        const comboBonus = this.maxCombo * 50;
+        const totalBonus = timeBonus + lifeBonus + comboBonus;
+        
+        this.addScore(totalBonus);
+        
+        ui.showPacmanMessage(`Level Complete! Score: ${this.score}`, true);
         
         document.getElementById('pacmanContinue').onclick = () => {
             ui.hidePacmanMessage();
             game.switchScene('restaurant');
-            dating.handleMiniGameResult(true, this.score);
+            game.completeMiniGame(this.score, true);
         };
     }
 
     gameOver() {
         this.isRunning = false;
-        ui.showPacmanMessage('Game Over! Saharsh is disappointed...', true);
+        
+        if (this.isEndless && this.score > game.state.endlessHighScore) {
+            game.state.endlessHighScore = this.score;
+            game.saveProgress();
+            ui.showPacmanMessage(`New High Score: ${this.score}!`, true);
+        } else {
+            ui.showPacmanMessage(`Game Over! Score: ${this.score}`, true);
+        }
         
         document.getElementById('pacmanContinue').onclick = () => {
             ui.hidePacmanMessage();
-            game.switchScene('restaurant');
-            dating.handleMiniGameResult(false, this.score);
+            if (this.isEndless) {
+                game.switchScene('menu');
+            } else {
+                game.switchScene('restaurant');
+                game.completeMiniGame(this.score, false);
+            }
         };
     }
 
