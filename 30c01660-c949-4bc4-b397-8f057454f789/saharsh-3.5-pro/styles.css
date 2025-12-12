@@ -1,0 +1,193 @@
+/* Global Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    overflow: hidden;
+    background: #0a0a0a;
+}
+
+/* Scene Transitions */
+.scene {
+    transition: opacity 0.5s ease-in-out;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.fade-in {
+    animation: fadeIn 1s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Character Animations */
+.character {
+    transition: all 0.3s ease;
+}
+
+.character-enter {
+    animation: characterEnter 1s ease-out;
+}
+
+@keyframes characterEnter {
+    from {
+        transform: translateY(100px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.emotion-happy {
+    filter: brightness(1.2) saturate(1.3);
+}
+
+.emotion-sad {
+    filter: brightness(0.7) grayscale(0.5);
+}
+
+.emotion-angry {
+    filter: hue-rotate(180deg) saturate(1.5);
+}
+
+/* Dialogue Box Styles */
+#dialogueBox {
+    backdrop-filter: blur(10px);
+    border-top: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.choice-button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: none;
+    color: white;
+}
+
+.choice-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+.choice-button:active {
+    transform: translateY(0);
+}
+
+/* Love Meter Animation */
+@keyframes lovePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.love-increase {
+    animation: lovePulse 0.5s ease-in-out;
+}
+
+/* Restaurant Backgrounds */
+.italian-bg {
+    background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), 
+                url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600"><rect fill="%238B4513" width="800" height="600"/><rect fill="%23D2691E" x="100" y="100" width="600" height="400" rx="20"/><circle fill="%23FFD700" cx="400" cy="300" r="80"/></svg>');
+}
+
+.japanese-bg {
+    background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), 
+                url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600"><rect fill="%231C1C1C" width="800" height="600"/><rect fill="%23333333" x="150" y="150" width="500" height="300" rx="10"/><circle fill="%23FF6B6B" cx="400" cy="300" r="60"/></svg>');
+}
+
+/* Pac-Man Styles */
+#pacmanCanvas {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+.pacman-message {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* Button Styles */
+.btn-primary {
+    background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(236, 72, 153, 0.4);
+}
+
+/* Ending Scene Styles */
+.ending-good {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.ending-bad {
+    background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
+}
+
+.ending-neutral {
+    background: linear-gradient(135deg, #6b7280 0%, #374151 100%);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    #yussef, #saharsh {
+        width: 60px;
+        height: 80px;
+        font-size: 18px;
+    }
+    
+    .choice-button {
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+    
+    #dialogueBox {
+        padding: 16px;
+    }
+}
+
+/* Special Effects */
+.screen-shake {
+    animation: screenShake 0.5s;
+}
+
+@keyframes screenShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
+}
+
+.flash-red {
+    animation: flashRed 0.5s;
+}
+
+@keyframes flashRed {
+    0%, 100% { background-color: transparent; }
+    50% { background-color: rgba(255, 0, 0, 0.3); }
+}
+
+/* Loading Animation */
+.loading-dots::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
