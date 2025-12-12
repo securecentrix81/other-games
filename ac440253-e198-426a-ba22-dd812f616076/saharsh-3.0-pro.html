@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>miscellaneouscraft</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.138.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.138.0/examples/js/controls/PointerLockControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.138.0/examples/js/utils/BufferGeometryUtils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/simplex-noise@2.4.0/simplex-noise.js"></script>
+    <script src="https://cdn.tailwindcss.com/3.3.3"></script>
+    <style>
+        body { margin: 0; background-color: #000; overflow: hidden; }
+        canvas { display: block; }
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 4px;
+            background-color: white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        #hotbar {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            background-color: rgba(0,0,0,0.5);
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .hotbar-slot {
+            width: 50px;
+            height: 50px;
+            border: 2px solid #555;
+            margin: 2px;
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .hotbar-slot.active {
+            border-color: white;
+        }
+        #achievement-popup {
+            position: absolute;
+            top: 20px;
+            right: -300px; /* Start off-screen */
+            width: 280px;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            transition: right 0.5s ease-in-out;
+            z-index: 1000;
+            border-left: 5px solid #4CAF50;
+        }
+        #achievement-popup.show {
+            right: 20px; /* Slide in */
+        }
+        .achievement-title {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .achievement-desc {
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div id="crosshair"></div>
+    <div id="hotbar"></div>
+    <div id="achievement-popup">
+        <div class="achievement-title">Achievement Unlocked!</div>
+        <div class="achievement-desc">You did something cool!</div>
+    </div>
+
+    <script>
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.y = 80;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+        
+        const selectionBox = new THREE.LineSegments(
+            new THREE.EdgesGeometry(new THREE.BoxGeometry(1.01, 1.01, 1.01)),
+            new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 })
+        );
+        selectionBox.visible = false;
+        scene.add(selectionBox);
+
+        const controls = new THREE.PointerLockControls(camera, document.body);
+        document.body.addEventListener('click', () => controls.lock(), false);
+
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(128, 128, 128);
+        light.castShadow = true;
+        scene.add(light);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+        const world = new Map();
+        const chunkSize = 16;
+        const worldHeight = 128;
+        const simplex = new SimplexNoise();
+
+        const textures = {
+            'grass': new THREE.TextureLoader().load('https://threejsfundamentals.org/threejs/resources/images/blocks/grass.png'),
+            'dirt': new THREE.TextureLoader().load('https://threejsfundamentals.org/threejs/resources/images/blocks/dirt.png'),
+            'stone': new THREE.TextureLoader().load('https://threejsfundamentals.org/threejs/resources/images/blocks/stone.png'),
+            'oak_planks': new THREE.TextureLoader().load('https://threejsfundamentals.org/threejs/resources/images/blocks/oak_planks.png'),
+            'glass': new THREE.TextureLoader().load('https://threejsfundamentals.org/threejs/resources/images/blocks/glass.png'),
+            'sand': new THREE.TextureLoader().load('https://threejsfundamentals.org/threejs/resources/images/blocks/sand.png'),
+            'bookshelf': new THREE.TextureLoader().load('https://threejsfundamentals.org/threejs/resources/images/blocks/bookshelf.png'),
+            'redstone_block': new THREE.MeshStandardMaterial({ color: 0xff0000 }),
+            'redstone_wire': new THREE.MeshStandardMaterial({ color: 0x8b0000 }),
+            'redstone_lamp': new THREE.MeshStandardMaterial({ color: 0x555500 }),
+            'lever': new THREE.MeshStandardMaterial({ color: 0xaaaaaa }),
+        };
+
+        const blockTypes = {
+            'GRASS': { texture: textures['grass'], isFullBlock: true, transparent: false },
+            'DIRT': { texture: textures['dirt'], isFullBlock: true, transparent: false },
+            'STONE': { texture: textures['stone'], isFullBlock: true, transparent: false },
+            'OAK_PLANKS': { texture: textures['oak_planks'], isFullBlock: true, transparent: false },
+            'GLASS': { texture: textures['glass'], isFullBlock: true, transparent: true },
+            'SAND': { texture: textures['sand'], isFullBlock: true, transparent: false },
+            'BOOKSHELF': { texture: textures['bookshelf'], isFullBlock: true, transparent: false },
+            'REDSTONE_BLOCK': { material: textures['redstone_block'], isPowerSource: true, isFullBlock: true, transparent: false },
+            'REDSTONE_WIRE': { material: textures['redstone_wire'], isFullBlock: false, transparent: false },
+            'REDSTONE_LAMP': { material: textures['redstone_lamp'], isFullBlock: true, transparent: false },
+            'LEVER': { material: textures['lever'], isFullBlock: false, transparent: false },
+        };
+
+        const hotbarItems = ['GRASS', 'DIRT', 'STONE', 'OAK_PLANKS', 'GLASS', 'SAND', 'BOOKSHELF', 'REDSTONE_BLOCK', 'REDSTONE_WIRE', 'REDSTONE_LAMP', 'LEVER'];
+        let activeHotbarSlot = 0;
+
+        function getBlockKey(x, y, z) {
+            return `${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`;
+        }
+
+        function setBlock(x, y, z, type) {
+            const key = getBlockKey(x, y, z);
+            const blockData = { type, power: 0, active: false };
+            world.set(key, blockData);
+
+            if (type === 'REDSTONE_BLOCK') {
+                blockData.power = 15;
+            }
+            
+            updateRedstone(x, y, z);
+        }
+        
+        function getBlock(x, y, z) {
+            return world.get(getBlockKey(x,y,z));
+        }
+
+        function checkVisibility(x, y, z) {
+            const neighbors = {
+                up: getBlock(x, y + 1, z),
+                down: getBlock(x, y - 1, z),
+                left: getBlock(x - 1, y, z),
+                right: getBlock(x + 1, y, z),
+                front: getBlock(x, y, z + 1),
+                back: getBlock(x, y, z - 1),
+            };
+            
+            const isVisible = (neighbor) => !neighbor || blockTypes[neighbor.type].transparent;
+
+            return {
+                up: isVisible(neighbors.up),
+                down: isVisible(neighbors.down),
+                left: isVisible(neighbors.left),
+                right: isVisible(neighbors.right),
+                front: isVisible(neighbors.front),
+                back: isVisible(neighbors.back),
+            };
+        }
+
+        function generateChunk(chunkX, chunkZ) {
+            const biomeNoise = simplex.noise2D(chunkX / 2, chunkZ / 2);
+            const biome = biomeNoise > 0 ? 'PLAINS' : 'DESERT';
+
+            for (let x = 0; x < chunkSize; x++) {
+                for (let z = 0; z < chunkSize; z++) {
+                    const worldX = chunkX * chunkSize + x;
+                    const worldZ = chunkZ * chunkSize + z;
+                    const height = Math.floor(simplex.noise2D(worldX / 50, worldZ / 50) * 10) + 64;
+
+                    for (let y = 0; y < height; y++) {
+                        let type = 'STONE';
+                        if (y === height - 1) {
+                            type = biome === 'PLAINS' ? 'GRASS' : 'SAND';
+                        } else if (y > height - 5) {
+                            type = biome === 'PLAINS' ? 'DIRT' : 'SAND';
+                        }
+                        
+                        const key = getBlockKey(worldX, y, worldZ);
+                        if (!world.has(key)) {
+                             world.set(key, { type: type, power: 0, active: false });
+                        }
+                    }
+                }
+            }
+            
+            const chunkKey = `${chunkX},${chunkZ}`;
+            const existingMesh = scene.getObjectByName(chunkKey);
+            if(existingMesh) scene.remove(existingMesh);
+
+            const geometries = { opaque: [], transparent: [] };
+            const materials = { opaque: [], transparent: [] };
+
+             for(let x = chunkX * chunkSize; x < (chunkX+1) * chunkSize; x++){
+                 for(let z = chunkZ * chunkSize; z < (chunkZ+1) * chunkSize; z++){
+                    for(let y = 0; y < worldHeight; y++){
+                        const block = getBlock(x,y,z);
+                         if(block){
+                            const blockDef = blockTypes[block.type];
+                            const visibility = checkVisibility(x, y, z);
+
+                            if (Object.values(visibility).some(v => v)) {
+                                const geometry = blockDef.isFullBlock ? new THREE.BoxGeometry(1,1,1) : new THREE.BoxGeometry(0.5, 0.1, 0.5);
+                                
+                                let material;
+                                if (block.type === 'REDSTONE_WIRE') material = new THREE.MeshStandardMaterial({color: block.power > 0 ? 0xff0000 : 0x8b0000, transparent: true, opacity: 0.8});
+                                else if (block.type === 'REDSTONE_LAMP') material = new THREE.MeshStandardMaterial({color: block.power > 0 ? 0xffff00: 0x555500});
+                                else if (block.type === 'GLASS') material = new THREE.MeshStandardMaterial({map: blockDef.texture, transparent: true, opacity: 0.5});
+                                else material = blockDef.material || new THREE.MeshStandardMaterial({map: blockDef.texture});
+                                
+                                const mesh = new THREE.Mesh(geometry, material);
+                                mesh.position.set(x + 0.5, y + 0.5, z + 0.5);
+                                mesh.updateMatrix();
+
+                                if (blockDef.transparent) {
+                                    geometries.transparent.push(mesh.geometry.clone().applyMatrix4(mesh.matrix));
+                                    materials.transparent.push(mesh.material);
+                                } else {
+                                    geometries.opaque.push(mesh.geometry.clone().applyMatrix4(mesh.matrix));
+                                    materials.opaque.push(mesh.material);
+                                }
+                            }
+                         }
+                    }
+                 }
+            }
+
+            if(geometries.opaque.length > 0){
+                const mergedGeometries = THREE.BufferGeometryUtils.mergeBufferGeometries(geometries.opaque);
+                const chunkMesh = new THREE.Mesh(mergedGeometries, materials.opaque);
+                chunkMesh.name = chunkKey + '_opaque';
+                chunkMesh.isChunk = true;
+                scene.add(chunkMesh);
+            }
+             if(geometries.transparent.length > 0){
+                const mergedGeometries = THREE.BufferGeometryUtils.mergeBufferGeometries(geometries.transparent);
+                const chunkMesh = new THREE.Mesh(mergedGeometries, materials.transparent);
+                chunkMesh.name = chunkKey + '_transparent';
+                chunkMesh.isChunk = true;
+                scene.add(chunkMesh);
+            }
+        }
+        
+        // Handles the logic for Redstone power propagation.
+        function updateRedstone(x, y, z) {
+            // A queue of blocks whose power level needs to be checked and possibly updated.
+            const queue = [{x, y, z}]; 
+            // A set to track visited blocks in the current update cycle to prevent infinite loops (e.g., with Redstone clocks).
+            const visited = new Set([getBlockKey(x,y,z)]);
+            // A set to track which chunks have had blocks updated, so only those chunks are regenerated.
+            const dirtyChunks = new Set();
+
+            // Mark the initial chunk as dirty.
+            const sourceBlock = getBlock(x, y, z);
+            if (sourceBlock) {
+                 const chunkX = Math.floor(x / chunkSize);
+                 const chunkZ = Math.floor(z / chunkSize);
+                 dirtyChunks.add(`${chunkX},${chunkZ}`);
+            }
+
+            // Process the queue using a while loop instead of recursion to avoid stack overflow on large circuits.
+            let i = 0;
+            while(i < queue.length) {
+                const {x: cx, y: cy, z: cz} = queue[i++];
+                
+                let newPower = 0;
+                const currentBlock = getBlock(cx, cy, cz);
+                if (!currentBlock) continue;
+
+                // Determine the block's new power level.
+                // If the block is a power source itself (Lever, Redstone Block).
+                if (blockTypes[currentBlock.type]?.isPowerSource) {
+                     if (currentBlock.type === 'LEVER' && currentBlock.active) newPower = 15;
+                     else if (currentBlock.type === 'REDSTONE_BLOCK') newPower = 15;
+                } else { // Otherwise, calculate power received from neighbors.
+                    for(const [dx, dy, dz] of [[-1,0,0], [1,0,0], [0,-1,0], [0,1,0], [0,0,-1], [0,0,1]]){
+                        const neighbor = getBlock(cx + dx, cy + dy, cz + dz);
+                        if(neighbor){
+                             // Check for direct power from adjacent power sources.
+                             if(blockTypes[neighbor.type]?.isPowerSource && (!blockTypes[neighbor.type].isFullBlock || (blockTypes[neighbor.type].isFullBlock && (dx !== 0 || dz !==0) )) ){
+                                if (neighbor.type === 'LEVER' && neighbor.active) newPower = Math.max(newPower, 15);
+                                else if (neighbor.type === 'REDSTONE_BLOCK') newPower = Math.max(newPower, 15);
+                            }
+                            // Check for propagated power from adjacent Redstone wires. Power decreases by 1 for each block.
+                            else if (neighbor.type === 'REDSTONE_WIRE') {
+                                newPower = Math.max(newPower, neighbor.power - 1);
+                            }
+                        }
+                    }
+                }
+                
+                // If the power level changed, update the block and propagate the change.
+                if (currentBlock.power !== newPower) {
+                    currentBlock.power = newPower;
+                    // Mark the chunk containing this block as needing a mesh update.
+                    const chunkX = Math.floor(cx / chunkSize);
+                    const chunkZ = Math.floor(cz / chunkSize);
+                    dirtyChunks.add(`${chunkX},${chunkZ}`);
+
+                    // Add all unvisited neighbors to the queue to continue the propagation.
+                    for(const [dx, dy, dz] of [[-1,0,0], [1,0,0], [0,-1,0], [0,1,0], [0,0,-1], [0,0,1]]){
+                         const key = getBlockKey(cx + dx, cy + dy, cz + dz);
+                         const neighborBlock = getBlock(cx+dx, cy+dy, cz+dz);
+                         if(neighborBlock && !visited.has(key)) {
+                             queue.push({x: cx+dx, y: cy+dy, z: cz+dz});
+                             visited.add(key);
+                         }
+                    }
+                }
+            }
+            
+            // After all power levels are settled, regenerate the meshes for only the affected chunks.
+            for (const chunkKey of dirtyChunks) {
+                const [chunkX, chunkZ] = chunkKey.split(',').map(Number);
+                generateChunk(chunkX, chunkZ);
+            }
+        }
+
+        const achievements = {
+            'GET_WOOD': { title: 'Getting Wood', description: 'Punch a tree to get a log.', unlocked: false },
+            'BENCHMARKING': { title: 'Benchmarking', description: 'Craft a workbench.', unlocked: false },
+            'TIME_TO_MINE': { title: 'Time to Mine!', description: 'Craft a wooden pickaxe.', unlocked: false },
+            'HOT_TOPIC': { title: 'Hot Topic', description: 'Craft a furnace.', unlocked: false },
+            'ACQUIRE_HARDWARE': { title: 'Acquire Hardware', description: 'Smelt an iron ingot.', unlocked: false },
+            'DIAMONDS': { title: 'DIAMONDS!', description: 'Acquire diamonds.', unlocked: false },
+            'ENCHANTER': { title: 'Enchanter', description: 'Craft an enchantment table.', unlocked: false },
+            'LIBRARIAN': { title: 'Librarian', description: 'Build a bookshelf.', unlocked: false },
+            'REDSTONE_REVOLUTION': { title: 'Redstone Revolution', description: 'Mine Redstone.', unlocked: false },
+            'POWER_UP': { title: 'Power Up', description: 'Power a Redstone Lamp.', unlocked: false },
+        };
+
+        const achievementStorageKey = location.pathname + 'achievements';
+
+        function loadAchievements() {
+            const saved = localStorage.getItem(achievementStorageKey);
+            if (saved) {
+                const savedAchievements = JSON.parse(saved);
+                Object.keys(achievements).forEach(key => {
+                    if (savedAchievements[key]) {
+                        achievements[key].unlocked = true;
+                    }
+                });
+            }
+        }
+
+        function saveAchievements() {
+            const toSave = {};
+            Object.keys(achievements).forEach(key => {
+                if (achievements[key].unlocked) {
+                    toSave[key] = true;
+                }
+            });
+            localStorage.setItem(achievementStorageKey, JSON.stringify(toSave));
+        }
+
+        function unlockAchievement(id) {
+            if (achievements[id] && !achievements[id].unlocked) {
+                achievements[id].unlocked = true;
+                showAchievementPopup(achievements[id]);
+                saveAchievements();
+            }
+        }
+
+        function showAchievementPopup(achievement) {
+            const popup = document.getElementById('achievement-popup');
+            popup.querySelector('.achievement-title').textContent = achievement.title;
+            popup.querySelector('.achievement-desc').textContent = achievement.description;
+            popup.classList.add('show');
+            setTimeout(() => {
+                popup.classList.remove('show');
+            }, 3000);
+        }
+
+        const player = {
+            velocity: new THREE.Vector3(),
+            onGround: false,
+            width: 0.8,
+            height: 1.8,
+        };
+
+        const keyState = {};
+        window.addEventListener('keydown', (e) => {
+            keyState[e.code] = true;
+            if (e.code === 'Space') e.preventDefault();
+        });
+        window.addEventListener('keyup', (e) => (keyState[e.code] = false));
+
+        const raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(), 0, 5);
+        let targetedBlock = null;
+
+        function checkCollisions() {
+            const pos = camera.position;
+            const pHeight = player.height;
+            const halfWidth = player.width / 2;
+
+            // Y collision (gravity)
+            // Check the block directly under the player's feet.
+            player.onGround = false;
+            const feetY = pos.y - pHeight;
+            const feetBlock = getBlock(pos.x, feetY, pos.z);
+            if (feetBlock && blockTypes[feetBlock.type].isFullBlock) {
+                const blockTop = Math.floor(feetY) + 1; // The Y coordinate of the top surface of the block.
+                // If the player is intersecting with or has fallen through the block.
+                if (pos.y <= blockTop + pHeight) {
+                    pos.y = blockTop + pHeight; // Correct the player's position to be on top of the block.
+                    player.velocity.y = 0;
+                    player.onGround = true;
+                }
+            }
+
+            // XZ collision (horizontal movement)
+            // Check for collisions at the player's corners at their current height and foot level.
+            const corners = [
+                {x: -halfWidth, z: -halfWidth}, {x: halfWidth, z: -halfWidth},
+                {x: -halfWidth, z: halfWidth},  {x: halfWidth, z: halfWidth}
+            ];
+
+            // Check from the player's feet up to their head.
+            for (let y = Math.floor(pos.y - pHeight); y <= Math.ceil(pos.y); y++) {
+                for (const corner of corners) {
+                    const checkX = pos.x + corner.x;
+                    const checkZ = pos.z + corner.z;
+                    const block = getBlock(checkX, y, checkZ);
+
+                    // If a corner is inside a solid block, an AABB collision has occurred.
+                    if (block && blockTypes[block.type].isFullBlock) {
+                        const blockCenterX = Math.floor(checkX) + 0.5;
+                        const blockCenterZ = Math.floor(checkZ) + 0.5;
+                        
+                        // Calculate how much the player is overlapping with the block on each axis.
+                        const overlapX = (1 + player.width) / 2 - Math.abs(pos.x - blockCenterX);
+                        const overlapZ = (1 + player.width) / 2 - Math.abs(pos.z - blockCenterZ);
+
+                        // If there's overlap on both axes, we need to correct the position.
+                        if (overlapX > 0 && overlapZ > 0) {
+                            // Resolve the collision by pushing the player out on the axis of least overlap.
+                            if (overlapX < overlapZ) {
+                                pos.x += (pos.x > blockCenterX) ? overlapX : -overlapX;
+                            } else {
+                                pos.z += (pos.z > blockCenterZ) ? overlapZ : -overlapZ;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = Math.min(clock.getDelta(), 0.1);
+
+            if (controls.isLocked) {
+                const speed = 5 * delta;
+                if (keyState['KeyW']) controls.moveForward(speed);
+                if (keyState['KeyS']) controls.moveForward(-speed);
+                if (keyState['KeyA']) controls.moveRight(-speed);
+                if (keyState['KeyD']) controls.moveRight(speed);
+                
+                if (keyState['Space'] && player.onGround) player.velocity.y = 8;
+                
+                player.velocity.y -= 20 * delta; // gravity
+                camera.position.y += player.velocity.y * delta;
+                
+                checkCollisions();
+            }
+
+            // Raycast for block targeting
+            if (controls.isLocked) {
+                raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+                const intersects = raycaster.intersectObjects(scene.children.filter(c => c.isChunk));
+                if (intersects.length > 0) {
+                    const intersect = intersects[0];
+                    const pos = intersect.point.clone().add(intersect.face.normal.clone().multiplyScalar(-0.5));
+                    const blockPos = { x: Math.floor(pos.x), y: Math.floor(pos.y), z: Math.floor(pos.z) };
+                    
+                    targetedBlock = { ...blockPos, normal: intersect.face.normal };
+                    selectionBox.position.set(blockPos.x + 0.5, blockPos.y + 0.5, blockPos.z + 0.5);
+                    selectionBox.visible = true;
+                } else {
+                    targetedBlock = null;
+                    selectionBox.visible = false;
+                }
+            }
+            
+            // World generation around player
+            const camX = Math.floor(camera.position.x / chunkSize);
+            const camZ = Math.floor(camera.position.z / chunkSize);
+            for(let x = -2; x <= 2; x++) {
+                for(let z = -2; z <= 2; z++) {
+                    const chunkKey = `${camX + x},${camZ + z}`;
+                    if(!scene.getObjectByName(chunkKey)){
+                         generateChunk(camX + x, camZ + z);
+                    }
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+        
+        function updateHotbar() {
+            const hotbarEl = document.getElementById('hotbar');
+            hotbarEl.innerHTML = '';
+            hotbarItems.forEach((item, index) => {
+                const slot = document.createElement('div');
+                slot.className = 'hotbar-slot' + (index === activeHotbarSlot ? ' active' : '');
+                
+                const blockDef = blockTypes[item];
+                if(blockDef.texture) slot.style.backgroundImage = `url(${blockDef.texture.image.src})`;
+                else slot.style.backgroundColor = `#${blockDef.material.color.getHexString()}`;
+
+                hotbarEl.appendChild(slot);
+            });
+        }
+        
+        window.addEventListener('wheel', e => {
+            activeHotbarSlot = (activeHotbarSlot + Math.sign(e.deltaY)) % hotbarItems.length;
+            if(activeHotbarSlot < 0) activeHotbarSlot = hotbarItems.length - 1;
+            updateHotbar();
+        });
+
+        window.addEventListener('mousedown', e => {
+            if(!controls.isLocked || !targetedBlock) return;
+            
+            if (e.button === 0) { // Left-click: break block
+                const block = getBlock(targetedBlock.x, targetedBlock.y, targetedBlock.z);
+                if(block){
+                    if(block.type === 'OAK_LOG') unlockAchievement('GET_WOOD');
+                    if(block.type === 'REDSTONE_ORE') unlockAchievement('REDSTONE_REVOLUTION');
+                    const key = getBlockKey(targetedBlock.x, targetedBlock.y, targetedBlock.z);
+                    world.delete(key);
+                    updateRedstone(targetedBlock.x, targetedBlock.y, targetedBlock.z);
+                }
+            } else if (e.button === 2) { // Right-click: place block or interact
+                const block = getBlock(targetedBlock.x, targetedBlock.y, targetedBlock.z);
+                 if (block && block.type === 'LEVER') {
+                    block.active = !block.active;
+                    updateRedstone(targetedBlock.x, targetedBlock.y, targetedBlock.z);
+                    if(block.active) unlockAchievement('POWER_UP');
+                    return;
+                }
+                
+                const placePos = {
+                    x: targetedBlock.x + targetedBlock.normal.x,
+                    y: targetedBlock.y + targetedBlock.normal.y,
+                    z: targetedBlock.z + targetedBlock.normal.z,
+                };
+                const placedBlockType = hotbarItems[activeHotbarSlot];
+                setBlock(placePos.x, placePos.y, placePos.z, placedBlockType);
+
+                if(placedBlockType === 'BOOKSHELF') unlockAchievement('LIBRARIAN');
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        loadAchievements();
+
+        // Initial Generation
+        for(let x = -2; x <= 2; x++) {
+            for(let z = -2; z <= 2; z++) {
+                generateChunk(x, z);
+            }
+        }
+        updateHotbar();
+        animate();
+    </script>
+</body>
+</html>
