@@ -1,4 +1,4 @@
-// Audio Management System
+// Enhanced Audio Management System
 class Audio {
     constructor() {
         this.sounds = {};
@@ -38,16 +38,27 @@ class Audio {
             dialogueAppear: () => this.playTone(600, 30, 'sine'),
             selectChoice: () => this.playTone(440, 50, 'sine'),
             betrayal: () => this.playMelody([220, 207, 196, 185], 300),
-            heartBeat: () => this.playHeartbeat()
+            heartBeat: () => this.playHeartbeat(),
+            achievement: () => this.playMelody([523, 659, 784, 1047, 1319], 100),
+            purchase: () => this.playTone(880, 100, 'sine'),
+            powerUp: () => this.playMelody([440, 554, 659], 80),
+            combo: () => this.playTone(660, 50, 'triangle')
         };
 
         // Create background music patterns
         this.musicPatterns = {
-            restaurant: [
+            menu: [
                 {note: 261, duration: 500}, // C
                 {note: 293, duration: 500}, // D
                 {note: 329, duration: 500}, // E
                 {note: 261, duration: 1000} // C
+            ],
+            restaurant: [
+                {note: 392, duration: 750}, // G
+                {note: 349, duration: 750}, // F
+                {note: 330, duration: 750}, // E
+                {note: 349, duration: 750}, // F
+                {note: 392, duration: 1000}, // G
             ],
             pacman: [
                 {note: 392, duration: 125}, // G
@@ -56,11 +67,24 @@ class Audio {
                 {note: 349, duration: 250}, // F
                 {note: 523, duration: 250}, // C
             ],
+            endless: [
+                {note: 440, duration: 100}, // A
+                {note: 494, duration: 100}, // B
+                {note: 523, duration: 100}, // C
+                {note: 587, duration: 100}, // D
+                {note: 659, duration: 200}, // E
+            ],
             ending: [
                 {note: 220, duration: 1000}, // A
                 {note: 207, duration: 1000}, // G#
                 {note: 196, duration: 1000}, // G
                 {note: 185, duration: 2000}  // F#
+            ],
+            upgrades: [
+                {note: 523, duration: 200}, // C
+                {note: 659, duration: 200}, // E
+                {note: 784, duration: 200}, // G
+                {note: 1047, duration: 400} // High C
             ]
         };
     }
@@ -167,10 +191,18 @@ class Audio {
         } else {
             // Resume music if it was playing
             const currentScene = game.state.currentScene;
-            if (currentScene === 'restaurant') {
+            if (currentScene === 'menu') {
+                this.playBackgroundMusic('menu');
+            } else if (currentScene === 'restaurant') {
                 this.playBackgroundMusic('restaurant');
             } else if (currentScene === 'pacman') {
-                this.playBackgroundMusic('pacman');
+                if (pacman && pacman.isEndless) {
+                    this.playBackgroundMusic('endless');
+                } else {
+                    this.playBackgroundMusic('pacman');
+                }
+            } else if (currentScene === 'upgrades') {
+                this.playBackgroundMusic('upgrades');
             }
         }
         
@@ -183,20 +215,26 @@ class Audio {
 
         switch(sceneName) {
             case 'menu':
-                // Play ambient menu music
-                this.playBackgroundMusic('restaurant');
+                this.playBackgroundMusic('menu');
                 break;
             case 'restaurant':
-                // Play romantic background music
                 this.playBackgroundMusic('restaurant');
                 break;
             case 'pacman':
-                // Play Pac-Man style music
-                this.playBackgroundMusic('pacman');
+                if (pacman && pacman.isEndless) {
+                    this.playBackgroundMusic('endless');
+                } else {
+                    this.playBackgroundMusic('pacman');
+                }
                 break;
             case 'ending':
-                // Play dramatic ending music
                 this.playBackgroundMusic('ending');
+                break;
+            case 'upgrades':
+                this.playBackgroundMusic('upgrades');
+                break;
+            case 'achievements':
+                this.playBackgroundMusic('menu');
                 break;
         }
     }
@@ -246,6 +284,22 @@ class Audio {
         this.playSound('betrayal');
         // Add heartbeat effect for dramatic tension
         setTimeout(() => this.playHeartbeat(), 500);
+    }
+
+    onAchievementUnlock() {
+        this.playSound('achievement');
+    }
+
+    onUpgradePurchase() {
+        this.playSound('purchase');
+    }
+
+    onPowerUpCollect() {
+        this.playSound('powerUp');
+    }
+
+    onComboIncrease() {
+        this.playSound('combo');
     }
 
     // Initialize audio on first user interaction
