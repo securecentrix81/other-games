@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Secure Centrix81 — Yussef with Saharsh (Romancing)</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    :root{
+      --glass: rgba(255,255,255,.08);
+      --glass2: rgba(255,255,255,.12);
+      --stroke: rgba(255,255,255,.16);
+    }
+    html, body { height: 100%; }
+    body { overflow: hidden; }
+    .noise::before{
+      content:"";
+      position:absolute; inset:0;
+      pointer-events:none;
+      background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/></filter><rect width="140" height="140" filter="url(%23n)" opacity="0.25"/></svg>');
+      mix-blend-mode: overlay;
+      opacity:.22;
+    }
+    .scanlines::after{
+      content:"";
+      position:absolute; inset:0;
+      pointer-events:none;
+      background: repeating-linear-gradient(to bottom, rgba(255,255,255,.06), rgba(255,255,255,.06) 1px, rgba(0,0,0,0) 3px, rgba(0,0,0,0) 6px);
+      opacity:.16;
+      mix-blend-mode: overlay;
+    }
+    .btn {
+      @apply px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 active:bg-white/20 border border-white/15 shadow-sm transition;
+    }
+    .btnPrimary {
+      @apply px-4 py-2 rounded-xl bg-indigo-500/80 hover:bg-indigo-500/90 active:bg-indigo-500 border border-indigo-300/30 shadow-sm transition;
+    }
+    .pill {
+      @apply px-3 py-1 rounded-full bg-white/10 border border-white/15;
+    }
+    canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
+    .focusRing:focus { outline: 2px solid rgba(99,102,241,.85); outline-offset: 2px; }
+    .toast {
+      transform: translateY(12px);
+      opacity: 0;
+      transition: opacity .25s ease, transform .25s ease;
+    }
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100">
+  <div id="app" class="relative w-full h-full">
+    <div id="bg" class="absolute inset-0 noise scanlines"></div>
+
+    <!-- Top bar -->
+    <div class="absolute top-0 left-0 right-0 z-20 px-4 sm:px-6 py-4">
+      <div class="mx-auto max-w-6xl flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500/90 to-fuchsia-500/70 border border-white/10 shadow-sm"></div>
+          <div>
+            <div class="text-sm text-zinc-300">Secure Centrix81</div>
+            <div class="font-semibold tracking-tight">Yussef with Saharsh (Romancing)</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="hudLevel" class="pill text-xs hidden sm:inline">Level: —</span>
+          <span id="hudLove" class="pill text-xs">Love: —</span>
+          <span id="hudHigh" class="pill text-xs hidden sm:inline">High: —</span>
+          <button id="btnPause" class="btn text-sm focusRing" title="Pause (P)" style="display:none">Pause</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main panels -->
+    <div class="absolute inset-0 pt-20 pb-8 px-4 sm:px-6">
+      <div class="mx-auto max-w-6xl h-full">
+        <div class="h-full grid grid-rows-[auto,1fr,auto] gap-4">
+          <!-- Status row -->
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="pill text-xs">Arrows/WASD: Move</span>
+              <span class="pill text-xs">Enter/Click: Select</span>
+              <span class="pill text-xs">P: Pause</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="btnMute" class="btn text-sm focusRing">Sound: On</button>
+              <button id="btnReset" class="btn text-sm focusRing">Reset Save</button>
+            </div>
+          </div>
+
+          <!-- Content area -->
+          <div class="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-[0_30px_120px_rgba(0,0,0,.55)]">
+            <div class="absolute inset-0" id="sceneGlow" style="background: radial-gradient(1200px 800px at 20% 20%, rgba(99,102,241,.22), transparent 60%), radial-gradient(1000px 700px at 80% 30%, rgba(236,72,153,.18), transparent 55%), radial-gradient(900px 600px at 50% 85%, rgba(16,185,129,.16), transparent 60%);"></div>
+
+            <!-- MENU -->
+            <section id="viewMenu" class="relative z-10 h-full p-6 sm:p-10 flex flex-col justify-center">
+              <div class="max-w-2xl">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-zinc-200">Single-page game • Story + Mini-games</div>
+                <h1 class="mt-4 text-3xl sm:text-5xl font-semibold tracking-tight">Three Dates. One Love Meter. One Twist.</h1>
+                <p class="mt-4 text-zinc-200 leading-relaxed">Guide Yussef through three restaurant dates with Saharsh. Choose what to say, then prove your vibe in a Pac‑maze mini-game to build Love. Reach full Love to unlock the finale.</p>
+
+                <div class="mt-6 flex flex-wrap gap-3">
+                  <button id="btnStart" class="btnPrimary focusRing">Start New</button>
+                  <button id="btnContinue" class="btn focusRing">Continue</button>
+                  <button id="btnHow" class="btn focusRing">How to Play</button>
+                </div>
+
+                <div class="mt-8 grid sm:grid-cols-3 gap-3">
+                  <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div class="text-xs text-zinc-300">Win condition</div>
+                    <div class="mt-1 font-semibold">Fill Love to 100</div>
+                    <div class="mt-2 text-sm text-zinc-200">Succeed in each date’s mini-game and pick good dialogue choices.</div>
+                  </div>
+                  <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div class="text-xs text-zinc-300">Loss condition</div>
+                    <div class="mt-1 font-semibold">Love hits 0</div>
+                    <div class="mt-2 text-sm text-zinc-200">Bad choices and failed dates can drop Love to zero.</div>
+                  </div>
+                  <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div class="text-xs text-zinc-300">Meta goal</div>
+                    <div class="mt-1 font-semibold">Beat your High Score</div>
+                    <div class="mt-2 text-sm text-zinc-200">Earn points in the maze; your best run is saved.</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- HOW -->
+            <section id="viewHow" class="hidden relative z-10 h-full p-6 sm:p-10">
+              <div class="max-w-3xl">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight">How to Play</h2>
+                    <p class="mt-2 text-zinc-200">Each restaurant date has two phases: Dialogue, then a Pac‑maze mini-game.</p>
+                  </div>
+                  <button id="btnHowBack" class="btn focusRing">Back</button>
+                </div>
+
+                <div class="mt-6 grid lg:grid-cols-2 gap-4">
+                  <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+                    <div class="font-semibold">Dialogue phase</div>
+                    <ul class="mt-2 text-sm text-zinc-200 list-disc list-inside space-y-1">
+                      <li>Pick one of three choices.</li>
+                      <li>Your choice changes Love immediately.</li>
+                      <li>Some choices modify the mini-game (power-ups, ghost speed).</li>
+                    </ul>
+                  </div>
+                  <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+                    <div class="font-semibold">Maze phase</div>
+                    <ul class="mt-2 text-sm text-zinc-200 list-disc list-inside space-y-1">
+                      <li>Collect hearts to earn points and Love.</li>
+                      <li>Avoid the “doubts” (ghosts). Getting caught costs a life.</li>
+                      <li>Grab a dessert orb to scare doubts and eat them for bonus points.</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="mt-4 rounded-2xl border border-white/10 bg-white/5 p-5">
+                  <div class="font-semibold">Controls</div>
+                  <div class="mt-2 text-sm text-zinc-200 grid sm:grid-cols-2 gap-2">
+                    <div><span class="text-zinc-300">Move:</span> Arrow keys or WASD</div>
+                    <div><span class="text-zinc-300">Pause:</span> P</div>
+                    <div><span class="text-zinc-300">Confirm:</span> Enter</div>
+                    <div><span class="text-zinc-300">Mute:</span> Sound button</div>
+                  </div>
+                </div>
+
+                <div class="mt-4 text-sm text-zinc-300">Note: This is a fictional story experience. The finale includes a betrayal twist as requested.</div>
+              </div>
+            </section>
+
+            <!-- STORY / DATE -->
+            <section id="viewStory" class="hidden relative z-10 h-full p-5 sm:p-8">
+              <div class="h-full grid lg:grid-cols-[1.05fr,.95fr] gap-5">
+                <div class="rounded-3xl border border-white/10 bg-black/20 p-5 sm:p-6 flex flex-col">
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <div id="storyPlace" class="text-xs text-zinc-300">—</div>
+                      <div id="storyTitle" class="mt-1 text-2xl sm:text-3xl font-semibold tracking-tight">—</div>
+                      <div id="storySub" class="mt-2 text-sm text-zinc-200">—</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span id="storyLoveDelta" class="hidden pill text-xs"></span>
+                      <span id="storyStage" class="pill text-xs">Date —/—</span>
+                    </div>
+                  </div>
+
+                  <div class="mt-4 flex-1 grid sm:grid-cols-2 gap-4">
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <div class="text-xs text-zinc-300">Yussef</div>
+                      <div class="mt-2 flex items-center gap-3">
+                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400/80 to-rose-500/70 border border-white/10"></div>
+                        <div>
+                          <div class="font-semibold">Yussef</div>
+                          <div class="text-xs text-zinc-300">Your choices shape the vibe.</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <div class="text-xs text-zinc-300">Saharsh</div>
+                      <div class="mt-2 flex items-center gap-3">
+                        <img id="saharshImg" alt="Saharsh" class="w-16 h-16 rounded-2xl object-cover border border-white/10" />
+                        <div>
+                          <div class="font-semibold">Saharsh</div>
+                          <div class="text-xs text-zinc-300">Reacts to what you say… and what you do.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div id="dialogueText" class="text-zinc-100 leading-relaxed">—</div>
+                    <div class="mt-4 grid gap-2" id="choices"></div>
+                  </div>
+
+                  <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+                    <div class="text-xs text-zinc-300">Tip: Desserts scare doubts.</div>
+                    <div class="flex items-center gap-2">
+                      <button id="btnStoryBack" class="btn focusRing">Main Menu</button>
+                      <button id="btnToMaze" class="btnPrimary focusRing" disabled>Start Maze</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="rounded-3xl border border-white/10 bg-black/20 p-5 sm:p-6 flex flex-col">
+                  <div class="flex items-start justify-between gap-2">
+                    <div>
+                      <div class="text-xs text-zinc-300">Mini-game preview</div>
+                      <div class="mt-1 font-semibold">Pac‑Maze of Feelings</div>
+                      <div id="mazeBrief" class="mt-2 text-sm text-zinc-200">—</div>
+                    </div>
+                    <div class="text-xs text-zinc-300">Score • Time • Lives</div>
+                  </div>
+
+                  <div class="mt-4 flex-1 rounded-2xl border border-white/10 bg-white/5 p-3 flex items-center justify-center">
+                    <canvas id="mazeCanvas" width="672" height="432" class="w-full h-full max-h-[420px] rounded-xl"></canvas>
+                  </div>
+
+                  <div class="mt-4 grid grid-cols-3 gap-3 text-xs">
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div class="text-zinc-300">Target</div>
+                      <div id="mazeTarget" class="mt-1 font-semibold">—</div>
+                    </div>
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div class="text-zinc-300">Time</div>
+                      <div id="mazeTime" class="mt-1 font-semibold">—</div>
+                    </div>
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div class="text-zinc-300">Doubts</div>
+                      <div id="mazeGhosts" class="mt-1 font-semibold">—</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- MINIGAME -->
+            <section id="viewMaze" class="hidden relative z-10 h-full p-4 sm:p-6">
+              <div class="h-full grid grid-rows-[auto,1fr,auto] gap-3">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="pill text-xs">Score: <span id="mScore">0</span></span>
+                    <span class="pill text-xs">Hearts left: <span id="mHearts">0</span></span>
+                    <span class="pill text-xs">Lives: <span id="mLives">3</span></span>
+                    <span class="pill text-xs">Time: <span id="mTime">0</span>s</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span id="mBuff" class="pill text-xs hidden">—</span>
+                    <button id="btnMazeQuit" class="btn focusRing">Quit</button>
+                  </div>
+                </div>
+
+                <div class="rounded-3xl border border-white/10 bg-black/20 p-3 sm:p-4 flex items-center justify-center">
+                  <canvas id="gameCanvas" width="840" height="540" class="w-full h-full max-h-[640px] rounded-2xl"></canvas>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <div class="text-xs text-zinc-300">Dessert orb = power mode. Eat doubts for bonus points.</div>
+                  <div class="flex items-center gap-2">
+                    <button id="btnMazePause" class="btn focusRing">Pause</button>
+                    <button id="btnMazeRestart" class="btn focusRing">Restart</button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- END -->
+            <section id="viewEnd" class="hidden relative z-10 h-full p-6 sm:p-10 flex flex-col justify-center">
+              <div class="max-w-3xl">
+                <div id="endBadge" class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-zinc-200">Ending</div>
+                <h2 id="endTitle" class="mt-4 text-3xl sm:text-5xl font-semibold tracking-tight">—</h2>
+                <p id="endText" class="mt-4 text-zinc-200 leading-relaxed">—</p>
+
+                <div class="mt-6 grid sm:grid-cols-3 gap-3">
+                  <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div class="text-xs text-zinc-300">Final Love</div>
+                    <div id="endLove" class="mt-1 font-semibold">—</div>
+                  </div>
+                  <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div class="text-xs text-zinc-300">Run Score</div>
+                    <div id="endScore" class="mt-1 font-semibold">—</div>
+                  </div>
+                  <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div class="text-xs text-zinc-300">High Score</div>
+                    <div id="endHigh" class="mt-1 font-semibold">—</div>
+                  </div>
+                </div>
+
+                <div class="mt-6 flex flex-wrap gap-3">
+                  <button id="btnEndRestart" class="btnPrimary focusRing">Play Again</button>
+                  <button id="btnEndMenu" class="btn focusRing">Main Menu</button>
+                </div>
+
+                <div class="mt-8 text-xs text-zinc-400">This is a fictional game experience made for Secure Centrix81.</div>
+              </div>
+            </section>
+
+            <!-- Modal -->
+            <div id="modal" class="hidden absolute inset-0 z-30 bg-black/60 backdrop-blur-sm p-4 sm:p-8">
+              <div class="h-full flex items-center justify-center">
+                <div class="w-full max-w-xl rounded-3xl border border-white/10 bg-zinc-950/70 p-6 shadow-2xl">
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <div id="modalKicker" class="text-xs text-zinc-300">—</div>
+                      <div id="modalTitle" class="mt-1 text-2xl font-semibold">—</div>
+                      <div id="modalText" class="mt-3 text-sm text-zinc-200 leading-relaxed">—</div>
+                    </div>
+                    <button id="btnModalClose" class="btn focusRing">Close</button>
+                  </div>
+                  <div class="mt-5 grid sm:grid-cols-3 gap-3 text-sm">
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <div class="text-xs text-zinc-300">Score</div>
+                      <div id="modalScore" class="mt-1 font-semibold">—</div>
+                    </div>
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <div class="text-xs text-zinc-300">Love change</div>
+                      <div id="modalLove" class="mt-1 font-semibold">—</div>
+                    </div>
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <div class="text-xs text-zinc-300">Next</div>
+                      <div id="modalNext" class="mt-1 font-semibold">—</div>
+                    </div>
+                  </div>
+                  <div class="mt-5 flex flex-wrap justify-end gap-2">
+                    <button id="btnModalRetry" class="btn focusRing">Retry Maze</button>
+                    <button id="btnModalContinue" class="btnPrimary focusRing">Continue</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Toast -->
+            <div class="absolute bottom-4 left-0 right-0 z-40 px-4">
+              <div class="mx-auto max-w-3xl">
+                <div id="toast" class="toast rounded-2xl border border-white/10 bg-zinc-950/70 px-4 py-3 text-sm text-zinc-200 backdrop-blur">
+                  <span id="toastText">—</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Footer row -->
+          <div class="text-xs text-zinc-500 flex items-center justify-between">
+            <div>Tip: If the canvas looks stretched, resize your window.</div>
+            <div>v1.0 • offline-friendly (CDNs required)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Prevent scrolling with game keys
+    window.addEventListener('keydown', (e) => {
+      const keys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '];
+      if (keys.includes(e.key)) e.preventDefault();
+    }, { passive: false });
+
+    const PREFIX = location.pathname + '::centrix81::yussef-saharsh::';
+    const LS_SAVE = PREFIX + 'save';
+    const LS_HIGH = PREFIX + 'highScore';
+    const LS_SOUND = PREFIX + 'soundOn';
+
+    const $ = (id) => document.getElementById(id);
+
+    const views = {
+      menu: $('viewMenu'),
+      how: $('viewHow'),
+      story: $('viewStory'),
+      maze: $('viewMaze'),
+      end: $('viewEnd')
+    };
+
+    const hud = {
+      level: $('hudLevel'),
+      love: $('hudLove'),
+      high: $('hudHigh'),
+      pause: $('btnPause')
+    };
+
+    const saharshPhotoUrl = 'https://asset-cdn.schoology.com/system/files/imagecache/profile_big/pictures/picture-c0b09cdead19788fb0f8be0d53b5c572_68c34cd700b90.jpg';
+    const saharshImg = $('saharshImg');
+    saharshImg.src = saharshPhotoUrl;
+    saharshImg.referrerPolicy = 'no-referrer';
+
+    // --- Simple audio (optional) ---
+    let audioCtx = null;
+    let soundOn = true;
+    function loadSoundSetting(){
+      const v = localStorage.getItem(LS_SOUND);
+      soundOn = v === null ? true : (v === '1');
+      $('btnMute').textContent = 'Sound: ' + (soundOn ? 'On' : 'Off');
+    }
+    function setSound(on){
+      soundOn = !!on;
+      localStorage.setItem(LS_SOUND, soundOn ? '1' : '0');
+      $('btnMute').textContent = 'Sound: ' + (soundOn ? 'On' : 'Off');
+      if (!soundOn) stopTone();
+    }
+    function ensureAudio(){
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    let toneNode = null;
+    function playTone(freq=440, dur=0.09, type='sine', gain=0.05){
+      if (!soundOn) return;
+      ensureAudio();
+      const t0 = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(gain, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(g);
+      g.connect(audioCtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.02);
+    }
+    function startTone(freq=120, type='sawtooth', gain=0.015){
+      if (!soundOn) return;
+      ensureAudio();
+      stopTone();
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      g.gain.value = gain;
+      osc.connect(g);
+      g.connect(audioCtx.destination);
+      osc.start();
+      toneNode = { osc, g };
+    }
+    function stopTone(){
+      if (!toneNode) return;
+      try { toneNode.osc.stop(); } catch {}
+      toneNode = null;
+    }
+
+    // --- Game data ---
+    const levels = [
+      {
+        id: 1,
+        place: 'Neon Noodles',
+        title: 'First Date: The Spark',
+        sub: 'Steam, neon, and the first test of vibe.',
+        bg: 'radial-gradient(1200px 800px at 15% 20%, rgba(59,130,246,.18), transparent 60%), radial-gradient(900px 700px at 80% 25%, rgba(236,72,153,.20), transparent 58%), linear-gradient(120deg, rgba(2,6,23,1), rgba(24,24,27,1))',
+        dialogue: {
+          text: 'Saharsh smiles. “So… what kind of night are we having?”',
+          choices: [
+            { label: '“A calm one. Just honest talk.”', love: +10, mod: { frightenedBonus: 1.0, ghostSpeed: 1.0, powerTime: 7 } },
+            { label: '“A competitive one. I want to impress you.”', love: +6, mod: { frightenedBonus: 1.15, ghostSpeed: 1.05, powerTime: 7 } },
+            { label: '“Whatever. I’m here.”', love: -8, mod: { frightenedBonus: 0.9, ghostSpeed: 1.12, powerTime: 6 } },
+          ]
+        },
+        maze: { target: 60, time: 55, ghosts: 3, theme: { wall: '#60a5fa', pellet: '#f472b6', power: '#fde68a' } }
+      },
+      {
+        id: 2,
+        place: 'Skyline Sweets',
+        title: 'Second Date: The Rhythm',
+        sub: 'Dessert and laughter… plus creeping doubts.',
+        bg: 'radial-gradient(1200px 800px at 20% 20%, rgba(236,72,153,.18), transparent 60%), radial-gradient(1000px 700px at 75% 35%, rgba(34,197,94,.15), transparent 60%), linear-gradient(120deg, rgba(2,6,23,1), rgba(24,24,27,1))',
+        dialogue: {
+          text: 'Saharsh leans in. “What do you want from this… from us?”',
+          choices: [
+            { label: '“I want to build something real.”', love: +12, mod: { frightenedBonus: 1.0, ghostSpeed: 1.0, powerTime: 8 } },
+            { label: '“I want the fun parts, no pressure.”', love: +3, mod: { frightenedBonus: 1.25, ghostSpeed: 1.10, powerTime: 7 } },
+            { label: '“I don’t know. I’m figuring it out.”', love: -4, mod: { frightenedBonus: 0.95, ghostSpeed: 1.15, powerTime: 6 } },
+          ]
+        },
+        maze: { target: 70, time: 60, ghosts: 4, theme: { wall: '#34d399', pellet: '#a78bfa', power: '#fb7185' } }
+      },
+      {
+        id: 3,
+        place: 'Moonlit Bistro',
+        title: 'Third Date: The Promise',
+        sub: 'A perfect table. A fragile trust.',
+        bg: 'radial-gradient(1200px 800px at 25% 15%, rgba(99,102,241,.20), transparent 60%), radial-gradient(1000px 700px at 75% 30%, rgba(245,158,11,.14), transparent 60%), linear-gradient(120deg, rgba(2,6,23,1), rgba(24,24,27,1))',
+        dialogue: {
+          text: 'Saharsh whispers: “Are you going to stay… even when things get hard?”',
+          choices: [
+            { label: '“Yes. I’m here, even on the hard days.”', love: +14, mod: { frightenedBonus: 1.05, ghostSpeed: 1.05, powerTime: 8 } },
+            { label: '“I’ll try… as long as we both keep it exciting.”', love: +5, mod: { frightenedBonus: 1.3, ghostSpeed: 1.14, powerTime: 7 } },
+            { label: '“I can’t promise anything.”', love: -10, mod: { frightenedBonus: 0.9, ghostSpeed: 1.20, powerTime: 6 } },
+          ]
+        },
+        maze: { target: 80, time: 60, ghosts: 5, theme: { wall: '#f59e0b', pellet: '#60a5fa', power: '#a78bfa' } }
+      }
+    ];
+
+    const MAZE_LAYOUT = [
+      "#####################",
+      "#........#........#.#",
+      "#.###.###.#.###.###.#",
+      "#o#.....#...#.....#o#",
+      "#.###.#.#####.#.###.#",
+      "#.....#...#...#.....#",
+      "#####.### # ###.#####",
+      "#.........#.........#",
+      "#####.### # ###.#####",
+      "#.....#...#...#.....#",
+      "#.###.#.#####.#.###.#",
+      "#o#.....#...#.....#o#",
+      "#.###.###.#.###.###.#",
+      "#... ......#........#",
+      "#####################"
+    ];
+
+    function normalizeLayout(layout){
+      // Fix any accidental spaces by turning them into empty corridors '.'
+      return layout.map(row => row.replace(/ /g, '.'));
+    }
+
+    // --- State ---
+    const game = {
+      view: 'menu',
+      levelIndex: 0,
+      love: 50,
+      runScore: 0,
+      highScore: 0,
+      chosen: null,
+      lastLoveDelta: 0,
+      mod: { frightenedBonus: 1.0, ghostSpeed: 1.0, powerTime: 7 },
+      paused: false
+    };
+
+    function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+
+    function showToast(text){
+      const t = $('toast');
+      $('toastText').textContent = text;
+      t.classList.add('show');
+      clearTimeout(showToast._tm);
+      showToast._tm = setTimeout(() => t.classList.remove('show'), 2200);
+    }
+
+    function setView(name){
+      game.view = name;
+      for (const k in views) views[k].classList.add('hidden');
+      views[name].classList.remove('hidden');
+      hud.pause.style.display = (name === 'maze') ? '' : 'none';
+      updateHUD();
+    }
+
+    function updateHUD(){
+      const lvl = game.levelIndex + 1;
+      const total = levels.length;
+      hud.level.textContent = 'Level: ' + (game.view === 'menu' || game.view === 'how' || game.view === 'end' ? '—' : `${lvl}/${total}`);
+      hud.love.textContent = 'Love: ' + Math.round(game.love);
+      hud.high.textContent = 'High: ' + game.highScore;
+    }
+
+    function loadHigh(){
+      const v = localStorage.getItem(LS_HIGH);
+      game.highScore = v ? (parseInt(v,10) || 0) : 0;
+      updateHUD();
+    }
+
+    function saveHighIfNeeded(){
+      if (game.runScore > game.highScore){
+        game.highScore = game.runScore;
+        localStorage.setItem(LS_HIGH, String(game.highScore));
+      }
+    }
+
+    function saveGame(){
+      const payload = {
+        levelIndex: game.levelIndex,
+        love: game.love,
+        runScore: game.runScore
+      };
+      localStorage.setItem(LS_SAVE, JSON.stringify(payload));
+    }
+
+    function loadGame(){
+      const raw = localStorage.getItem(LS_SAVE);
+      if (!raw) return false;
+      try {
+        const p = JSON.parse(raw);
+        if (typeof p.levelIndex !== 'number') return false;
+        game.levelIndex = clamp(p.levelIndex, 0, levels.length-1);
+        game.love = clamp(p.love ?? 50, 0, 100);
+        game.runScore = p.runScore ?? 0;
+        return true;
+      } catch { return false; }
+    }
+
+    function clearSave(){
+      // remove only our keys
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(PREFIX)) localStorage.removeItem(k);
+      }
+    }
+
+    function startNew(){
+      game.levelIndex = 0;
+      game.love = 50;
+      game.runScore = 0;
+      game.chosen = null;
+      game.lastLoveDelta = 0;
+      game.mod = { frightenedBonus: 1.0, ghostSpeed: 1.0, powerTime: 7 };
+      saveGame();
+      goToStory();
+      showToast('New run started.');
+    }
+
+    function continueGame(){
+      if (loadGame()){
+        goToStory();
+        showToast('Loaded your save.');
+      } else {
+        showToast('No save found. Starting new.');
+        startNew();
+      }
+    }
+
+    // --- Story view ---
+    function goToStory(){
+      const lvl = levels[game.levelIndex];
+      $('bg').style.background = lvl.bg;
+      $('storyPlace').textContent = lvl.place;
+      $('storyTitle').textContent = lvl.title;
+      $('storySub').textContent = lvl.sub;
+      $('storyStage').textContent = `Date ${lvl.id}/${levels.length}`;
+      $('dialogueText').textContent = lvl.dialogue.text;
+
+      // reset choice UI
+      game.chosen = null;
+      $('btnToMaze').disabled = true;
+      const c = $('choices');
+      c.innerHTML = '';
+
+      lvl.dialogue.choices.forEach((ch, idx) => {
+        const b = document.createElement('button');
+        b.className = 'btn focusRing text-left';
+        b.innerHTML = `<div class="flex items-start justify-between gap-3"><div>${ch.label}</div><div class="text-xs text-zinc-300">${ch.love >= 0 ? '+' : ''}${ch.love} Love</div></div>`;
+        b.addEventListener('click', () => selectChoice(idx));
+        c.appendChild(b);
+      });
+
+      // right panel preview
+      const target = lvl.maze.target;
+      $('mazeBrief').textContent = `Collect at least ${target} hearts before time runs out. A dessert orb scares doubts for a few seconds.`;
+      $('mazeTarget').textContent = `${target} hearts`;
+      $('mazeTime').textContent = `${lvl.maze.time}s`;
+      $('mazeGhosts').textContent = `${lvl.maze.ghosts}`;
+
+      // render preview maze
+      renderMazePreview(lvl);
+
+      // show last delta if any
+      if (game.lastLoveDelta !== 0) {
+        const el = $('storyLoveDelta');
+        el.classList.remove('hidden');
+        el.textContent = `Last: ${game.lastLoveDelta >= 0 ? '+' : ''}${game.lastLoveDelta} Love`;
+      } else {
+        $('storyLoveDelta').classList.add('hidden');
+      }
+
+      setView('story');
+    }
+
+    function selectChoice(idx){
+      const lvl = levels[game.levelIndex];
+      const chosen = lvl.dialogue.choices[idx];
+      game.chosen = chosen;
+      game.mod = chosen.mod;
+      game.lastLoveDelta = chosen.love;
+      applyLoveDelta(chosen.love);
+      $('btnToMaze').disabled = false;
+      playTone(660, 0.08, 'triangle', 0.05);
+      showToast(`Choice locked: ${chosen.love>=0?'+':''}${chosen.love} Love`);
+      saveGame();
+
+      // visually highlight selection
+      const btns = Array.from($('choices').children);
+      btns.forEach((b,i) => {
+        b.classList.remove('ring-2','ring-indigo-400/70','bg-white/10');
+        if (i === idx) {
+          b.classList.add('ring-2','ring-indigo-400/70');
+        }
+      });
+    }
+
+    function applyLoveDelta(delta){
+      const before = game.love;
+      game.love = clamp(game.love + delta, 0, 100);
+      updateHUD();
+      if (game.love <= 0 && before > 0){
+        // immediate loss
+        endGame('Lost: Love Fell to Zero', 'The vibe collapsed before the night could recover. Sometimes choices land heavy, and the maze can’t fix it.', false);
+      }
+    }
+
+    function renderMazePreview(lvl){
+      const canvas = $('mazeCanvas');
+      const ctx = canvas.getContext('2d');
+      const layout = normalizeLayout(MAZE_LAYOUT);
+      const rows = layout.length;
+      const cols = layout[0].length;
+      const cell = Math.floor(Math.min(canvas.width / cols, canvas.height / rows));
+      const ox = Math.floor((canvas.width - cols*cell)/2);
+      const oy = Math.floor((canvas.height - rows*cell)/2);
+
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = 'rgba(0,0,0,.25)';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+
+      for (let y=0;y<rows;y++){
+        for (let x=0;x<cols;x++){
+          const ch = layout[y][x];
+          if (ch === '#'){
+            ctx.fillStyle = lvl.maze.theme.wall;
+            ctx.globalAlpha = 0.7;
+            ctx.fillRect(ox + x*cell, oy + y*cell, cell, cell);
+            ctx.globalAlpha = 1;
+          } else if (ch === 'o'){
+            ctx.fillStyle = lvl.maze.theme.power;
+            ctx.beginPath();
+            ctx.arc(ox + x*cell + cell/2, oy + y*cell + cell/2, cell*0.22, 0, Math.PI*2);
+            ctx.fill();
+          } else if (ch === '.'){
+            ctx.fillStyle = lvl.maze.theme.pellet;
+            ctx.globalAlpha = 0.8;
+            ctx.beginPath();
+            ctx.arc(ox + x*cell + cell/2, oy + y*cell + cell/2, cell*0.10, 0, Math.PI*2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+          }
+        }
+      }
+      // pacman marker
+      ctx.fillStyle = '#fde68a';
+      ctx.beginPath();
+      ctx.arc(ox + 1.5*cell, oy + 1.5*cell, cell*0.35, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // --- Maze game engine ---
+    const maze = {
+      canvas: $('gameCanvas'),
+      ctx: null,
+      running: false,
+      paused: false,
+      layout: [],
+      cols: 0,
+      rows: 0,
+      cell: 24,
+      ox: 0,
+      oy: 0,
+      level: null,
+      pelletCount: 0,
+      pelletsLeft: 0,
+      score: 0,
+      lives: 3,
+      timeLeft: 60,
+      frightenedUntil: 0,
+      lastT: 0,
+      pac: null,
+      ghosts: [],
+      inputDir: {x:0,y:0},
+      dir: {x:0,y:0},
+      wantsDir: {x:0,y:0},
+      lockTurns: false,
+      anim: 0,
+      hitCooldownUntil: 0,
+      win: false
+    };
+
+    function setupMaze(levelObj){
+      maze.ctx = maze.canvas.getContext('2d');
+      maze.level = levelObj;
+      maze.layout = normalizeLayout(MAZE_LAYOUT).map(r => r.split(''));
+      maze.rows = maze.layout.length;
+      maze.cols = maze.layout[0].length;
+
+      // Count pellets/power
+      let pellets = 0;
+      for (let y=0;y<maze.rows;y++){
+        for (let x=0;x<maze.cols;x++){
+          if (maze.layout[y][x] === '.' || maze.layout[y][x] === 'o') pellets++;
+        }
+      }
+      maze.pelletCount = pellets;
+      maze.pelletsLeft = pellets;
+
+      maze.score = 0;
+      maze.lives = 3;
+      maze.timeLeft = levelObj.maze.time;
+      maze.frightenedUntil = 0;
+      maze.lastT = performance.now();
+      maze.anim = 0;
+      maze.hitCooldownUntil = 0;
+      maze.win = false;
+
+      // Fit canvas
+      resizeGameCanvas();
+
+      // Entities
+      maze.pac = {
+        x: 1.5, y: 1.5,
+        speed: 6.2, // tiles per second
+        r: 0.38
+      };
+      maze.dir = {x:1,y:0};
+      maze.wantsDir = {x:1,y:0};
+
+      const ghostSpawn = [
+        {x: 10.5, y: 7.5},
+        {x: 10.5, y: 6.5},
+        {x: 9.5, y: 7.5},
+        {x: 11.5, y: 7.5},
+        {x: 10.5, y: 8.5}
+      ];
+      const ghostColors = ['#f97316','#60a5fa','#a78bfa','#fb7185','#34d399'];
+
+      maze.ghosts = [];
+      for (let i=0;i<levelObj.maze.ghosts;i++){
+        const s = ghostSpawn[i % ghostSpawn.length];
+        maze.ghosts.push({
+          x: s.x,
+          y: s.y,
+          dir: randomDir(),
+          speed: (4.6 + i*0.2) * (game.mod.ghostSpeed ?? 1.0),
+          color: ghostColors[i % ghostColors.length],
+          eaten: false
+        });
+      }
+
+      // HUD
+      $('mScore').textContent = '0';
+      $('mHearts').textContent = String(maze.pelletsLeft);
+      $('mLives').textContent = String(maze.lives);
+      $('mTime').textContent = String(Math.ceil(maze.timeLeft));
+      $('mBuff').classList.add('hidden');
+      $('btnMazePause').textContent = 'Pause';
+
+      // Start
+      maze.running = true;
+      maze.paused = false;
+      startTone(96, 'sawtooth', 0.012);
+      loop();
+    }
+
+    function resizeGameCanvas(){
+      const canvas = maze.canvas;
+      // Keep internal resolution but compute drawing scale per-cell.
+      const w = canvas.width;
+      const h = canvas.height;
+      maze.cell = Math.floor(Math.min(w / maze.cols, h / maze.rows));
+      maze.ox = Math.floor((w - maze.cols*maze.cell)/2);
+      maze.oy = Math.floor((h - maze.rows*maze.cell)/2);
+    }
+
+    window.addEventListener('resize', () => {
+      if (maze.running) resizeGameCanvas();
+    });
+
+    function tileAt(tx, ty){
+      tx = Math.floor(tx);
+      ty = Math.floor(ty);
+      if (ty < 0 || ty >= maze.rows || tx < 0 || tx >= maze.cols) return '#';
+      return maze.layout[ty][tx];
+    }
+
+    function isWall(tx, ty){
+      return tileAt(tx, ty) === '#';
+    }
+
+    function canMoveFrom(x, y, dir){
+      const eps = 0.18;
+      // When moving, check ahead by radius
+      const nx = x + dir.x * eps;
+      const ny = y + dir.y * eps;
+      const r = maze.pac.r;
+
+      // Check four corners of bounding box
+      const corners = [
+        {x: nx - r, y: ny - r},
+        {x: nx + r, y: ny - r},
+        {x: nx - r, y: ny + r},
+        {x: nx + r, y: ny + r}
+      ];
+      for (const c of corners){
+        if (isWall(c.x, c.y)) return false;
+      }
+      return true;
+    }
+
+    function nearCenter(x, y){
+      const fx = x - Math.floor(x);
+      const fy = y - Math.floor(y);
+      return Math.abs(fx - 0.5) < 0.14 && Math.abs(fy - 0.5) < 0.14;
+    }
+
+    function randomDir(){
+      const dirs = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+      return dirs[Math.floor(Math.random()*dirs.length)];
+    }
+
+    function opposite(a,b){
+      return a.x === -b.x && a.y === -b.y;
+    }
+
+    function possibleDirsForGhost(g){
+      const dirs = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+      const res = [];
+      for (const d of dirs){
+        // Ghost has smaller radius
+        const nx = g.x + d.x * 0.25;
+        const ny = g.y + d.y * 0.25;
+        const r = 0.33;
+        const corners = [
+          {x: nx - r, y: ny - r},
+          {x: nx + r, y: ny - r},
+          {x: nx - r, y: ny + r},
+          {x: nx + r, y: ny + r}
+        ];
+        let ok = true;
+        for (const c of corners){
+          if (isWall(c.x, c.y)) { ok = false; break; }
+        }
+        if (ok) res.push(d);
+      }
+      return res;
+    }
+
+    function chooseGhostDir(g, now){
+      const dirs = possibleDirsForGhost(g);
+      if (dirs.length === 0) return g.dir;
+      // At intersections, choose a direction. Avoid reversing unless forced.
+      let options = dirs.filter(d => !opposite(d, g.dir));
+      if (options.length === 0) options = dirs;
+
+      const frightened = now < maze.frightenedUntil;
+      const pac = maze.pac;
+      const px = pac.x, py = pac.y;
+
+      // 75% greedy, 25% random to keep it playable.
+      if (Math.random() < 0.25) return options[Math.floor(Math.random()*options.length)];
+
+      let best = options[0];
+      let bestScore = frightened ? -Infinity : Infinity;
+      for (const d of options){
+        const nx = g.x + d.x;
+        const ny = g.y + d.y;
+        const dist = (nx-px)*(nx-px) + (ny-py)*(ny-py);
+        if (!frightened){
+          if (dist < bestScore){ bestScore = dist; best = d; }
+        } else {
+          if (dist > bestScore){ bestScore = dist; best = d; }
+        }
+      }
+      return best;
+    }
+
+    function eatTile(tx, ty){
+      const ch = maze.layout[ty][tx];
+      if (ch !== '.' && ch !== 'o') return;
+      maze.layout[ty][tx] = ' ';
+      maze.pelletsLeft--;
+      $('mHearts').textContent = String(maze.pelletsLeft);
+
+      if (ch === '.'){
+        maze.score += 10;
+        game.runScore += 10;
+        playTone(880, 0.03, 'square', 0.03);
+      } else {
+        maze.score += 50;
+        game.runScore += 50;
+        maze.frightenedUntil = performance.now() + (game.mod.powerTime ?? 7) * 1000;
+        playTone(220, 0.12, 'sine', 0.06);
+        $('mBuff').classList.remove('hidden');
+        $('mBuff').textContent = `Dessert power: ${game.mod.powerTime ?? 7}s`;
+      }
+      $('mScore').textContent = String(maze.score);
+
+      // Win check: reach target hearts collected OR clear all
+      const collected = maze.pelletCount - maze.pelletsLeft;
+      if (collected >= maze.level.maze.target || maze.pelletsLeft <= 0){
+        maze.win = true;
+        endMaze(true);
+      }
+    }
+
+    function dist2(ax,ay,bx,by){
+      const dx = ax-bx, dy = ay-by;
+      return dx*dx + dy*dy;
+    }
+
+    function update(dt, now){
+      if (maze.paused) return;
+
+      maze.anim += dt;
+      maze.timeLeft -= dt;
+      $('mTime').textContent = String(Math.max(0, Math.ceil(maze.timeLeft)));
+
+      if (now >= maze.frightenedUntil) {
+        $('mBuff').classList.add('hidden');
+      } else {
+        const rem = Math.max(0, (maze.frightenedUntil - now)/1000);
+        $('mBuff').classList.remove('hidden');
+        $('mBuff').textContent = `Dessert power: ${rem.toFixed(1)}s`;
+      }
+
+      if (maze.timeLeft <= 0){
+        endMaze(false, 'Time ran out.');
+        return;
+      }
+
+      // Pac movement
+      const pac = maze.pac;
+
+      // allow turning near tile centers
+      if (nearCenter(pac.x, pac.y)){
+        if (maze.wantsDir && (maze.wantsDir.x !== maze.dir.x || maze.wantsDir.y !== maze.dir.y)){
+          if (canMoveFrom(pac.x, pac.y, maze.wantsDir)){
+            maze.dir = {x: maze.wantsDir.x, y: maze.wantsDir.y};
+            playTone(520, 0.03, 'triangle', 0.02);
+          }
+        }
+      }
+
+      // attempt move
+      const step = pac.speed * dt;
+      const want = maze.dir;
+      let moved = false;
+      // sub-steps for collision
+      const sub = Math.max(1, Math.ceil(step / 0.12));
+      for (let i=0;i<sub;i++){
+        const s = step / sub;
+        if (canMoveFrom(pac.x, pac.y, want)){
+          pac.x += want.x * s;
+          pac.y += want.y * s;
+          moved = true;
+        } else {
+          // snap to center
+          pac.x = Math.floor(pac.x) + 0.5;
+          pac.y = Math.floor(pac.y) + 0.5;
+          break;
+        }
+      }
+
+      // wrap? (optional) none.
+
+      // Eat pellet if on tile center-ish
+      if (nearCenter(pac.x, pac.y)){
+        const tx = Math.floor(pac.x);
+        const ty = Math.floor(pac.y);
+        eatTile(tx, ty);
+      }
+
+      // Ghost movement
+      for (const g of maze.ghosts){
+        if (nearCenter(g.x, g.y)){
+          g.dir = chooseGhostDir(g, now);
+        }
+        const gStep = g.speed * dt;
+        const subg = Math.max(1, Math.ceil(gStep / 0.12));
+        for (let i=0;i<subg;i++){
+          const s = gStep / subg;
+          // ghost collision
+          const nx = g.x + g.dir.x * s;
+          const ny = g.y + g.dir.y * s;
+          const r = 0.33;
+          const corners = [
+            {x: nx - r, y: ny - r},
+            {x: nx + r, y: ny - r},
+            {x: nx - r, y: ny + r},
+            {x: nx + r, y: ny + r}
+          ];
+          let ok = true;
+          for (const c of corners){ if (isWall(c.x,c.y)) { ok = false; break; } }
+          if (ok){ g.x = nx; g.y = ny; }
+          else {
+            g.x = Math.floor(g.x) + 0.5;
+            g.y = Math.floor(g.y) + 0.5;
+            g.dir = chooseGhostDir(g, now);
+            break;
+          }
+        }
+      }
+
+      // Collisions
+      if (now > maze.hitCooldownUntil){
+        for (const g of maze.ghosts){
+          const d = dist2(pac.x, pac.y, g.x, g.y);
+          if (d < 0.55*0.55){
+            const frightened = now < maze.frightenedUntil;
+            if (frightened){
+              // eat ghost
+              maze.score += 200;
+              game.runScore += Math.floor(200 * (game.mod.frightenedBonus ?? 1.0));
+              $('mScore').textContent = String(maze.score);
+              playTone(150, 0.12, 'square', 0.06);
+              // respawn ghost
+              g.x = 10.5; g.y = 7.5; g.dir = randomDir();
+              // small love bonus
+              applyLoveDelta(+2);
+            } else {
+              maze.lives--;
+              $('mLives').textContent = String(maze.lives);
+              playTone(90, 0.25, 'sawtooth', 0.05);
+              maze.hitCooldownUntil = now + 1300;
+              // reset positions
+              pac.x = 1.5; pac.y = 1.5; maze.dir = {x:1,y:0}; maze.wantsDir = {x:1,y:0};
+              for (let i=0;i<maze.ghosts.length;i++){
+                const gg = maze.ghosts[i];
+                gg.x = 10.5 + (i%2?0.7:-0.7);
+                gg.y = 7.5 + (i%3-1)*0.6;
+                gg.dir = randomDir();
+              }
+              if (maze.lives <= 0){
+                endMaze(false, 'All lives lost.');
+                return;
+              }
+            }
+          }
+        }
+      }
+
+      // subtle engine hum frequency
+      if (toneNode && soundOn){
+        const base = (now < maze.frightenedUntil) ? 126 : 96;
+        try { toneNode.osc.frequency.value = base + Math.sin(now/250)*6; } catch {}
+      }
+    }
+
+    function draw(now){
+      const ctx = maze.ctx;
+      const w = maze.canvas.width;
+      const h = maze.canvas.height;
+      const lvl = maze.level;
+
+      ctx.clearRect(0,0,w,h);
+
+      // Background
+      ctx.fillStyle = 'rgba(0,0,0,.3)';
+      ctx.fillRect(0,0,w,h);
+
+      // walls + pellets
+      const layout = maze.layout;
+      const cell = maze.cell;
+      const ox = maze.ox;
+      const oy = maze.oy;
+
+      // glow underlay
+      ctx.save();
+      ctx.globalAlpha = 0.25;
+      ctx.fillStyle = lvl.maze.theme.wall;
+      ctx.fillRect(ox-6, oy-6, maze.cols*cell+12, maze.rows*cell+12);
+      ctx.restore();
+
+      // Maze
+      for (let y=0;y<maze.rows;y++){
+        for (let x=0;x<maze.cols;x++){
+          const ch = layout[y][x];
+          const px = ox + x*cell;
+          const py = oy + y*cell;
+
+          if (ch === '#'){
+            // draw wall with bevel
+            ctx.fillStyle = 'rgba(0,0,0,.35)';
+            ctx.fillRect(px, py, cell, cell);
+            ctx.fillStyle = lvl.maze.theme.wall;
+            ctx.globalAlpha = 0.85;
+            ctx.fillRect(px+2, py+2, cell-4, cell-4);
+            ctx.globalAlpha = 1;
+          } else if (ch === '.'){
+            // heart pellet
+            const cx = px + cell/2;
+            const cy = py + cell/2;
+            const r = cell*0.12;
+            ctx.fillStyle = lvl.maze.theme.pellet;
+            drawHeart(ctx, cx, cy, r);
+          } else if (ch === 'o'){
+            // dessert orb
+            const cx = px + cell/2;
+            const cy = py + cell/2;
+            const pr = cell*0.22;
+            ctx.save();
+            ctx.shadowColor = lvl.maze.theme.power;
+            ctx.shadowBlur = 18;
+            ctx.fillStyle = lvl.maze.theme.power;
+            ctx.beginPath();
+            ctx.arc(cx, cy, pr, 0, Math.PI*2);
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+      }
+
+      // Entities
+      const pac = maze.pac;
+      const pacx = ox + pac.x*cell;
+      const pacy = oy + pac.y*cell;
+      const pr = pac.r*cell;
+
+      // Pac mouth animation
+      const mouth = 0.18 + 0.22*(0.5 + 0.5*Math.sin(now/90));
+      const angDir = Math.atan2(maze.dir.y, maze.dir.x);
+      ctx.save();
+      ctx.translate(pacx, pacy);
+      ctx.rotate(angDir);
+      ctx.fillStyle = '#fde68a';
+      ctx.beginPath();
+      ctx.moveTo(0,0);
+      ctx.arc(0,0,pr, mouth*Math.PI, (2-mouth)*Math.PI, false);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // Ghosts
+      const frightened = now < maze.frightenedUntil;
+      for (const g of maze.ghosts){
+        const gx = ox + g.x*cell;
+        const gy = oy + g.y*cell;
+        const gr = 0.36*cell;
+        ctx.save();
+        ctx.shadowBlur = frightened ? 18 : 10;
+        ctx.shadowColor = frightened ? '#93c5fd' : g.color;
+        ctx.fillStyle = frightened ? '#60a5fa' : g.color;
+        drawGhost(ctx, gx, gy, gr, now);
+        ctx.restore();
+      }
+
+      // UI text
+      ctx.save();
+      ctx.globalAlpha = 0.75;
+      ctx.fillStyle = 'rgba(255,255,255,.18)';
+      ctx.fillRect(12, 12, 210, 52);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = 'rgba(255,255,255,.9)';
+      ctx.font = '14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto';
+      const collected = maze.pelletCount - maze.pelletsLeft;
+      ctx.fillText(`${maze.level.place} — hearts ${collected}/${maze.level.maze.target}`, 22, 34);
+      ctx.fillText(`run score ${maze.score}`, 22, 54);
+      ctx.restore();
+
+      if (maze.paused){
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,.55)';
+        ctx.fillRect(0,0,w,h);
+        ctx.fillStyle = 'rgba(255,255,255,.92)';
+        ctx.font = 'bold 32px ui-sans-serif, system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText('Paused', w/2, h/2 - 6);
+        ctx.font = '14px ui-sans-serif, system-ui';
+        ctx.fillStyle = 'rgba(255,255,255,.75)';
+        ctx.fillText('Press P to resume', w/2, h/2 + 22);
+        ctx.restore();
+      }
+    }
+
+    function drawHeart(ctx, x, y, r){
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.beginPath();
+      ctx.moveTo(0, r*0.5);
+      ctx.bezierCurveTo(-r*1.2, -r*0.3, -r*0.5, -r*1.4, 0, -r*0.7);
+      ctx.bezierCurveTo(r*0.5, -r*1.4, r*1.2, -r*0.3, 0, r*0.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawGhost(ctx, x, y, r, now){
+      const bob = Math.sin(now/180)*r*0.08;
+      ctx.save();
+      ctx.translate(x, y + bob);
+      ctx.beginPath();
+      ctx.arc(0, -r*0.2, r, Math.PI, 0);
+      ctx.lineTo(r, r*0.9);
+      const waves = 6;
+      for (let i=0;i<waves;i++){
+        const t = i/(waves-1);
+        const wx = r - t*2*r;
+        const wy = r*0.9 + Math.sin((t*waves + now/120))*r*0.12;
+        ctx.lineTo(wx, wy);
+      }
+      ctx.lineTo(-r, r*0.9);
+      ctx.closePath();
+      ctx.fill();
+
+      // eyes
+      ctx.fillStyle = 'rgba(255,255,255,.95)';
+      ctx.beginPath();
+      ctx.ellipse(-r*0.32, -r*0.18, r*0.20, r*0.26, 0, 0, Math.PI*2);
+      ctx.ellipse(r*0.32, -r*0.18, r*0.20, r*0.26, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(15,23,42,.95)';
+      ctx.beginPath();
+      ctx.arc(-r*0.32 + Math.sin(now/260)*r*0.06, -r*0.18, r*0.09, 0, Math.PI*2);
+      ctx.arc(r*0.32 + Math.sin(now/240)*r*0.06, -r*0.18, r*0.09, 0, Math.PI*2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function loop(){
+      if (!maze.running) return;
+      const now = performance.now();
+      const dt = Math.min(0.033, (now - maze.lastT) / 1000);
+      maze.lastT = now;
+      update(dt, now);
+      draw(now);
+      requestAnimationFrame(loop);
+    }
+
+    function togglePause(){
+      if (game.view !== 'maze') return;
+      maze.paused = !maze.paused;
+      $('btnMazePause').textContent = maze.paused ? 'Resume' : 'Pause';
+      hud.pause.textContent = maze.paused ? 'Resume' : 'Pause';
+      if (maze.paused) stopTone(); else startTone(96, 'sawtooth', 0.012);
+      playTone(maze.paused ? 220 : 440, 0.08, 'sine', 0.05);
+    }
+
+    function endMaze(won, reason=''){
+      if (!maze.running) return;
+      maze.running = false;
+      stopTone();
+      saveHighIfNeeded();
+      saveGame();
+
+      // Compute love change from performance
+      const collected = maze.pelletCount - maze.pelletsLeft;
+      const target = maze.level.maze.target;
+      const ratio = clamp(collected / target, 0, 1.5);
+
+      let perfLove = 0;
+      if (won){
+        perfLove = Math.round(10 + 12*ratio + (maze.lives-1)*2);
+      } else {
+        perfLove = -Math.round(6 + (1-ratio)*10);
+      }
+      // Clamp and apply
+      const before = game.love;
+      applyLoveDelta(perfLove);
+      const deltaApplied = Math.round(game.love - before);
+
+      const nextText = (won)
+        ? (game.levelIndex < levels.length-1 ? `Next: Date ${game.levelIndex+2}/${levels.length}` : 'Next: Finale')
+        : 'Next: Retry or Continue';
+
+      // Modal
+      showModal({
+        kicker: won ? 'Date Success' : 'Date Failed',
+        title: won ? 'The night lands…' : 'The doubts win this round',
+        text: won
+          ? `You collected ${collected}/${target} hearts. Love grows when you show up and play well.`
+          : `Reason: ${reason || 'You slipped.'} You collected ${collected}/${target} hearts.`,
+        score: maze.score,
+        loveDelta: deltaApplied,
+        next: nextText,
+        won
+      });
+
+      // Update run score / UI
+      updateHUD();
+    }
+
+    function showModal({kicker,title,text,score,loveDelta,next,won}){
+      $('modalKicker').textContent = kicker;
+      $('modalTitle').textContent = title;
+      $('modalText').textContent = text;
+      $('modalScore').textContent = String(score);
+      $('modalLove').textContent = `${loveDelta >= 0 ? '+' : ''}${loveDelta}`;
+      $('modalLove').className = 'mt-1 font-semibold ' + (loveDelta >= 0 ? 'text-emerald-300' : 'text-rose-300');
+      $('modalNext').textContent = next;
+
+      $('btnModalRetry').style.display = won ? 'none' : '';
+      $('btnModalContinue').textContent = (won ? 'Continue' : (game.love <= 0 ? 'To Ending' : 'Continue'));
+
+      $('modal').classList.remove('hidden');
+      playTone(won ? 740 : 120, 0.16, won ? 'triangle' : 'sawtooth', 0.06);
+    }
+
+    function hideModal(){
+      $('modal').classList.add('hidden');
+    }
+
+    function continueAfterModal(){
+      hideModal();
+
+      if (game.love <= 0){
+        endGame('Lost: Love Fell to Zero', 'After the date goes sideways, the connection collapses completely. The city keeps moving, but the story ends here.', false);
+        return;
+      }
+
+      // Advance only if last maze was a win
+      if (maze.win){
+        game.levelIndex++;
+        saveGame();
+        if (game.levelIndex >= levels.length){
+          // Finale as requested
+          triggerFinale();
+          return;
+        }
+      }
+      goToStory();
+    }
+
+    function triggerFinale(){
+      $('bg').style.background = 'radial-gradient(1200px 800px at 20% 20%, rgba(244,63,94,.14), transparent 60%), radial-gradient(1000px 700px at 75% 30%, rgba(99,102,241,.18), transparent 60%), linear-gradient(120deg, rgba(2,6,23,1), rgba(9,9,11,1))';
+
+      const love = Math.round(game.love);
+      const txt = [
+        'Moonlight spills over the table. The city hums like a secret.',
+        'Saharsh is relaxed now—trusting. The Love meter feels full, warm, almost inevitable.',
+        'Yussef lifts a glass with a practiced smile. “To us.”',
+        'The drink goes down smooth.',
+        'A beat passes. Then another.',
+        'Saharsh’s expression shifts—confusion, then alarm.',
+        'The betrayal lands quietly: a poison slipped into the sweetness.',
+        'Whatever the nights were… this was always the ending.'
+      ].join('\n\n');
+
+      endGame('Finale: Bitter Sweetness', txt, true);
+    }
+
+    function endGame(title, text, betrayalEnding){
+      stopTone();
+      saveHighIfNeeded();
+      localStorage.removeItem(LS_SAVE); // end run
+
+      $('endTitle').textContent = title;
+      $('endText').textContent = text;
+      $('endLove').textContent = String(Math.round(game.love));
+      $('endScore').textContent = String(game.runScore);
+      $('endHigh').textContent = String(game.highScore);
+
+      $('endBadge').textContent = betrayalEnding ? 'Ending: Betrayal' : 'Ending: Loss';
+      $('endBadge').className = 'inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs ' + (betrayalEnding ? 'bg-rose-500/15 border-rose-300/20 text-rose-200' : 'bg-white/10 border-white/15 text-zinc-200');
+
+      setView('end');
+      playTone(betrayalEnding ? 180 : 110, 0.25, 'sawtooth', 0.06);
+    }
+
+    // --- Input ---
+    function setWantedDir(dx, dy){
+      maze.wantsDir = {x:dx, y:dy};
+    }
+
+    window.addEventListener('keydown', (e) => {
+      // Start audio on first interaction
+      if (!audioCtx) { try { ensureAudio(); } catch {} }
+
+      if (e.key === 'p' || e.key === 'P'){
+        if (game.view === 'maze') togglePause();
+        return;
+      }
+      if (game.view === 'maze'){
+        if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') setWantedDir(0,-1);
+        if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') setWantedDir(0,1);
+        if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') setWantedDir(-1,0);
+        if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') setWantedDir(1,0);
+      }
+
+      if (e.key === 'Enter'){
+        // Default action
+        if (game.view === 'menu') $('btnStart').click();
+        else if (game.view === 'how') $('btnHowBack').click();
+        else if (game.view === 'story'){
+          if (!$('btnToMaze').disabled) $('btnToMaze').click();
+        } else if (game.view === 'end') $('btnEndRestart').click();
+      }
+    });
+
+    // --- UI Wiring ---
+    $('btnMute').addEventListener('click', () => {
+      setSound(!soundOn);
+      playTone(soundOn ? 660 : 220, 0.08, 'triangle', 0.05);
+    });
+
+    $('btnReset').addEventListener('click', () => {
+      clearSave();
+      loadHigh();
+      loadSoundSetting();
+      showToast('Save cleared for this game.');
+      setView('menu');
+    });
+
+    $('btnStart').addEventListener('click', () => startNew());
+    $('btnContinue').addEventListener('click', () => continueGame());
+    $('btnHow').addEventListener('click', () => setView('how'));
+    $('btnHowBack').addEventListener('click', () => setView('menu'));
+
+    $('btnStoryBack').addEventListener('click', () => {
+      saveGame();
+      setView('menu');
+    });
+
+    $('btnToMaze').addEventListener('click', () => {
+      if (!game.chosen){ showToast('Pick a dialogue choice first.'); return; }
+      const lvl = levels[game.levelIndex];
+      setView('maze');
+      setupMaze(lvl);
+    });
+
+    $('btnMazeQuit').addEventListener('click', () => {
+      maze.running = false;
+      stopTone();
+      setView('story');
+      showToast('Quit the maze.');
+    });
+
+    $('btnMazePause').addEventListener('click', togglePause);
+    $('btnMazeRestart').addEventListener('click', () => {
+      if (!maze.level) return;
+      maze.running = false;
+      stopTone();
+      setupMaze(maze.level);
+      showToast('Maze restarted.');
+    });
+
+    hud.pause.addEventListener('click', togglePause);
+
+    $('btnModalClose').addEventListener('click', hideModal);
+    $('btnModalContinue').addEventListener('click', continueAfterModal);
+    $('btnModalRetry').addEventListener('click', () => {
+      hideModal();
+      setView('maze');
+      setupMaze(maze.level);
+    });
+
+    $('btnEndRestart').addEventListener('click', () => {
+      startNew();
+    });
+    $('btnEndMenu').addEventListener('click', () => setView('menu'));
+
+    // Init
+    loadHigh();
+    loadSoundSetting();
+    setView('menu');
+
+    // Improve Continue availability
+    function updateContinueButton(){
+      const has = !!localStorage.getItem(LS_SAVE);
+      $('btnContinue').disabled = !has;
+      $('btnContinue').classList.toggle('opacity-50', !has);
+    }
+    updateContinueButton();
+    window.addEventListener('storage', updateContinueButton);
+
+    // If photo fails, show fallback
+    saharshImg.addEventListener('error', () => {
+      saharshImg.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="%236366f1"/><stop offset="1" stop-color="%23ec4899"/></linearGradient></defs><rect width="128" height="128" rx="24" fill="url(%23g)"/><text x="64" y="74" font-family="system-ui" font-size="34" text-anchor="middle" fill="white" opacity="0.95">S</text></svg>';
+    });
+  </script>
+</body>
+</html>
