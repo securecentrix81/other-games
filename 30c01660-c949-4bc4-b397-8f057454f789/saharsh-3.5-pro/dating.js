@@ -105,10 +105,8 @@ class Dating {
             // Success in mini-game increases love
             const baseLoveGain = 10 + this.currentRestaurant.difficulty * 3;
             const loveGain = Math.min(15, baseLoveGain + Math.floor(score / 100));
-            game.updateLoveMeter(loveGain);
-            
-            // Currency bonus
             const currencyBonus = Math.floor(score / 50);
+            game.updateLoveMeter(loveGain);
             game.addCurrency(currencyBonus);
             
             ui.createFloatingText(`+${loveGain} Love Points! +${currencyBonus} 💰`, window.innerWidth / 2, 200, '#FF69B4');
