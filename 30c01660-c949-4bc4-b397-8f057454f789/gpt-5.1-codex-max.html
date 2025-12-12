@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yussef &amp; Saharsh: Romantic Labyrinth</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    body { background: radial-gradient(circle at 20% 20%, #1f2937, #0b1021 55%); color: #f8fafc; overflow: hidden; }
+    #gameCanvas { background: #0b162a; border: 2px solid rgba(255,255,255,0.1); box-shadow: 0 0 30px rgba(255,105,180,0.2); }
+    .glow { box-shadow: 0 0 10px rgba(236,72,153,0.6), 0 0 30px rgba(79,70,229,0.3); }
+    .chip { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.06); }
+    .btn { transition: transform 0.15s ease, box-shadow 0.2s ease; }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+    .modal { background: rgba(15,23,42,0.92); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-6 px-4 select-none">
+  <header class="w-full max-w-5xl mb-4 flex items-center justify-between">
+    <div>
+      <p class="uppercase tracking-[0.3em] text-xs text-pink-300">Secure Centrix81</p>
+      <h1 class="text-3xl sm:text-4xl font-bold text-pink-200">Yussef &amp; Saharsh: Romantic Labyrinth</h1>
+      <p class="text-slate-300 text-sm">Date, dine, and dash through heart-mazes. Gather love, dodge doubt, face the final twist.</p>
+    </div>
+    <div class="text-right">
+      <div class="text-xs text-slate-400">High Love</div>
+      <div id="highLove" class="text-2xl font-bold text-amber-300">0</div>
+    </div>
+  </header>
+
+  <main class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <section class="lg:col-span-2 p-4 rounded-2xl chip">
+      <div class="flex flex-wrap gap-3 mb-3">
+        <div class="chip px-3 py-2 rounded-xl flex items-center gap-2"><span class="text-xs text-slate-400">Love</span><div class="w-32 bg-slate-700 rounded-full h-3 overflow-hidden"><div id="loveBar" class="h-full bg-pink-400" style="width:50%"></div></div><span id="loveVal" class="text-pink-200 text-sm">50</span></div>
+        <div class="chip px-3 py-2 rounded-xl flex items-center gap-2"><span class="text-xs text-slate-400">Suspicion</span><div class="w-32 bg-slate-700 rounded-full h-3 overflow-hidden"><div id="susBar" class="h-full bg-purple-400" style="width:0%"></div></div><span id="susVal" class="text-purple-200 text-sm">0</span></div>
+        <div class="chip px-3 py-2 rounded-xl flex items-center gap-2"><span class="text-xs text-slate-400">Level</span><span id="levelLabel" class="font-semibold text-emerald-200">1</span></div>
+        <div class="chip px-3 py-2 rounded-xl flex items-center gap-2"><span class="text-xs text-slate-400">Timer</span><span id="timer" class="font-mono text-amber-200">60</span></div>
+      </div>
+      <canvas id="gameCanvas" width="720" height="540" class="rounded-xl glow"></canvas>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <button id="startBtn" class="btn px-4 py-2 rounded-xl bg-pink-500 hover:bg-pink-400 text-white font-semibold">Start Date</button>
+        <button id="pauseBtn" class="btn px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-semibold">Pause</button>
+        <button id="nextBtn" class="btn px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-semibold" disabled>Next Stop</button>
+        <button id="resetBtn" class="btn px-4 py-2 rounded-xl bg-slate-600 hover:bg-slate-500 text-white font-semibold">Reset</button>
+      </div>
+      <p class="text-xs text-slate-400 mt-2">Controls: WASD or Arrow Keys to move. Collect hearts, avoid doubts. Finish each restaurant, then face the finale.</p>
+    </section>
+
+    <aside class="p-4 rounded-2xl chip flex flex-col gap-3">
+      <div class="chip p-3 rounded-xl">
+        <h3 class="text-sm uppercase tracking-widest text-slate-400">Restaurant Route</h3>
+        <ul id="route" class="mt-2 space-y-1 text-slate-200 text-sm"></ul>
+      </div>
+      <div class="chip p-3 rounded-xl">
+        <h3 class="text-sm uppercase tracking-widest text-slate-400">Story Log</h3>
+        <div id="log" class="mt-2 space-y-2 max-h-64 overflow-y-auto text-slate-200 text-sm"></div>
+      </div>
+      <div class="chip p-3 rounded-xl">
+        <h3 class="text-sm uppercase tracking-widest text-slate-400">Mini Choices</h3>
+        <div id="choices" class="mt-2 space-y-2 text-slate-200 text-sm"></div>
+      </div>
+    </aside>
+  </main>
+
+  <div id="overlay" class="fixed inset-0 hidden items-center justify-center z-20">
+    <div class="modal p-6 rounded-2xl max-w-xl w-[90%] text-center">
+      <h2 id="overlayTitle" class="text-2xl font-bold text-pink-200 mb-2"></h2>
+      <p id="overlayMsg" class="text-slate-200 mb-4"></p>
+      <button id="overlayBtn" class="btn px-4 py-2 rounded-xl bg-pink-500 hover:bg-pink-400 text-white font-semibold">Continue</button>
+    </div>
+  </div>
+
+  <script>
+  // Data & state
+  const restaurants = [
+    { name: "Luminous Bistro", vibe: "candlelight tapas", tip: "+5 Love when you time your compliments" },
+    { name: "Neon Ramen Vault", vibe: "arcade slurps", tip: "+5 Love for bold spice", },
+    { name: "Skyline Sweets", vibe: "rooftop desserts", tip: "+5 Love for trust moves" },
+  ];
+  const prefix = location.pathname + "_romanceLabyrinth_";
+  let highLove = parseInt(localStorage.getItem(prefix + "highLove") || "0");
+  let state = "menu"; // menu, choice, minigame, results, ending
+  let level = 0;
+  let love = 50;
+  let suspicion = 0;
+  let timeLeft = 60;
+  let timerId = null;
+  let paused = false;
+
+  // Canvas setup
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const tile = 36;
+  const rows = Math.floor(canvas.height / tile);
+  const cols = Math.floor(canvas.width / tile);
+
+  const mapTemplate = [
+    "####################",
+    "#........#.........#",
+    "#.##.##.#.###.##.#.#",
+    "#...............#..#",
+    "#.###.#.#####.#.##.#",
+    "#.....#...#...#....#",
+    "#.###.###.#.###.####",
+    "#...#.....#.....#..#",
+    "###.#.#####.###.#..#",
+    "#...#.....#.....#..#",
+    "#.#.###.#.#.###.##.#",
+    "#........#........#",
+    "####################",
+  ];
+
+  let grid = [];
+  let player = { x: 1, y: 1, dir: {x:1,y:0}, pending:{x:1,y:0} };
+  let ghosts = [];
+  let heartsLeft = 0;
+
+  const routeEl = document.getElementById('route');
+  const logEl = document.getElementById('log');
+  const choiceEl = document.getElementById('choices');
+  const overlay = document.getElementById('overlay');
+  const overlayTitle = document.getElementById('overlayTitle');
+  const overlayMsg = document.getElementById('overlayMsg');
+  const overlayBtn = document.getElementById('overlayBtn');
+  const startBtn = document.getElementById('startBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const loveBar = document.getElementById('loveBar');
+  const loveVal = document.getElementById('loveVal');
+  const susBar = document.getElementById('susBar');
+  const susVal = document.getElementById('susVal');
+  const timerLabel = document.getElementById('timer');
+  const levelLabel = document.getElementById('levelLabel');
+  const highLoveEl = document.getElementById('highLove');
+
+  highLoveEl.textContent = highLove;
+
+  function log(text){
+    const p = document.createElement('p');
+    p.textContent = text;
+    logEl.prepend(p);
+  }
+
+  function renderRoute(){
+    routeEl.innerHTML = '';
+    restaurants.forEach((r,i)=>{
+      const li = document.createElement('li');
+      li.textContent = `${i+1}. ${r.name} – ${r.vibe}`;
+      li.className = 'flex items-center gap-2';
+      if(i < level) li.innerHTML = `<span class="text-emerald-400">✔</span>${li.textContent}`;
+      else if(i === level) li.innerHTML = `<span class="text-amber-300">➤</span>${li.textContent}`;
+      else li.innerHTML = `<span class="text-slate-500">●</span>${li.textContent}`;
+      routeEl.appendChild(li);
+    });
+  }
+
+  function setOverlay(title,msg,btn="Continue"){
+    overlayTitle.textContent = title;
+    overlayMsg.textContent = msg;
+    overlayBtn.textContent = btn;
+    overlay.classList.remove('hidden');
+  }
+
+  overlayBtn.onclick = ()=>{
+    overlay.classList.add('hidden');
+    if(state === 'menu') startDate();
+    else if(state === 'results') beginChoices();
+    else if(state === 'ending') resetGame();
+  }
+
+  function updateBars(){
+    love = Math.max(0, Math.min(120, love));
+    suspicion = Math.max(0, Math.min(100, suspicion));
+    loveBar.style.width = `${love/120*100}%`;
+    loveVal.textContent = Math.round(love);
+    susBar.style.width = `${suspicion}%`;
+    susVal.textContent = Math.round(suspicion);
+  }
+
+  function resetGame(){
+    level = 0; love = 50; suspicion = 0; timeLeft = 60; paused=false;
+    updateBars(); renderRoute();
+    state = 'menu';
+    logEl.innerHTML = '';
+    choiceEl.innerHTML = '';
+    startBtn.disabled = false; nextBtn.disabled = true;
+    setOverlay('Romantic Labyrinth', 'Guide Yussef and Saharsh through three dazzling restaurants. Play heart mazes to gather love, make dialogue choices to steer trust, and face a fateful finale.');
+  }
+
+  function startDate(){
+    state = 'choice';
+    beginChoices();
+  }
+
+  function beginChoices(){
+    if(level >= restaurants.length){ showEnding(); return; }
+    state = 'choice';
+    choiceEl.innerHTML = '';
+    const r = restaurants[level];
+    const info = document.createElement('p');
+    info.textContent = `${r.name} – ${r.vibe}. Tip: ${r.tip}`;
+    choiceEl.appendChild(info);
+    const options = [
+      { text:"Offer heartfelt compliment", love:8, sus:-2 },
+      { text:"Tease playfully", love:4, sus:2 },
+      { text:"Overshare a secret", love:6, sus:6 },
+    ];
+    options.forEach(opt=>{
+      const b = document.createElement('button');
+      b.textContent = opt.text;
+      b.className = 'btn w-full text-left px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600';
+      b.onclick = ()=>{
+        love += opt.love + (Math.random()*4-2);
+        suspicion += opt.sus + (Math.random()*2);
+        updateBars();
+        log(`At ${r.name}, choice: ${opt.text} (Love +${opt.love}, Sus +${opt.sus})`);
+        startMinigame();
+      };
+      choiceEl.appendChild(b);
+    });
+    renderRoute();
+  }
+
+  function startMinigame(){
+    state = 'minigame';
+    timeLeft = 60 - level*5;
+    timerLabel.textContent = timeLeft;
+    nextBtn.disabled = true;
+    startBtn.disabled = true;
+    paused = false;
+    loadMap();
+    spawnGhosts(level+1);
+    log(`Mini-game started at ${restaurants[level].name}. Collect hearts!`);
+    if(timerId) clearInterval(timerId);
+    timerId = setInterval(()=>{ if(!paused){ timeLeft--; timerLabel.textContent = timeLeft; if(timeLeft<=0){ finishMinigame(); } }}, 1000);
+    requestAnimationFrame(loop);
+  }
+
+  function loadMap(){
+    grid = mapTemplate.map(row=>row.split(''));
+    heartsLeft = 0;
+    for(let y=0;y<grid.length;y++){
+      for(let x=0;x<grid[0].length;x++){
+        if(grid[y][x]==='.') heartsLeft++;
+      }
+    }
+    player = { x:1, y:1, dir:{x:1,y:0}, pending:{x:1,y:0} };
+  }
+
+  function spawnGhosts(count){
+    ghosts = [];
+    for(let i=0;i<count;i++){
+      ghosts.push({ x: cols-2-i, y: grid.length-2, color: i%2? '#a855f7':'#22d3ee', cooldown:0 });
+    }
+  }
+
+  function isWall(x,y){
+    if(y<0||y>=grid.length||x<0||x>=grid[0].length) return true;
+    return grid[y][x]==='#';
+  }
+
+  function movePlayer(){
+    if(!isWall(player.x + player.pending.x, player.y + player.pending.y)){
+      player.dir = {...player.pending};
+    }
+    if(!isWall(player.x + player.dir.x, player.y + player.dir.y)){
+      player.x += player.dir.x; player.y += player.dir.y;
+    }
+    const tileVal = grid[player.y][player.x];
+    if(tileVal === '.'){
+      grid[player.y][player.x] = ' ';
+      heartsLeft--;
+      love += 1.5;
+      updateBars();
+      if(heartsLeft<=0) finishMinigame();
+    }
+  }
+
+  function moveGhosts(){
+    ghosts.forEach(g=>{
+      if(g.cooldown>0){ g.cooldown--; return; }
+      const dx = player.x - g.x;
+      const dy = player.y - g.y;
+      const step = Math.abs(dx) > Math.abs(dy)
+        ? {x: Math.sign(dx), y:0}
+        : {x:0, y: Math.sign(dy)};
+      if(!isWall(g.x+step.x, g.y+step.y)) { g.x+=step.x; g.y+=step.y; }
+      else {
+        const alt = {x: step.y, y: step.x};
+        if(!isWall(g.x+alt.x, g.y+alt.y)) { g.x+=alt.x; g.y+=alt.y; }
+      }
+      if(g.x===player.x && g.y===player.y){
+        suspicion += 12; love -= 4; updateBars(); g.cooldown=10; if(suspicion>=100){ finishMinigame(true); }
+      }
+    });
+  }
+
+  let lastTick = 0;
+  function loop(ts){
+    if(state !== 'minigame') return;
+    if(!lastTick) lastTick = ts;
+    const delta = ts - lastTick;
+    if(delta > 140){
+      if(!paused){
+        movePlayer();
+        moveGhosts();
+      }
+      lastTick = ts;
+    }
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  function draw(){
+    ctx.fillStyle = '#0b162a';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    for(let y=0;y<grid.length;y++){
+      for(let x=0;x<grid[0].length;x++){
+        const cell = grid[y][x];
+        if(cell==='#'){
+          ctx.fillStyle = '#1f2937';
+          ctx.fillRect(x*tile,y*tile,tile,tile);
+        } else if(cell==='.'){
+          ctx.fillStyle = '#fb7185';
+          ctx.beginPath();
+          ctx.arc(x*tile+tile/2, y*tile+tile/2, 5, 0, Math.PI*2);
+          ctx.fill();
+        }
+      }
+    }
+    // player
+    ctx.fillStyle = '#fbbf24';
+    ctx.beginPath();
+    ctx.arc(player.x*tile+tile/2, player.y*tile+tile/2, tile/2-4, 0, Math.PI*2);
+    ctx.fill();
+    // hearts aura
+    ctx.strokeStyle = 'rgba(251,113,133,0.4)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(player.x*tile+tile/2, player.y*tile+tile/2, tile/2, 0, Math.PI*2);
+    ctx.stroke();
+    // ghosts
+    ghosts.forEach(g=>{
+      ctx.fillStyle = g.color;
+      ctx.beginPath();
+      ctx.arc(g.x*tile+tile/2, g.y*tile+tile/2, tile/2-6, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = '#0b162a';
+      ctx.fillRect(g.x*tile+10, g.y*tile+tile/2, tile-20, 6);
+    });
+    // HUD overlay hearts left
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(0, canvas.height-28, canvas.width, 28);
+    ctx.fillStyle = '#f8fafc';
+    ctx.font = '14px sans-serif';
+    ctx.fillText(`Hearts left: ${heartsLeft}`, 12, canvas.height-10);
+  }
+
+  function finishMinigame(forcedFail=false){
+    if(state !== 'minigame') return;
+    state = 'results';
+    clearInterval(timerId);
+    timerId = null;
+    let summary = '';
+    if(forcedFail || suspicion>=100){
+      summary = 'The doubt grew too strong. Love stalled this round.';
+      love -= 10;
+      suspicion = Math.min(100, suspicion + 10);
+    } else {
+      const bonus = Math.max(0, (heartsLeft===0 ? 15 : 0) + Math.max(0,timeLeft/2));
+      love += bonus;
+      summary = `Hearts collected. Bonus Love +${bonus.toFixed(0)}.`;
+    }
+    updateBars();
+    nextBtn.disabled = false;
+    setOverlay('Course Finished', summary + ' Move to the next restaurant.');
+  }
+
+  function goNext(){
+    if(state!=='results') return;
+    level++;
+    renderRoute();
+    nextBtn.disabled = true;
+    if(level >= restaurants.length){
+      showEnding();
+    } else {
+      state = 'choice';
+      beginChoices();
+    }
+  }
+
+  function showEnding(){
+    state = 'ending';
+    const betrayal = love >= 70 ? 'The betrayal is shocking—a silver vial in a shared dessert. Trust shatters, love turns cold.' : 'Tension had brewed; the final sip only confirmed the fears. The romance fractures instantly.';
+    const msg = `After the rooftop glow, Yussef slips something bitter into the final toast. ${betrayal} Final Love: ${Math.round(love)}.`;
+    if(love>highLove){ highLove = Math.round(love); localStorage.setItem(prefix+'highLove', highLove); highLoveEl.textContent = highLove; }
+    setOverlay('Finale: Poisoned Promise', msg, 'Restart Journey');
+    log(msg);
+  }
+
+  // Controls
+  window.addEventListener('keydown', (e)=>{
+    if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+    const key = e.key.toLowerCase();
+    if(state==='minigame'){
+      if(key==='arrowup'||key==='w') player.pending={x:0,y:-1};
+      if(key==='arrowdown'||key==='s') player.pending={x:0,y:1};
+      if(key==='arrowleft'||key==='a') player.pending={x:-1,y:0};
+      if(key==='arrowright'||key==='d') player.pending={x:1,y:0};
+      if(key===' '){ paused=!paused; }
+    }
+  });
+
+  pauseBtn.onclick = ()=>{ paused=!paused; };
+  startBtn.onclick = ()=>{ state==='menu' ? startDate() : beginChoices(); };
+  nextBtn.onclick = goNext;
+  resetBtn.onclick = resetGame;
+
+  // Init
+  renderRoute();
+  updateBars();
+  setOverlay('Romantic Labyrinth', 'Guide Yussef and Saharsh through three dazzling restaurants. Play heart mazes to gather love, make dialogue choices to steer trust, and face a fateful finale.');
+  </script>
+</body>
+</html>
