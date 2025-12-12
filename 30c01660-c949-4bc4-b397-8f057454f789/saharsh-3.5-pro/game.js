@@ -1,4 +1,4 @@
-// Main Game Controller
+// Enhanced Main Game Controller with Pause and Polish
 class Game {
     constructor() {
         this.state = {
@@ -6,13 +6,12 @@ class Game {
             currentChapter: 1,
             currentRestaurant: 0,
             currentDate: 0,
-            loveMeter: 0,
+            loveMeter: 20,
             score: 0,
             isPaused: false,
             dialogueActive: false,
             miniGameActive: false,
             storyProgress: {},
-            // New progression systems
             currency: 0,
             totalDates: 0,
             betrayalsUnlocked: 0,
@@ -131,6 +130,8 @@ class Game {
         this.lastTime = 0;
         this.isRunning = false;
         this.startTime = Date.now();
+        this.particles = [];
+        this.isPaused = false;
         
         this.loadProgress();
     }
@@ -141,6 +142,13 @@ class Game {
         this.isRunning = true;
         this.gameLoop();
         this.updatePlayTime();
+        
+        // Show instructions on first play
+        if (this.state.totalDates === 0) {
+            setTimeout(() => {
+                document.getElementById('gameInstructions').classList.remove('hidden');
+            }, 3000);
+        }
     }
 
     cacheElements() {
@@ -163,7 +171,8 @@ class Game {
             comboText: document.getElementById('comboText'),
             highScore: document.getElementById('highScore'),
             endingsCount: document.getElementById('endingsCount'),
-            totalPlaytime: document.getElementById('totalPlaytime')
+            totalPlaytime: document.getElementById('totalPlaytime'),
+            romanticOverlay: document.getElementById('romanticOverlay')
         };
 
         this.characters.yussef.element = this.elements.yussef;
@@ -173,50 +182,152 @@ class Game {
     setupEventListeners() {
         // Menu buttons
         document.getElementById('startBtn').addEventListener('click', () => {
+            audio.playSound('selectChoice');
             this.startNewGame();
         });
 
         document.getElementById('endlessBtn').addEventListener('click', () => {
+            audio.playSound('selectChoice');
             this.startEndlessMode();
         });
 
         document.getElementById('upgradesBtn').addEventListener('click', () => {
+            audio.playSound('selectChoice');
             ui.showUpgradesMenu();
         });
 
         document.getElementById('achievementsBtn').addEventListener('click', () => {
+            audio.playSound('selectChoice');
             ui.showAchievementsMenu();
         });
 
         document.getElementById('closeUpgrades').addEventListener('click', () => {
+            audio.playSound('selectChoice');
             ui.hideUpgradesMenu();
         });
 
+        document.getElementById('resetUpgradesBtn').addEventListener('click', () => {
+            if (confirm('Refund all upgrades? You will get all your coins back!')) {
+                upgrades.resetUpgrades();
+            }
+        });
+
         document.getElementById('closeAchievements').addEventListener('click', () => {
+            audio.playSound('selectChoice');
             ui.hideAchievementsMenu();
         });
 
         // Restart button
         document.getElementById('restartBtn').addEventListener('click', () => {
+            audio.playSound('selectChoice');
             this.restartGame();
         });
 
         // Menu button
         document.getElementById('menuBtn').addEventListener('click', () => {
+            audio.playSound('selectChoice');
             this.returnToMenu();
         });
 
         // Mini game button
         document.getElementById('playMiniGame').addEventListener('click', () => {
+            audio.playSound('selectChoice');
             this.startMiniGame();
         });
+    }
 
-        // Prevent scrolling with arrow keys and space
-        window.addEventListener('keydown', (e) => {
-            if(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
-                e.preventDefault();
-            }
+    pause() {
+        if (this.state.currentScene === 'menu') return;
+        
+        this.isPaused = true;
+        this.state.isPaused = true;
+        
+        // Create pause menu
+        const pauseMenu = document.createElement('div');
+        pauseMenu.id = 'pauseMenu';
+        pauseMenu.className = 'pause-menu';
+        pauseMenu.innerHTML = `
+            <h2 class="text-2xl font-bold mb-6">Game Paused</h2>
+            <div class="space-y-3">
+                <button id="resumeBtn" class="w-full px-6 py-3 bg-green-600 hover:bg-green-700 rounded-full font-bold transition-all">
+                    Resume
+                </button>
+                <button id="restartFromPauseBtn" class="w-full px-6 py-3 bg-orange-600 hover:bg-orange-700 rounded-full font-bold transition-all">
+                    Restart Game
+                </button>
+                <button id="menuFromPauseBtn" class="w-full px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-full font-bold transition-all">
+                    Main Menu
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(pauseMenu);
+        
+        // Pause music
+        audio.stopBackgroundMusic();
+        
+        // Setup pause menu events
+        document.getElementById('resumeBtn').addEventListener('click', () => {
+            audio.playSound('selectChoice');
+            this.resume();
         });
+        
+        document.getElementById('restartFromPauseBtn').addEventListener('click', () => {
+            audio.playSound('selectChoice');
+            this.removePauseMenu();
+            this.restartGame();
+        });
+        
+        document.getElementById('menuFromPauseBtn').addEventListener('click', () => {
+            audio.playSound('selectChoice');
+            this.removePauseMenu();
+            this.returnToMenu();
+        });
+    }
+
+    resume() {
+        this.isPaused = false;
+        this.state.isPaused = false;
+        this.removePauseMenu();
+        
+        // Resume music
+        audio.playSceneAudio(this.state.currentScene);
+        
+        ui.createFloatingText('Game Resumed', window.innerWidth / 2, 100, '#00FF00');
+    }
+
+    removePauseMenu() {
+        const pauseMenu = document.getElementById('pauseMenu');
+        if (pauseMenu) {
+            pauseMenu.remove();
+        }
+    }
+
+    createParticle(x, y, type = 'spark') {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        
+        const particleTypes = {
+            spark: { emoji: '✨', size: '20px' },
+            heart: { emoji: '❤️', size: '24px' },
+            coin: { emoji: '💰', size: '20px' },
+            star: { emoji: '⭐', size: '18px' }
+        };
+        
+        const config = particleTypes[type] || particleTypes.spark;
+        particle.textContent = config.emoji;
+        particle.style.cssText = `
+            left: ${x}px;
+            top: ${y}px;
+            font-size: ${config.size};
+            --x-drift: ${(Math.random() - 0.5) * 100}px;
+        `;
+        
+        document.body.appendChild(particle);
+        
+        setTimeout(() => {
+            particle.remove();
+        }, 3000);
     }
 
     startNewGame() {
@@ -247,7 +358,6 @@ class Game {
     }
 
     restartGame() {
-        // Save progress before restart
         this.saveProgress();
         
         this.state.currentScene = 'restaurant';
@@ -316,6 +426,21 @@ class Game {
         }
 
         this.state.currentScene = sceneName;
+        
+        // Create transition effect
+        this.createTransitionParticles();
+    }
+
+    createTransitionParticles() {
+        for (let i = 0; i < 20; i++) {
+            setTimeout(() => {
+                this.createParticle(
+                    Math.random() * window.innerWidth,
+                    Math.random() * window.innerHeight,
+                    ['spark', 'star', 'heart'][Math.floor(Math.random() * 3)]
+                );
+            }, i * 50);
+        }
     }
 
     updateLoveMeter(amount) {
@@ -323,16 +448,38 @@ class Game {
         const charmBonus = this.state.upgrades.charm * 0.1;
         const adjustedAmount = amount > 0 ? amount * (1 + charmBonus) : amount;
         
+        const previousLove = this.state.loveMeter;
         this.state.loveMeter = Math.max(0, Math.min(100, this.state.loveMeter + adjustedAmount));
+        
         this.elements.loveMeter.style.width = this.state.loveMeter + '%';
         this.elements.lovePercentage.textContent = Math.floor(this.state.loveMeter) + '%';
         
         // Add animation
-        this.elements.loveMeter.classList.add('love-increase');
-        setTimeout(() => {
-            this.elements.loveMeter.classList.remove('love-increase');
-        }, 500);
+        if (amount > 0) {
+            this.elements.loveMeter.classList.add('love-increase');
+            setTimeout(() => {
+                this.elements.loveMeter.classList.remove('love-increase');
+            }, 600);
+            
+            // Create heart particles
+            if (amount > 10) {
+                for (let i = 0; i < 5; i++) {
+                    this.createParticle(
+                        window.innerWidth / 2 + (Math.random() - 0.5) * 100,
+                        window.innerHeight / 2 + (Math.random() - 0.5) * 100,
+                        'heart'
+                    );
+                }
+            }
+        }
 
+        // Update romantic overlay
+        if (this.state.loveMeter > 50) {
+            this.elements.romanticOverlay.classList.add('active');
+        } else {
+            this.elements.romanticOverlay.classList.remove('active');
+        }
+        
         // Check achievements
         achievements.checkLoveAchievements(this.state.loveMeter);
 
@@ -355,9 +502,20 @@ class Game {
         // Check achievements
         achievements.checkCurrencyAchievements(this.state.currency);
         
-        // Show floating text
+        // Show floating text with particles
         if (adjustedAmount > 0) {
             ui.createFloatingText(`+${adjustedAmount} 💰`, window.innerWidth / 2, 200, '#FFD700');
+            
+            // Create coin particles for large amounts
+            if (adjustedAmount > 50) {
+                for (let i = 0; i < 3; i++) {
+                    this.createParticle(
+                        window.innerWidth / 2 + (Math.random() - 0.5) * 100,
+                        200 + (Math.random() - 0.5) * 50,
+                        'coin'
+                    );
+                }
+            }
         }
     }
 
@@ -367,6 +525,12 @@ class Game {
         if (multiplier > 1) {
             this.elements.comboDisplay.classList.remove('hidden');
             this.elements.comboText.textContent = `${multiplier}x Combo!`;
+            
+            // Add visual feedback
+            if (multiplier >= 5) {
+                ui.addScreenEffect('flash-green');
+                this.createParticle(window.innerWidth / 2, 100, 'star');
+            }
             
             // Hide after 3 seconds
             setTimeout(() => {
@@ -424,6 +588,15 @@ class Game {
             
             // Check achievements
             achievements.checkMiniGameAchievements(score, won);
+            
+            // Celebration particles
+            for (let i = 0; i < 10; i++) {
+                this.createParticle(
+                    Math.random() * window.innerWidth,
+                    Math.random() * window.innerHeight,
+                    ['spark', 'star'][Math.floor(Math.random() * 2)]
+                );
+            }
         } else {
             // Reset combo on failure
             this.updateCombo(1);
@@ -484,7 +657,7 @@ class Game {
 
     updatePlayTime() {
         setInterval(() => {
-            if (this.state.currentScene !== 'menu') {
+            if (!this.isPaused && this.state.currentScene !== 'menu') {
                 this.state.playTime++;
                 const minutes = Math.floor(this.state.playTime / 60);
                 const seconds = this.state.playTime % 60;
@@ -493,13 +666,20 @@ class Game {
         }, 1000);
     }
 
+    handleResize() {
+        // Reposition characters based on new screen size
+        if (this.state.currentScene === 'restaurant') {
+            dating.positionCharacters();
+        }
+    }
+
     gameLoop(currentTime = 0) {
         if (!this.isRunning) return;
 
         const deltaTime = (currentTime - this.lastTime) / 1000;
         this.lastTime = currentTime;
 
-        if (!this.state.isPaused) {
+        if (!this.isPaused && !this.state.isPaused) {
             this.update(deltaTime);
         }
 
@@ -520,14 +700,6 @@ class Game {
 
     render() {
         // Rendering handled by individual modules
-    }
-
-    pause() {
-        this.state.isPaused = true;
-    }
-
-    resume() {
-        this.state.isPaused = false;
     }
 }
 
