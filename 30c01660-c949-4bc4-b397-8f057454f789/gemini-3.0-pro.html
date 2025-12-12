@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yussef & Saharsh: A Romance Story</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+
+        body {
+            font-family: 'VT323', monospace;
+            background-color: #1a1a1a;
+            color: white;
+            overflow: hidden; /* Prevent scrolling during game */
+            user-select: none;
+        }
+
+        /* Scanline effect for retro feel */
+        .scanlines {
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0,0,0,0.2) 50%,
+                rgba(0,0,0,0.2)
+            );
+            background-size: 100% 4px;
+            position: fixed;
+            pointer-events: none;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 50;
+        }
+
+        .crt-glow {
+            box-shadow: 0 0 50px rgba(255, 105, 180, 0.2) inset;
+            pointer-events: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 49;
+        }
+
+        .dialogue-box {
+            font-family: 'VT323', monospace;
+            font-size: 1.5rem;
+            line-height: 1.2;
+        }
+
+        .retro-text {
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        /* Animation classes */
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 1s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .heart-beat {
+            animation: beat 1s infinite;
+        }
+
+        @keyframes beat {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        #game-canvas {
+            image-rendering: pixelated;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex items-center justify-center bg-gray-900">
+
+    <!-- FX Layers -->
+    <div class="scanlines"></div>
+    <div class="crt-glow"></div>
+
+    <!-- Main Container -->
+    <div id="game-container" class="relative w-full max-w-4xl h-[600px] bg-black border-4 border-pink-500 rounded-lg shadow-[0_0_20px_rgba(236,72,153,0.6)] overflow-hidden flex flex-col">
+        
+        <!-- Header / Stats -->
+        <div class="h-12 bg-pink-900 border-b-2 border-pink-500 flex items-center justify-between px-4 z-10">
+            <div class="text-pink-300 text-xl retro-text">Yussef <span class="text-red-500">❤️</span> Saharsh</div>
+            <div class="flex items-center gap-2">
+                <span class="text-pink-200 text-xl">Love Meter:</span>
+                <div class="w-32 h-4 bg-gray-800 border border-pink-400">
+                    <div id="love-meter-fill" class="h-full bg-red-500 w-0 transition-all duration-500"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visual Novel Scene Layer -->
+        <div id="vn-layer" class="flex-1 relative bg-cover bg-center transition-all duration-1000" style="background-image: url('https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80');">
+            <!-- Dim overlay -->
+            <div class="absolute inset-0 bg-black/40"></div>
+
+            <!-- Characters -->
+            <div class="absolute bottom-0 w-full flex justify-between items-end px-10 pointer-events-none">
+                <!-- Yussef (Left) -->
+                <div id="char-yussef" class="w-64 h-80 transition-transform duration-500 transform translate-y-10 opacity-0 flex flex-col items-center">
+                    <div class="w-48 h-48 bg-blue-500 rounded-full border-4 border-white overflow-hidden shadow-lg mb-4 flex items-center justify-center">
+                         <span class="text-6xl">🤵</span>
+                    </div>
+                </div>
+
+                <!-- Saharsh (Right) -->
+                <div id="char-saharsh" class="w-64 h-80 transition-transform duration-500 transform translate-y-10 opacity-0 flex flex-col items-center">
+                    <img src="https://asset-cdn.schoology.com/system/files/imagecache/profile_big/pictures/picture-c0b09cdead19788fb0f8be0d53b5c572_68c34cd700b90.jpg" 
+                         alt="Saharsh" 
+                         class="w-48 h-48 rounded-full border-4 border-pink-400 object-cover shadow-lg mb-4">
+                </div>
+            </div>
+
+            <!-- Dialogue Box -->
+            <div id="dialogue-container" class="absolute bottom-4 left-4 right-4 h-40 bg-blue-900/90 border-4 border-blue-400 rounded p-4 cursor-pointer hidden z-20 hover:bg-blue-900 transition-colors">
+                <div class="flex flex-col h-full">
+                    <div id="speaker-name" class="text-yellow-400 text-2xl font-bold mb-2 retro-text">NAME</div>
+                    <div id="dialogue-text" class="text-white text-2xl leading-relaxed">...</div>
+                    <div class="mt-auto text-right text-blue-300 text-sm blink">Click to continue...</div>
+                </div>
+            </div>
+
+            <!-- Choices Container -->
+            <div id="choices-container" class="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-4 hidden z-30">
+                <!-- Buttons injected by JS -->
+            </div>
+        </div>
+
+        <!-- Arcade Mini-Game Layer (Hidden by default) -->
+        <div id="arcade-layer" class="absolute inset-0 bg-black hidden z-40 flex flex-col items-center justify-center">
+            <h2 class="text-yellow-400 retro-text text-2xl mb-4">COLLECT HEARTS FOR LOVE!</h2>
+            <div class="relative">
+                <canvas id="game-canvas" width="400" height="400" class="border-4 border-blue-500 bg-black"></canvas>
+                <div id="game-overlay" class="absolute inset-0 flex items-center justify-center hidden">
+                    <div class="bg-black/90 p-6 border-2 border-white text-center">
+                        <h3 id="game-result-title" class="text-2xl text-white retro-text mb-4"></h3>
+                        <button id="game-continue-btn" class="px-4 py-2 bg-pink-600 text-white retro-text hover:bg-pink-500">CONTINUE DATE</button>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 text-gray-400 text-sm font-sans">Use ARROW KEYS to move. Avoid Ghosts.</div>
+        </div>
+
+        <!-- Ending Screen (Hidden) -->
+        <div id="ending-layer" class="absolute inset-0 bg-black hidden z-50 flex flex-col items-center justify-center p-10 text-center">
+            <h1 class="text-red-600 text-6xl retro-text mb-8 shake">BETRAYAL</h1>
+            <p id="ending-text" class="text-white text-2xl font-mono mb-8 max-w-2xl"></p>
+            <button onclick="location.reload()" class="px-6 py-3 border-2 border-red-600 text-red-600 hover:bg-red-900 retro-text">PLAY AGAIN</button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- GAME STATE ---
+        const state = {
+            loveScore: 0,
+            scene: 'intro', // intro, arcade, dinner, ending
+            dialogueIndex: 0,
+            miniGameWon: false
+        };
+
+        // --- DOM ELEMENTS ---
+        const vnLayer = document.getElementById('vn-layer');
+        const arcadeLayer = document.getElementById('arcade-layer');
+        const endingLayer = document.getElementById('ending-layer');
+        const charYussef = document.getElementById('char-yussef');
+        const charSaharsh = document.getElementById('char-saharsh');
+        const dialogueContainer = document.getElementById('dialogue-container');
+        const speakerName = document.getElementById('speaker-name');
+        const dialogueText = document.getElementById('dialogue-text');
+        const choicesContainer = document.getElementById('choices-container');
+        const loveMeterFill = document.getElementById('love-meter-fill');
+
+        // --- STORY DATA ---
+        const story = {
+            intro: [
+                { speaker: "Yussef", text: "Wow, I'm really nervous. Saharsh agreed to meet me at this fancy restaurant.", showYussef: true },
+                { speaker: "Yussef", text: "I need to make a good impression. Maybe we can play some games later.", showYussef: true },
+                { speaker: "Saharsh", text: "Hey Yussef! You're early.", showSaharsh: true, showYussef: true },
+                { speaker: "Yussef", text: "Saharsh! You look... great. Like, really great.", showSaharsh: true, showYussef: true },
+                { speaker: "Saharsh", text: "Haha, thanks. So, what's the plan for tonight? I'm starving but also kind of bored.", showSaharsh: true, showYussef: true },
+                { 
+                    choice: true, 
+                    options: [
+                        { text: "Compliment his vibe (Safe)", effect: 10, next: "arcade_transition_nice" },
+                        { text: "Suggest a gaming challenge (Bold)", effect: 20, next: "arcade_transition_bold" }
+                    ]
+                }
+            ],
+            arcade_transition_nice: [
+                { speaker: "Yussef", text: "You have such a cool aura. But before we eat, how about we hit the arcade next door?", showSaharsh: true, showYussef: true },
+                { speaker: "Saharsh", text: "Oh? An arcade? I love retro games!", showSaharsh: true, showYussef: true },
+                { action: "start_minigame" }
+            ],
+            arcade_transition_bold: [
+                { speaker: "Yussef", text: "Bored? I bet I can beat you at Pac-Man right now. Loser buys dessert.", showSaharsh: true, showYussef: true },
+                { speaker: "Saharsh", text: "Oho! Those are fighting words. You're on!", showSaharsh: true, showYussef: true },
+                { action: "start_minigame" }
+            ],
+            post_arcade_win: [
+                { speaker: "Saharsh", text: "Wow! You absolutely crushed that maze! My heart was racing watching you.", showSaharsh: true, showYussef: true },
+                { speaker: "Yussef", text: "I do it all for you, Saharsh.", showSaharsh: true, showYussef: true },
+                { speaker: "Saharsh", text: "You're charming. Let's go get that dinner.", showSaharsh: true, showYussef: true },
+                { action: "goto_dinner" }
+            ],
+            post_arcade_loss: [
+                { speaker: "Saharsh", text: "Well... you tried. Maybe stick to your day job?", showSaharsh: true, showYussef: true },
+                { speaker: "Yussef", text: "Hey! The joystick was sticky!", showSaharsh: true, showYussef: true },
+                { speaker: "Saharsh", text: "Excuses, excuses. Let's just eat.", showSaharsh: true, showYussef: true },
+                { action: "goto_dinner" }
+            ],
+            dinner: [
+                { bg: "https://images.unsplash.com/photo-1559339352-11d035aa65de?ixlib=rb-4.0.3&auto=format&fit=crop&w=1374&q=80" }, // Restaurant BG
+                { speaker: "Yussef", text: "The food here is supposed to be to die for.", showSaharsh: true, showYussef: true },
+                { speaker: "Saharsh", text: "It smells delicious. I'm glad we came here, Yussef.", showSaharsh: true, showYussef: true },
+                { speaker: "Yussef", text: "Here, try this special drink I ordered for you. It's... unique.", showSaharsh: true, showYussef: true },
+                { speaker: "Saharsh", text: "Oh? Don't mind if I do.", showSaharsh: true, showYussef: true },
+                { speaker: "Saharsh", text: "*Sips drink* Hmm... tastes a bit like almond...", showSaharsh: true, showYussef: true },
+                { speaker: "Yussef", text: "...", showSaharsh: true, showYussef: true },
+                { speaker: "Saharsh", text: "Yussef? Why are you smiling like that?", showSaharsh: true, showYussef: true },
+                { action: "trigger_ending" }
+            ]
+        };
+
+        let currentScript = story.intro;
+
+        // --- VISUAL NOVEL ENGINE ---
+
+        function updateLoveMeter(amount) {
+            state.loveScore += amount;
+            if (state.loveScore > 100) state.loveScore = 100;
+            if (state.loveScore < 0) state.loveScore = 0;
+            loveMeterFill.style.width = `${state.loveScore}%`;
+        }
+
+        function showCharacter(id, show) {
+            const el = document.getElementById(id);
+            if (show) {
+                el.classList.remove('opacity-0', 'translate-y-10');
+            } else {
+                el.classList.add('opacity-0', 'translate-y-10');
+            }
+        }
+
+        function typeText(text, element, speed = 30) {
+            element.innerHTML = "";
+            let i = 0;
+            element.dataset.typing = "true";
+            
+            function step() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    i++;
+                    setTimeout(step, speed);
+                } else {
+                    element.dataset.typing = "false";
+                }
+            }
+            step();
+        }
+
+        function advanceStory() {
+            if (dialogueText.dataset.typing === "true") {
+                // Instant finish if clicked while typing
+                const entry = currentScript[state.dialogueIndex];
+                if(entry && entry.text) dialogueText.innerHTML = entry.text;
+                dialogueText.dataset.typing = "false";
+                return;
+            }
+
+            state.dialogueIndex++;
+            if (state.dialogueIndex >= currentScript.length) {
+                return; // End of current script block, wait for logic
+            }
+            renderScene();
+        }
+
+        function renderScene() {
+            const entry = currentScript[state.dialogueIndex];
+            
+            if (!entry) return;
+
+            // Handle actions
+            if (entry.action) {
+                handleAction(entry.action);
+                return;
+            }
+
+            // Handle background change
+            if (entry.bg) {
+                vnLayer.style.backgroundImage = `url('${entry.bg}')`;
+                state.dialogueIndex++; // Skip empty logic frames
+                renderScene();
+                return;
+            }
+
+            // Handle choices
+            if (entry.choice) {
+                dialogueContainer.classList.add('hidden');
+                choicesContainer.innerHTML = '';
+                choicesContainer.classList.remove('hidden');
+                
+                entry.options.forEach(opt => {
+                    const btn = document.createElement('button');
+                    btn.className = "bg-pink-600 hover:bg-pink-500 text-white text-2xl font-bold py-4 px-8 rounded border-2 border-white retro-text transform hover:scale-105 transition-transform";
+                    btn.innerText = opt.text;
+                    btn.onclick = () => {
+                        choicesContainer.classList.add('hidden');
+                        dialogueContainer.classList.remove('hidden');
+                        updateLoveMeter(opt.effect || 0);
+                        if (story[opt.next]) {
+                            currentScript = story[opt.next];
+                            state.dialogueIndex = 0;
+                            renderScene();
+                        }
+                    };
+                    choicesContainer.appendChild(btn);
+                });
+                return;
+            }
+
+            // Normal Dialogue
+            dialogueContainer.classList.remove('hidden');
+            speakerName.innerText = entry.speaker || "???";
+            speakerName.style.color = entry.speaker === "Yussef" ? "#60a5fa" : "#f472b6"; // Blue for Yussef, Pink for Saharsh
+            
+            showCharacter('char-yussef', entry.showYussef);
+            showCharacter('char-saharsh', entry.showSaharsh);
+
+            typeText(entry.text, dialogueText);
+        }
+
+        function handleAction(actionType) {
+            if (actionType === "start_minigame") {
+                startArcadeGame();
+            } else if (actionType === "goto_dinner") {
+                currentScript = story.dinner;
+                state.dialogueIndex = 0;
+                renderScene();
+            } else if (actionType === "trigger_ending") {
+                vnLayer.classList.add('hidden');
+                endingLayer.classList.remove('hidden');
+                
+                // Construct ending text
+                const endingMsg = `
+                    You poisoned Saharsh's drink. 
+                    
+                    He trusted you. 
+                    
+                    Final Love Score: ${state.loveScore}%
+                    Mini-Game Status: ${state.miniGameWon ? "WINNER" : "LOSER"}
+                    
+                    Why, Yussef? Why?
+                `;
+                typeText(endingMsg, document.getElementById('ending-text'), 50);
+            }
+        }
+
+        // --- ARCADE MINI-GAME (PAC-MAN LITE) ---
+        let gameLoopId;
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const TILE_SIZE = 20; // 20x20 grid
+        const GRID_W = 20;
+        const GRID_H = 20;
+
+        // 1 = Wall, 0 = Path, 2 = Player, 3 = Goal (Heart)
+        // Simple map layout
+        const map = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,2,0,0,0,1,0,0,0,0,0,0,0,0,3,1,0,0,0,1],
+            [1,0,1,1,0,1,0,1,1,1,1,1,0,1,1,1,0,1,0,1],
+            [1,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,1],
+            [1,0,1,0,1,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,0,1,0,1,0,1,1,0,1,0,1,1,1,1,0,1],
+            [1,0,0,0,0,1,0,1,0,0,0,0,1,0,0,0,3,1,0,1],
+            [1,1,1,1,0,1,0,1,1,1,1,1,1,0,1,1,0,1,0,1],
+            [1,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,0,1,1,1,1,0,0,1,1,1,1,0,1,1,1,1],
+            [1,0,0,0,0,1,3,0,0,0,0,0,0,0,1,0,0,0,0,1],
+            [1,0,1,1,0,1,0,1,1,1,1,1,1,0,1,1,1,1,0,1],
+            [1,0,0,1,0,0,0,0,0,1,3,0,0,0,0,0,0,0,0,1],
+            [1,1,0,1,1,1,1,1,0,1,0,1,1,1,1,1,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,1,1,0,1,1,1,1,0,1,1,1,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ];
+
+        let player = { x: 1, y: 1 };
+        let ghosts = [
+            { x: 10, y: 10, color: 'cyan', dir: {x:1, y:0} },
+            { x: 10, y: 11, color: 'red', dir: {x:-1, y:0} }
+        ];
+        let hearts = [];
+        let gameActive = false;
+
+        function initMap() {
+            hearts = [];
+            for(let y=0; y<map.length; y++) {
+                for(let x=0; x<map[y].length; x++) {
+                    if(map[y][x] === 2) { player = {x, y}; }
+                    if(map[y][x] === 3) { hearts.push({x, y, collected: false}); }
+                }
+            }
+        }
+
+        function drawGame() {
+            // Clear
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Map
+            for(let y=0; y<map.length; y++) {
+                for(let x=0; x<map[y].length; x++) {
+                    if (map[y][x] === 1) {
+                        ctx.fillStyle = "#1e3a8a"; // Blue walls
+                        ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1);
+                    }
+                }
+            }
+
+            // Draw Hearts
+            hearts.forEach(h => {
+                if (!h.collected) {
+                    ctx.fillStyle = "#ec4899"; // Pink
+                    ctx.beginPath();
+                    ctx.arc(h.x*TILE_SIZE + TILE_SIZE/2, h.y*TILE_SIZE + TILE_SIZE/2, 5, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            });
+
+            // Draw Player
+            ctx.fillStyle = "yellow";
+            ctx.beginPath();
+            ctx.arc(player.x*TILE_SIZE + TILE_SIZE/2, player.y*TILE_SIZE + TILE_SIZE/2, TILE_SIZE/2 - 2, 0.2 * Math.PI, 1.8 * Math.PI); // Pacman mouth open
+            ctx.lineTo(player.x*TILE_SIZE + TILE_SIZE/2, player.y*TILE_SIZE + TILE_SIZE/2);
+            ctx.fill();
+
+            // Draw Ghosts
+            ghosts.forEach(g => {
+                ctx.fillStyle = g.color;
+                ctx.fillRect(g.x*TILE_SIZE + 2, g.y*TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+            });
+        }
+
+        function updateGame() {
+            if (!gameActive) return;
+
+            // Move Ghosts (Simple Random Logic)
+            if (Math.random() < 0.1) { // Move every few frames effectively
+                ghosts.forEach(g => {
+                    const dirs = [{x:0, y:1}, {x:0, y:-1}, {x:1, y:0}, {x:-1, y:0}];
+                    // 20% chance to change direction randomly
+                    if (Math.random() < 0.2) {
+                        g.dir = dirs[Math.floor(Math.random()*dirs.length)];
+                    }
+                    
+                    let nextX = g.x + g.dir.x;
+                    let nextY = g.y + g.dir.y;
+
+                    // Wall collision check
+                    if (map[nextY] && map[nextY][nextX] !== 1) {
+                        g.x = nextX;
+                        g.y = nextY;
+                    } else {
+                        // Hit wall, pick random new dir
+                        g.dir = dirs[Math.floor(Math.random()*dirs.length)];
+                    }
+
+                    // Collision with player
+                    if (g.x === player.x && g.y === player.y) {
+                        endMiniGame(false);
+                    }
+                });
+            }
+
+            // Check Win
+            const remaining = hearts.filter(h => !h.collected).length;
+            if (remaining === 0) {
+                endMiniGame(true);
+            }
+
+            drawGame();
+            gameLoopId = requestAnimationFrame(updateGame);
+        }
+
+        function movePlayer(dx, dy) {
+            if (!gameActive) return;
+            const nextX = player.x + dx;
+            const nextY = player.y + dy;
+
+            if (map[nextY][nextX] !== 1) {
+                player.x = nextX;
+                player.y = nextY;
+                
+                // Collect hearts
+                hearts.forEach(h => {
+                    if(h.x === player.x && h.y === player.y && !h.collected) {
+                        h.collected = true;
+                    }
+                });
+            }
+        }
+
+        function startArcadeGame() {
+            vnLayer.classList.add('hidden');
+            arcadeLayer.classList.remove('hidden');
+            initMap();
+            gameActive = true;
+            updateGame();
+        }
+
+        function endMiniGame(won) {
+            gameActive = false;
+            cancelAnimationFrame(gameLoopId);
+            state.miniGameWon = won;
+            
+            const title = document.getElementById('game-result-title');
+            title.innerText = won ? "YOU WON SAHARSH'S HEART!" : "GAME OVER (GHOSTED!)";
+            title.style.color = won ? "#4ade80" : "#ef4444";
+            
+            document.getElementById('game-overlay').classList.remove('hidden');
+            
+            if (won) updateLoveMeter(30);
+            else updateLoveMeter(-10);
+
+            const btn = document.getElementById('game-continue-btn');
+            btn.onclick = () => {
+                arcadeLayer.classList.add('hidden');
+                vnLayer.classList.remove('hidden');
+                // Route based on win/loss
+                if (won) {
+                    currentScript = story.post_arcade_win;
+                } else {
+                    currentScript = story.post_arcade_loss;
+                }
+                state.dialogueIndex = 0;
+                renderScene();
+            };
+        }
+
+        // --- CONTROLS ---
+        window.addEventListener('keydown', (e) => {
+            if (gameActive) {
+                switch(e.key) {
+                    case "ArrowUp": movePlayer(0, -1); break;
+                    case "ArrowDown": movePlayer(0, 1); break;
+                    case "ArrowLeft": movePlayer(-1, 0); break;
+                    case "ArrowRight": movePlayer(1, 0); break;
+                }
+            } else {
+                if (e.key === " " || e.key === "Enter") {
+                    advanceStory();
+                }
+            }
+        });
+
+        dialogueContainer.addEventListener('click', advanceStory);
+
+        // --- INIT ---
+        state.dialogueIndex = 0;
+        renderScene();
+
+    </script>
+</body>
+</html>
