@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<!--
+  osu! Web Clone - Main HTML Structure
+  Dependencies: Howler.js (CDN), all game modules loaded in order
+  Integration: Provides DOM structure for all game screens and canvas
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="osu! Web Clone - A rhythm game in your browser">
+  <title>osu! Web Clone</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff66ab' stroke='white' stroke-width='6'/></svg>">
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Howler.js for Audio -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+</head>
+<body>
+  <!-- Main Game Container -->
+  <div id="game-container">
+    <!-- Game Canvas -->
+    <canvas id="game-canvas" tabindex="0" aria-label="Game playfield"></canvas>
+    
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- LOADING SCREEN -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div id="screen-loading" class="screen active" role="alert" aria-live="polite">
+      <div class="loading-content">
+        <div class="osu-logo" aria-hidden="true">
+          <div class="logo-circle">
+            <span class="logo-text">osu!</span>
+          </div>
+        </div>
+        <div class="loading-bar-container" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+          <div id="loading-bar" class="loading-bar"></div>
+        </div>
+        <p id="loading-text" class="loading-text">Loading...</p>
+      </div>
+    </div>
+    
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- MAIN MENU SCREEN -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div id="screen-menu" class="screen">
+      <div class="menu-background">
+        <div class="menu-particles" id="menu-particles"></div>
+      </div>
+      <div class="menu-content">
+        <div class="menu-logo">
+          <div class="logo-circle pulse-animation">
+            <span class="logo-text">osu!</span>
+          </div>
+        </div>
+        <nav class="menu-buttons">
+          <button id="btn-play" class="menu-btn primary" data-action="play">
+            <span class="btn-icon">▶</span>
+            <span class="btn-text">Play</span>
+          </button>
+          <button id="btn-settings" class="menu-btn" data-action="settings">
+            <span class="btn-icon">⚙</span>
+            <span class="btn-text">Settings</span>
+          </button>
+          <button id="btn-help" class="menu-btn" data-action="help">
+            <span class="btn-icon">?</span>
+            <span class="btn-text">Help</span>
+          </button>
+        </nav>
+        <p class="menu-footer">Press any key or click to continue</p>
+      </div>
+    </div>
+    
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- SONG SELECT SCREEN -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div id="screen-song-select" class="screen">
+      <div class="song-select-container">
+        <!-- Left Panel: Song List -->
+        <div class="song-list-panel">
+          <div class="panel-header">
+            <h2>Beatmaps</h2>
+            <div class="search-box">
+              <input type="text" id="song-search" placeholder="Search..." autocomplete="off">
+            </div>
+          </div>
+          <div id="song-list" class="song-list">
+            <!-- Populated by JavaScript -->
+          </div>
+        </div>
+        
+        <!-- Center Panel: Beatmap Info -->
+        <div class="beatmap-info-panel">
+          <div class="beatmap-banner" id="beatmap-banner">
+            <div class="banner-overlay"></div>
+            <div class="beatmap-title-info">
+              <h1 id="beatmap-title">Select a Beatmap</h1>
+              <h2 id="beatmap-artist">-</h2>
+            </div>
+          </div>
+          
+          <div class="beatmap-details">
+            <div class="beatmap-meta">
+              <div class="meta-item">
+                <span class="meta-label">Mapper</span>
+                <span id="beatmap-mapper" class="meta-value">-</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Difficulty</span>
+                <span id="beatmap-version" class="meta-value">-</span>
+              </div>
+            </div>
+            
+            <div class="difficulty-stats">
+              <div class="stat-row">
+                <span class="stat-label">Circle Size</span>
+                <div class="stat-bar-container">
+                  <div id="stat-cs" class="stat-bar" style="width: 0%"></div>
+                </div>
+                <span id="stat-cs-value" class="stat-value">0</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">Approach Rate</span>
+                <div class="stat-bar-container">
+                  <div id="stat-ar" class="stat-bar" style="width: 0%"></div>
+                </div>
+                <span id="stat-ar-value" class="stat-value">0</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">Overall Diff</span>
+                <div class="stat-bar-container">
+                  <div id="stat-od" class="stat-bar" style="width: 0%"></div>
+                </div>
+                <span id="stat-od-value" class="stat-value">0</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">HP Drain</span>
+                <div class="stat-bar-container">
+                  <div id="stat-hp" class="stat-bar" style="width: 0%"></div>
+                </div>
+                <span id="stat-hp-value" class="stat-value">0</span>
+              </div>
+            </div>
+            
+            <div class="beatmap-object-counts">
+              <div class="count-item">
+                <span id="count-circles" class="count-value">0</span>
+                <span class="count-label">Circles</span>
+              </div>
+              <div class="count-item">
+                <span id="count-sliders" class="count-value">0</span>
+                <span class="count-label">Sliders</span>
+              </div>
+              <div class="count-item">
+                <span id="count-spinners" class="count-value">0</span>
+                <span class="count-label">Spinners</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Difficulty Selection -->
+          <div class="difficulty-select-section">
+            <h3>Difficulty</h3>
+            <div id="difficulty-list" class="difficulty-list">
+              <!-- Populated by JavaScript -->
+            </div>
+          </div>
+        </div>
+        
+        <!-- Right Panel: Mods & Actions -->
+        <div class="action-panel">
+          <div class="star-rating" id="star-rating">
+            <span class="star-icon">★</span>
+            <span id="star-value" class="star-value">0.00</span>
+          </div>
+          
+          <button id="btn-mods" class="action-btn mods-btn">
+            <span class="btn-icon">⚡</span>
+            <span>Mods</span>
+          </button>
+          
+          <div id="active-mods" class="active-mods">
+            <!-- Active mod icons appear here -->
+          </div>
+          
+          <div class="score-multiplier">
+            <span>Score Multiplier</span>
+            <span id="score-multiplier" class="multiplier-value">1.00x</span>
+          </div>
+          
+          <button id="btn-play-beatmap" class="action-btn play-btn" disabled>
+            <span class="btn-icon">▶</span>
+            <span>Play</span>
+          </button>
+          
+          <button id="btn-back-menu" class="action-btn back-btn">
+            <span class="btn-icon">◀</span>
+            <span>Back</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- MOD SELECT OVERLAY -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div id="screen-mod-select" class="screen overlay" role="dialog" aria-labelledby="mod-dialog-title" aria-modal="true">
+      <div class="mod-select-container">
+        <div class="mod-select-header">
+          <h2>Game Modifiers</h2>
+          <button id="btn-close-mods" class="close-btn">✕</button>
+        </div>
+        
+        <div class="mod-categories">
+          <!-- Difficulty Reduction -->
+          <div class="mod-category">
+            <h3 class="category-title reduction">Difficulty Reduction</h3>
+            <div class="mod-buttons">
+              <button class="mod-btn" data-mod="EZ" data-flag="2" title="Easy - Larger circles, more forgiving HP drain, less accuracy required">
+                <span class="mod-icon">EZ</span>
+                <span class="mod-name">Easy</span>
+                <span class="mod-mult">0.50x</span>
+              </button>
+              <button class="mod-btn" data-mod="NF" data-flag="1" title="No Fail - You can't fail, no matter what">
+                <span class="mod-icon">NF</span>
+                <span class="mod-name">No Fail</span>
+                <span class="mod-mult">0.50x</span>
+              </button>
+              <button class="mod-btn" data-mod="HT" data-flag="256" title="Half Time - Less zoom">
+                <span class="mod-icon">HT</span>
+                <span class="mod-name">Half Time</span>
+                <span class="mod-mult">0.30x</span>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Difficulty Increase -->
+          <div class="mod-category">
+            <h3 class="category-title increase">Difficulty Increase</h3>
+            <div class="mod-buttons">
+              <button class="mod-btn" data-mod="HR" data-flag="16" title="Hard Rock - Everything just got a bit harder">
+                <span class="mod-icon">HR</span>
+                <span class="mod-name">Hard Rock</span>
+                <span class="mod-mult">1.06x</span>
+              </button>
+              <button class="mod-btn" data-mod="DT" data-flag="64" title="Double Time - Zoooooooom">
+                <span class="mod-icon">DT</span>
+                <span class="mod-name">Double Time</span>
+                <span class="mod-mult">1.12x</span>
+              </button>
+              <button class="mod-btn" data-mod="HD" data-flag="8" title="Hidden - Play with no approach circles and fading notes">
+                <span class="mod-icon">HD</span>
+                <span class="mod-name">Hidden</span>
+                <span class="mod-mult">1.06x</span>
+              </button>
+              <button class="mod-btn" data-mod="FL" data-flag="1024" title="Flashlight - Restricted view area">
+                <span class="mod-icon">FL</span>
+                <span class="mod-name">Flashlight</span>
+                <span class="mod-mult">1.12x</span>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Automation -->
+          <div class="mod-category">
+            <h3 class="category-title automation">Automation</h3>
+            <div class="mod-buttons">
+              <button class="mod-btn" data-mod="AT" data-flag="2048" title="Auto - Watch a perfect automated play">
+                <span class="mod-icon">AT</span>
+                <span class="mod-name">Auto</span>
+                <span class="mod-mult">1.00x</span>
+              </button>
+              <button class="mod-btn" data-mod="RX" data-flag="128" title="Relax - You don't need to click. Just move cursor">
+                <span class="mod-icon">RX</span>
+                <span class="mod-name">Relax</span>
+                <span class="mod-mult">0.00x</span>
+              </button>
+              <button class="mod-btn" data-mod="AP" data-flag="8192" title="Autopilot - Automatic cursor movement - just follow the rhythm">
+                <span class="mod-icon">AP</span>
+                <span class="mod-name">Autopilot</span>
+                <span class="mod-mult">0.00x</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mod-select-footer">
+          <div class="total-multiplier">
+            <span>Score Multiplier:</span>
+            <span id="mod-total-multiplier" class="multiplier-value">1.00x</span>
+          </div>
+          <button id="btn-reset-mods" class="reset-btn">Reset All</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- SETTINGS OVERLAY -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div id="screen-settings" class="screen overlay">
+      <div class="settings-container">
+        <div class="settings-header">
+          <h2>Settings</h2>
+          <button id="btn-close-settings" class="close-btn">✕</button>
+        </div>
+        
+        <div class="settings-content">
+          <div class="setting-group">
+            <label class="setting-label">Master Volume</label>
+            <input type="range" id="setting-master-volume" min="0" max="100" value="80">
+            <span id="master-volume-value" class="setting-value">80%</span>
+          </div>
+          
+          <div class="setting-group">
+            <label class="setting-label">Music Volume</label>
+            <input type="range" id="setting-music-volume" min="0" max="100" value="80">
+            <span id="music-volume-value" class="setting-value">80%</span>
+          </div>
+          
+          <div class="setting-group">
+            <label class="setting-label">Audio Offset (ms)</label>
+            <input type="range" id="setting-audio-offset" min="-100" max="100" value="0">
+            <span id="audio-offset-value" class="setting-value">0ms</span>
+          </div>
+          
+          <div class="setting-group">
+            <label class="setting-label">Background Dim</label>
+            <input type="range" id="setting-bg-dim" min="0" max="100" value="70">
+            <span id="bg-dim-value" class="setting-value">70%</span>
+          </div>
+          
+          <div class="setting-group checkbox">
+            <label class="setting-label">Show FPS</label>
+            <input type="checkbox" id="setting-show-fps">
+          </div>
+        </div>
+        
+        <div class="settings-footer">
+          <button id="btn-save-settings" class="save-btn">Save</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- HELP OVERLAY -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div id="screen-help" class="screen overlay">
+      <div class="help-container">
+        <div class="help-header">
+          <h2>How to Play</h2>
+          <button id="btn-close-help" class="close-btn">✕</button>
+        </div>
+        
+        <div class="help-content">
+          <div class="help-section">
+            <h3>Controls</h3>
+            <div class="control-list">
+              <div class="control-item">
+                <span class="key">Z</span> / <span class="key">X</span>
+                <span class="control-desc">Hit circles / Click</span>
+              </div>
+              <div class="control-item">
+                <span class="key">M1</span> / <span class="key">M2</span>
+                <span class="control-desc">Mouse buttons (alternative)</span>
+              </div>
+              <div class="control-item">
+                <span class="key">Mouse</span>
+                <span class="control-desc">Move cursor / Aim</span>
+              </div>
+              <div class="control-item">
+                <span class="key">ESC</span>
+                <span class="control-desc">Pause game</span>
+              </div>
+              <div class="control-item">
+                <span class="key">Space</span>
+                <span class="control-desc">Skip intro (when available)</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="help-section">
+            <h3>Hit Objects</h3>
+            <div class="object-list">
+              <div class="object-item">
+                <div class="object-icon circle-icon"></div>
+                <span>Circle - Click when approach circle overlaps</span>
+              </div>
+              <div class="object-item">
+                <div class="object-icon slider-icon"></div>
+                <span>Slider - Click and follow the ball</span>
+              </div>
+              <div class="object-item">
+                <div class="object-icon spinner-icon"></div>
+                <span>Spinner - Spin cursor around center</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="help-section">
+            <h3>Scoring</h3>
+            <ul class="scoring-list">
+              <li><span class="score-300">300</span> - Perfect timing</li>
+              <li><span class="score-100">100</span> - Good timing</li>
+              <li><span class="score-50">50</span> - Early/Late timing</li>
+              <li><span class="score-miss">Miss</span> - Too early/late or missed</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- COUNTDOWN OVERLAY -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div id="screen-countdown" class="screen overlay">
+      <div class="countdown-container">
+        <span id="countdown-number" class="countdown-number">3</span>
+      </div>
+    </div>
+    
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- GAMEPLAY HUD -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div id="gameplay-hud" class="hud hidden">
+      <!-- Health Bar -->
+      <div class="health-bar-container" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" aria-label="Health">
+        <div id="health-bar" class="health-bar"></div>
+        <div class="health-bar-bg"></div>
+      </div>
+      
+      <!-- Score Display -->
+      <div class="score-display">
+        <span id="hud-score" class="score-value">00000000</span>
+      </div>
+      
+      <!-- Accuracy Display -->
+      <div class="accuracy-display">
+        <span id="hud-accuracy" class="accuracy-value">100.00%</span>
+      </div>
+      
+      <!-- Combo Display -->
+      <div class="combo-display">
+        <span id="hud-combo" class="combo-value"></span>
+        <span id="hud-combo-label" class="combo-label"></span>
+      </div>
+      
+      <!-- FPS Counter (Optional) -->
+      <div id="fps-counter" class="fps-counter hidden">
+        <span id="fps-value">0</span> FPS
+      </div>
+      
+      <!-- Active Mods Display -->
+      <div id="hud-mods" class="hud-mods">
+        <!-- Mod icons shown during gameplay -->
+      </div>
+    </div>
+    
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- PAUSE SCREEN -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div id="screen-paused" class="screen overlay">
+      <div class="pause-container">
+        <h1 class="pause-title">Paused</h1>
+        <div class="pause-buttons">
+          <button id="btn-resume" class="pause-btn primary">
+            <span class="btn-icon">▶</span>
+            <span>Continue</span>
+          </button>
+          <button id="btn-retry" class="pause-btn">
+            <span class="btn-icon">↻</span>
+            <span>Retry</span>
+          </button>
+          <button id="btn-quit" class="pause-btn">
+            <span class="btn-icon">◀</span>
+            <span>Quit</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- FAILED SCREEN -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div id="screen-failed" class="screen overlay">
+      <div class="failed-container">
+        <h1 class="failed-title">Failed</h1>
+        <p class="failed-subtitle">Better luck next time...</p>
+        <div class="failed-buttons">
+          <button id="btn-retry-failed" class="failed-btn primary">
+            <span class="btn-icon">↻</span>
+            <span>Retry</span>
+          </button>
+          <button id="btn-quit-failed" class="failed-btn">
+            <span class="btn-icon">◀</span>
+            <span>Back to Song Select</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- RESULTS SCREEN -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div id="screen-results" class="screen">
+      <div class="results-container">
+        <div class="results-header">
+          <h1 id="results-title" class="results-title">Results</h1>
+          <h2 id="results-beatmap" class="results-beatmap">-</h2>
+        </div>
+        
+        <div class="results-main">
+          <!-- Grade Display -->
+          <div class="grade-display">
+            <span id="results-grade" class="grade-letter">-</span>
+          </div>
+          
+          <!-- Score Stats -->
+          <div class="results-stats">
+            <div class="stat-large">
+              <span class="stat-label">Score</span>
+              <span id="results-score" class="stat-value">0</span>
+            </div>
+            
+            <div class="stat-large">
+              <span class="stat-label">Accuracy</span>
+              <span id="results-accuracy" class="stat-value">0.00%</span>
+            </div>
+            
+            <div class="stat-large">
+              <span class="stat-label">Max Combo</span>
+              <span id="results-max-combo" class="stat-value">0x</span>
+            </div>
+          </div>
+          
+          <!-- Hit Counts -->
+          <div class="hit-counts">
+            <div class="hit-count hit-300">
+              <span class="hit-label">300</span>
+              <span id="results-count-300" class="hit-value">0</span>
+            </div>
+            <div class="hit-count hit-100">
+              <span class="hit-label">100</span>
+              <span id="results-count-100" class="hit-value">0</span>
+            </div>
+            <div class="hit-count hit-50">
+              <span class="hit-label">50</span>
+              <span id="results-count-50" class="hit-value">0</span>
+            </div>
+            <div class="hit-count hit-miss">
+              <span class="hit-label">Miss</span>
+              <span id="results-count-miss" class="hit-value">0</span>
+            </div>
+          </div>
+          
+          <!-- Mods Used -->
+          <div class="results-mods">
+            <span class="mods-label">Mods:</span>
+            <span id="results-mods-list" class="mods-list">None</span>
+          </div>
+          
+          <!-- Performance Points (Optional) -->
+          <div class="results-pp" id="results-pp-container">
+            <span id="results-pp" class="pp-value">0pp</span>
+          </div>
+        </div>
+        
+        <div class="results-actions">
+          <button id="btn-retry-results" class="results-btn primary">
+            <span class="btn-icon">↻</span>
+            <span>Retry</span>
+          </button>
+          <button id="btn-back-results" class="results-btn">
+            <span class="btn-icon">◀</span>
+            <span>Back to Song Select</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- SKIP BUTTON -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div id="skip-button" class="skip-button hidden">
+      <span>Skip ▶▶</span>
+    </div>
+    
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ERROR OVERLAY -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div id="screen-error" class="screen overlay">
+      <div class="error-container">
+        <h2 class="error-title">Error</h2>
+        <p id="error-message" class="error-message">An error occurred</p>
+        <button id="btn-error-dismiss" class="error-btn">OK</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- JavaScript Modules (Load Order) -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <script type="module">
+    // Import all modules in dependency order
+    import * as Constants from './constants.js';
+    import * as Utils from './utils.js';
+    import * as Parser from './parser.js';
+    import * as BeatmapLoader from './beatmapLoader.js';
+    import { AudioManager } from './audio.js';
+    import { InputManager } from './input.js';
+    import * as HitObjects from './hitObjects.js';
+    import { ScoreManager } from './scoring.js';
+    import { ModManager } from './mods.js';
+    import { AutoplayController } from './autoplay.js';
+    import { Renderer } from './renderer.js';
+    import { EffectsManager } from './effects.js';
+    import { UIManager } from './ui.js';
+    import { SongSelectManager } from './songSelect.js';
+    import { Game } from './game.js';
+    import { init } from './main.js';
+    
+    // Expose to global scope for debugging if needed
+    window.OsuGame = {
+      Constants,
+      Utils,
+      Parser,
+      BeatmapLoader,
+      AudioManager,
+      InputManager,
+      HitObjects,
+      ScoreManager,
+      ModManager,
+      AutoplayController,
+      Renderer,
+      EffectsManager,
+      UIManager,
+      SongSelectManager,
+      Game
+    };
+    
+    // Initialize the game
+    init();
+  </script>
+</body>
+</html>
