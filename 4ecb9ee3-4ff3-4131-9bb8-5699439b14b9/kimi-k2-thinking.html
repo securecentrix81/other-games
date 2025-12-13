@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calvin with Eric - Romance Action Adventure</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Playfair+Display:wght@700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+        }
+        
+        .title-font {
+            font-family: 'Playfair Display', serif;
+        }
+        
+        .game-screen {
+            display: none;
+        }
+        
+        .game-screen.active {
+            display: block;
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .heart-pulse {
+            animation: heartbeat 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .monster-appear {
+            animation: monsterEntrance 0.8s ease-out;
+        }
+        
+        @keyframes monsterEntrance {
+            from { transform: scale(0) rotate(180deg); opacity: 0; }
+            to { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        
+        .damage-text {
+            animation: damageFloat 1s ease-out forwards;
+        }
+        
+        @keyframes damageFloat {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-50px); opacity: 0; }
+        }
+        
+        .choice-hover:hover {
+            transform: translateX(10px);
+            transition: transform 0.3s ease;
+        }
+        
+        .health-bar {
+            transition: width 0.5s ease;
+        }
+        
+        .relationship-bar {
+            background: linear-gradient(90deg, #ff6b6b, #ff8e8e, #ffb3b3);
+        }
+        
+        .dialogue-bubble {
+            position: relative;
+            background: #2d3748;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .dialogue-bubble::before {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 30px;
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 15px solid #2d3748;
+        }
+        
+        .floating-hearts {
+            position: absolute;
+            pointer-events: none;
+        }
+        
+        .heart {
+            position: absolute;
+            color: #ff6b6b;
+            animation: floatUp 3s ease-out forwards;
+        }
+        
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(0); opacity: 1; }
+            100% { transform: translateY(-100px) scale(1.5); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="text-white overflow-hidden">
+    <!-- Main Menu Screen -->
+    <div id="menuScreen" class="game-screen active">
+        <div class="min-h-screen flex flex-col items-center justify-center p-8">
+            <div class="text-center mb-8">
+                <h1 class="title-font text-6xl md:text-8xl font-bold mb-4 bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
+                    Calvin with Eric
+                </h1>
+                <p class="text-xl md:text-2xl text-gray-300 max-w-2xl mx-auto">
+                    A Romance-Action Adventure Where Love Grows in the Midst of Danger
+                </p>
+            </div>
+            
+            <div class="bg-gray-800 bg-opacity-50 rounded-2xl p-8 max-w-md w-full backdrop-blur-sm">
+                <button onclick="startGame()" class="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-xl text-xl mb-4 transition-all duration-300 transform hover:scale-105">
+                    Start Adventure
+                </button>
+                <button onclick="showInstructions()" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300">
+                    How to Play
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Instructions Screen -->
+    <div id="instructionsScreen" class="game-screen">
+        <div class="min-h-screen flex flex-col items-center justify-center p-8">
+            <div class="bg-gray-800 bg-opacity-50 rounded-2xl p-8 max-w-2xl w-full backdrop-blur-sm">
+                <h2 class="title-font text-4xl font-bold mb-6 text-center">How to Play</h2>
+                
+                <div class="space-y-4 text-gray-300 mb-8">
+                    <div class="flex items-start space-x-3">
+                        <span class="text-pink-400 font-bold">❤️</span>
+                        <p><strong>Explore:</strong> Navigate through dangerous areas filled with monsters</p>
+                    </div>
+                    <div class="flex items-start space-x-3">
+                        <span class="text-red-400 font-bold">⚔️</span>
+                        <p><strong>Combat:</strong> Fight monsters using Attack and Defend strategies</p>
+                    </div>
+                    <div class="flex items-start space-x-3">
+                        <span class="text-purple-400 font-bold">💬</span>
+                        <p><strong>Date:</strong> Between battles, go on dates with Eric and answer questions</p>
+                    </div>
+                    <div class="flex items-start space-x-3">
+                        <span class="text-blue-400 font-bold">💕</span>
+                        <p><strong>Build Love:</strong> Your relationship affects combat bonuses and story paths</p>
+                    </div>
+                    <div class="flex items-start space-x-3">
+                        <span class="text-yellow-400 font-bold">🏆</span>
+                        <p><strong>Win:</strong> Survive all areas and build a strong bond with Eric</p>
+                    </div>
+                </div>
+                
+                <button onclick="hideInstructions()" class="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300">
+                    Got It!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="gameScreen" class="game-screen">
+        <!-- Game Header -->
+        <div class="bg-gray-900 bg-opacity-80 p-4 border-b border-gray-700">
+            <div class="max-w-6xl mx-auto flex justify-between items-center">
+                <div class="flex items-center space-x-6">
+                    <div>
+                        <span class="text-sm text-gray-400">Area</span>
+                        <div class="text-xl font-bold" id="areaDisplay">Dark Forest</div>
+                    </div>
+                    <div>
+                        <span class="text-sm text-gray-400">Level</span>
+                        <div class="text-xl font-bold" id="levelDisplay">1</div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-6">
+                    <!-- Calvin's Health -->
+                    <div class="text-center">
+                        <div class="text-sm text-gray-400">Calvin's HP</div>
+                        <div class="w-32 h-4 bg-gray-700 rounded-full overflow-hidden">
+                            <div id="calvinHealthBar" class="health-bar h-full bg-green-500" style="width: 100%"></div>
+                        </div>
+                        <div class="text-xs" id="calvinHealthText">100/100</div>
+                    </div>
+                    
+                    <!-- Relationship Meter -->
+                    <div class="text-center">
+                        <div class="flex items-center justify-center space-x-1">
+                            <span class="text-sm text-gray-400">Love</span>
+                            <span class="heart-pulse">❤️</span>
+                        </div>
+                        <div class="w-32 h-4 bg-gray-700 rounded-full overflow-hidden">
+                            <div id="relationshipBar" class="health-bar relationship-bar h-full" style="width: 50%"></div>
+                        </div>
+                        <div class="text-xs" id="relationshipText">50/100</div>
+                    </div>
+                    
+                    <!-- Eric's Health -->
+                    <div class="text-center">
+                        <div class="text-sm text-gray-400">Eric's HP</div>
+                        <div class="w-32 h-4 bg-gray-700 rounded-full overflow-hidden">
+                            <div id="ericHealthBar" class="health-bar h-full bg-blue-500" style="width: 100%"></div>
+                        </div>
+                        <div class="text-xs" id="ericHealthText">100/100</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Game Area -->
+        <div class="flex-1 flex">
+            <!-- Left Panel - Actions -->
+            <div class="w-80 bg-gray-800 bg-opacity-50 p-6 border-r border-gray-700">
+                <h3 class="text-2xl font-bold mb-6 text-center">Actions</h3>
+                
+                <div id="explorationActions" class="space-y-4">
+                    <button onclick="encounterMonster()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105">
+                        ⚔️ Search for Monsters
+                    </button>
+                    <button onclick="startDate()" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105">
+                        💕 Spend Time with Eric
+                    </button>
+                    <button onclick="exploreArea()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105">
+                        🔍 Explore Area
+                    </button>
+                </div>
+                
+                <div id="combatActions" class="space-y-4" style="display: none;">
+                    <button onclick="playerAttack()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300">
+                        ⚔️ Attack
+                    </button>
+                    <button onclick="playerDefend()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300">
+                        🛡️ Defend
+                    </button>
+                    <button onclick="fleeCombat()" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300">
+                        🏃 Flee
+                    </button>
+                </div>
+                
+                <div id="datingActions" class="space-y-4" style="display: none;">
+                    <div id="dialogueChoices"></div>
+                </div>
+            </div>
+
+            <!-- Center Panel - Game World -->
+            <div class="flex-1 p-8 relative">
+                <div id="gameWorld" class="h-full flex flex-col items-center justify-center">
+                    <!-- Exploration View -->
+                    <div id="explorationView" class="text-center">
+                        <div class="mb-8">
+                            <div class="text-6xl mb-4">🏞️</div>
+                            <h2 class="text-3xl font-bold mb-2" id="areaTitle">Dark Forest</h2>
+                            <p class="text-gray-300 max-w-md mx-auto" id="areaDescription">
+                                A mysterious forest where danger lurks behind every tree. You can feel Eric's presence beside you, ready to face whatever comes.
+                            </p>
+                        </div>
+                        
+                        <div class="flex justify-center space-x-8">
+                            <div class="text-center">
+                                <div class="text-4xl mb-2">🗡️</div>
+                                <div class="text-sm text-gray-400">Attack Power</div>
+                                <div class="text-xl font-bold" id="attackPower">15</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-4xl mb-2">💖</div>
+                                <div class="text-sm text-gray-400">Bond Bonus</div>
+                                <div class="text-xl font-bold" id="bondBonus">+5%</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-4xl mb-2">🛡️</div>
+                                <div class="text-sm text-gray-400">Defense</div>
+                                <div class="text-xl font-bold" id="defensePower">10</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Combat View -->
+                    <div id="combatView" class="text-center" style="display: none;">
+                        <div class="mb-8">
+                            <div id="monsterSprite" class="text-8xl mb-4 monster-appear">👹</div>
+                            <h2 class="text-3xl font-bold mb-2" id="monsterName">Shadow Beast</h2>
+                            <div class="w-64 h-6 bg-gray-700 rounded-full overflow-hidden mx-auto mb-2">
+                                <div id="monsterHealthBar" class="health-bar h-full bg-red-500" style="width: 100%"></div>
+                            </div>
+                            <div class="text-sm" id="monsterHealthText">HP: 50/50</div>
+                        </div>
+                        
+                        <div id="combatLog" class="bg-gray-800 bg-opacity-50 rounded-xl p-4 max-w-md mx-auto h-32 overflow-y-auto">
+                            <p class="text-gray-400 text-center">Combat begins...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Dating View -->
+                    <div id="datingView" class="text-center max-w-2xl" style="display: none;">
+                        <div class="mb-8">
+                            <div class="flex justify-center space-x-4 mb-6">
+                                <div class="text-6xl">😊</div>
+                                <div class="text-6xl">💕</div>
+                                <div class="text-6xl">😊</div>
+                            </div>
+                            <h2 class="text-3xl font-bold mb-4">Time with Eric</h2>
+                        </div>
+                        
+                        <div id="dialogueScene" class="dialogue-bubble">
+                            <p class="text-lg" id="dialogueText">Eric looks at you with a gentle smile. "Calvin, in all this chaos, I'm glad we're together. What made you first notice me?"</p>
+                        </div>
+                        
+                        <div id="datingFeedback" class="mt-4 text-sm" style="display: none;">
+                            <p id="feedbackText" class="text-yellow-400"></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Floating Hearts Container -->
+                <div id="floatingHearts" class="floating-hearts"></div>
+            </div>
+
+            <!-- Right Panel - Story & Stats -->
+            <div class="w-80 bg-gray-800 bg-opacity-50 p-6 border-l border-gray-700">
+                <h3 class="text-2xl font-bold mb-6 text-center">Story</h3>
+                
+                <div id="storyPanel" class="space-y-4">
+                    <div class="bg-gray-900 bg-opacity-50 rounded-xl p-4">
+                        <h4 class="font-bold text-pink-400 mb-2">Current Bond</h4>
+                        <p class="text-sm text-gray-300" id="bondDescription">Your bond is growing. Eric feels comfortable around you.</p>
+                    </div>
+                    
+                    <div class="bg-gray-900 bg-opacity-50 rounded-xl p-4">
+                        <h4 class="font-bold text-purple-400 mb-2">Recent Events</h4>
+                        <div id="eventLog" class="text-sm text-gray-300 space-y-1">
+                            <p>• Adventure begins in Dark Forest</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-900 bg-opacity-50 rounded-xl p-4">
+                        <h4 class="font-bold text-blue-400 mb-2">Combat Stats</h4>
+                        <div class="text-sm text-gray-300 space-y-1">
+                            <p>Monsters Defeated: <span id="monstersDefeated">0</span></p>
+                            <p>Total Damage: <span id="totalDamage">0</span></p>
+                            <p>Dates Completed: <span id="datesCompleted">0</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameOverScreen" class="game-screen">
+        <div class="min-h-screen flex flex-col items-center justify-center p-8">
+            <div class="text-center mb-8">
+                <h1 class="title-font text-6xl font-bold mb-4 text-red-400">Game Over</h1>
+                <p class="text-xl text-gray-300" id="gameOverMessage">The darkness consumed you...</p>
+            </div>
+            
+            <div class="bg-gray-800 bg-opacity-50 rounded-2xl p-8 max-w-md w-full">
+                <div class="text-center mb-6">
+                    <p class="text-2xl font-bold mb-2">Final Stats</p>
+                    <div class="text-gray-300 space-y-2">
+                        <p>Relationship Score: <span id="finalRelationship">0</span></p>
+                        <p>Monsters Defeated: <span id="finalMonsters">0</span></p>
+                        <p>Areas Cleared: <span id="finalAreas">0</span></p>
+                    </div>
+                </div>
+                
+                <button onclick="location.reload()" class="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-bold py-4 px-6 rounded-xl text-xl transition-all duration-300">
+                    Try Again
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Victory Screen -->
+    <div id="victoryScreen" class="game-screen">
+        <div class="min-h-screen flex flex-col items-center justify-center p-8">
+            <div class="text-center mb-8">
+                <h1 class="title-font text-6xl font-bold mb-4 bg-gradient-to-r from-yellow-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
+                    Love Conquers All!
+                </h1>
+                <p class="text-xl text-gray-300">
+                    You and Eric have overcome the darkness together!
+                </p>
+            </div>
+            
+            <div class="bg-gray-800 bg-opacity-50 rounded-2xl p-8 max-w-md w-full">
+                <div class="text-center mb-6">
+                    <div class="text-6xl mb-4">💕🏆💕</div>
+                    <p class="text-2xl font-bold mb-4">Victory!</p>
+                    <div class="text-gray-300 space-y-2">
+                        <p>Final Bond: <span id="victoryRelationship">0</span>/100</p>
+                        <p>Total Monsters: <span id="victoryMonsters">0</span></p>
+                        <p>Perfect Dates: <span id="victoryDates">0</span></p>
+                    </div>
+                </div>
+                
+                <div id="endingMessage" class="text-center mb-6 p-4 bg-gray-900 rounded-xl">
+                    <p class="text-pink-300" id="endingText"></p>
+                </div>
+                
+                <button onclick="location.reload()" class="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-xl text-xl transition-all duration-300">
+                    Play Again
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        const gameState = {
+            currentScreen: 'menu',
+            area: 0,
+            level: 1,
+            calvin: {
+                health: 100,
+                maxHealth: 100,
+                attack: 15,
+                defense: 10
+            },
+            eric: {
+                health: 100,
+                maxHealth: 100
+            },
+            relationship: 50,
+            currentMonster: null,
+            inCombat: false,
+            stats: {
+                monstersDefeated: 0,
+                totalDamage: 0,
+                datesCompleted: 0
+            },
+            currentDialogue: null
+        };
+
+        // Areas
+        const areas = [
+            {
+                name: "Dark Forest",
+                description: "A mysterious forest where danger lurks behind every tree. You can feel Eric's presence beside you, ready to face whatever comes.",
+                emoji: "🏞️",
+                monsters: ["Shadow Beast", "Forest Wraith", "Thorn Horror"]
+            },
+            {
+                name: "Crimson Caves",
+                description: "Blood-red crystals illuminate these treacherous caves. The air is thick with tension, but Eric's hand in yours gives you strength.",
+                emoji: "🗿",
+                monsters: ["Cave Stalker", "Crystal Golem", "Blood Bat"]
+            },
+            {
+                name: "Mystic Mountains",
+                description: "Towering peaks touch the sky. As you climb, you and Eric share quiet moments that make the perilous journey worthwhile.",
+                emoji: "🏔️",
+                monsters: ["Ice Elemental", "Mountain Troll", "Storm Harpy"]
+            },
+            {
+                name: "Void Temple",
+                description: "The final challenge awaits. Ancient evil stirs, but your bond with Eric has grown strong enough to face anything.",
+                emoji: "🏛️",
+                monsters: ["Void Guardian", "Dark Priest", "Shadow Lord"]
+            }
+        ];
+
+        // Dialogue Questions
+        const dialogueQuestions = [
+            {
+                question: "Eric looks at you with a gentle smile. \"Calvin, in all this chaos, I'm glad we're together. What made you first notice me?\"",
+                choices: [
+                    { text: "Your courage when facing danger", relationship: 15, response: "Eric blushes. \"I didn't think anyone noticed... that means a lot.\"" },
+                    { text: "The way you care about others", relationship: 20, response: "Eric's eyes soften. \"You see right through me. I care about you most of all.\"" },
+                    { text: "Your mysterious aura", relationship: 10, response: "Eric chuckles. \"Mysterious? I guess I've been called worse!\"" }
+                ]
+            },
+            {
+                question: "As you rest, Eric moves closer. \"Do you ever get scared? Of all this fighting?\"",
+                choices: [
+                    { text: "Only when I think of losing you", relationship: 25, response: "Eric takes your hand. \"I'm not going anywhere. We'll face everything together.\"" },
+                    { text: "Fear makes us stronger", relationship: 15, response: "Eric nods thoughtfully. \"You're wiser than you look, Calvin.\"" },
+                    { text: "I trust you to watch my back", relationship: 20, response: "Eric smiles confidently. \"Always. You can count on me.\"" }
+                ]
+            },
+            {
+                question: "\"If we make it through this,\" Eric whispers, \"what's the first thing you want to do?\"",
+                choices: [
+                    { text: "Take you on a real date", relationship: 20, response: "Eric's face lights up. \"I'd like that... more than anything.\"" },
+                    { text: "Just hold you without danger", relationship: 25, response: "Eric leans his head on your shoulder. \"That sounds perfect.\"" },
+                    { text: "Plan our next adventure together", relationship: 15, response: "Eric laughs. \"Always thinking ahead! I love that about you.\"" }
+                ]
+            },
+            {
+                question: "Eric touches your face gently. \"Why do you fight so hard? What drives you?\"",
+                choices: [
+                    { text: "To protect the people I love", relationship: 20, response: "Eric kisses your forehead. \"And you're protecting me. Thank you.\"" },
+                    { text: "To build a future with you", relationship: 25, response: "Tears glisten in Eric's eyes. \"That's all I want too.\"" },
+                    { text: "To prove I'm strong enough", relationship: 10, response: "Eric shakes his head. \"You don't have to prove anything to me.\"" }
+                ]
+            },
+            {
+                question: "In a quiet moment, Eric asks, \"What do you see when you look at me?\"",
+                choices: [
+                    { text: "My partner, my equal", relationship: 20, response: "Eric smiles warmly. \"That's exactly what I want to be for you.\"" },
+                    { text: "Someone who makes me whole", relationship: 25, response: "Eric embraces you. \"You complete me too, Calvin.\"" },
+                    { text: "The person I want to protect", relationship: 15, response: "Eric squeezes your hand. \"And I'll protect you right back.\"" }
+                ]
+            }
+        ];
+
+        // Monster Templates
+        const monsterTemplates = [
+            { name: "Shadow Beast", emoji: "👹", health: 50, attack: 8, exp: 20 },
+            { name: "Forest Wraith", emoji: "👻", health: 40, attack: 10, exp: 25 },
+            { name: "Thorn Horror", emoji: "🌹", health: 60, attack: 7, exp: 30 },
+            { name: "Cave Stalker", emoji: "🦇", health: 55, attack: 9, exp: 35 },
+            { name: "Crystal Golem", emoji: "💎", health: 80, attack: 12, exp: 40 },
+            { name: "Blood Bat", emoji: "🦇", health: 35, attack: 11, exp: 30 },
+            { name: "Ice Elemental", emoji: "❄️", health: 70, attack: 13, exp: 45 },
+            { name: "Mountain Troll", emoji: "🧌", health: 90, attack: 10, exp: 50 },
+            { name: "Storm Harpy", emoji: "🦅", health: 65, attack: 14, exp: 45 },
+            { name: "Void Guardian", emoji: "👁️", health: 100, attack: 15, exp: 60 },
+            { name: "Dark Priest", emoji: "🧙", health: 85, attack: 16, exp: 55 },
+            { name: "Shadow Lord", emoji: "👑", health: 120, attack: 18, exp: 100 }
+        ];
+
+        // Utility Functions
+        function showScreen(screenId) {
+            document.querySelectorAll('.game-screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            document.getElementById(screenId).classList.add('active');
+            gameState.currentScreen = screenId;
+        }
+
+        function updateUI() {
+            // Update health bars
+            const calvinHealthPercent = (gameState.calvin.health / gameState.calvin.maxHealth) * 100;
+            document.getElementById('calvinHealthBar').style.width = calvinHealthPercent + '%';
+            document.getElementById('calvinHealthText').textContent = `${gameState.calvin.health}/${gameState.calvin.maxHealth}`;
+            
+            const ericHealthPercent = (gameState.eric.health / gameState.eric.maxHealth) * 100;
+            document.getElementById('ericHealthBar').style.width = ericHealthPercent + '%';
+            document.getElementById('ericHealthText').textContent = `${gameState.eric.health}/${gameState.eric.maxHealth}`;
+            
+            // Update relationship bar
+            const relationshipPercent = (gameState.relationship / 100) * 100;
+            document.getElementById('relationshipBar').style.width = relationshipPercent + '%';
+            document.getElementById('relationshipText').textContent = `${gameState.relationship}/100`;
+            
+            // Update area info
+            const currentArea = areas[gameState.area];
+            document.getElementById('areaDisplay').textContent = currentArea.name;
+            document.getElementById('areaTitle').textContent = currentArea.name;
+            document.getElementById('areaDescription').textContent = currentArea.description;
+            document.getElementById('levelDisplay').textContent = gameState.level;
+            
+            // Update stats
+            document.getElementById('monstersDefeated').textContent = gameState.stats.monstersDefeated;
+            document.getElementById('totalDamage').textContent = gameState.stats.totalDamage;
+            document.getElementById('datesCompleted').textContent = gameState.stats.datesCompleted;
+            
+            // Update bond description
+            const bondDesc = document.getElementById('bondDescription');
+            if (gameState.relationship >= 90) {
+                bondDesc.textContent = "Your love is unbreakable. Eric would follow you anywhere.";
+            } else if (gameState.relationship >= 70) {
+                bondDesc.textContent = "Your bond is incredibly strong. Eric trusts you completely.";
+            } else if (gameState.relationship >= 50) {
+                bondDesc.textContent = "Your bond is growing. Eric feels comfortable around you.";
+            } else if (gameState.relationship >= 30) {
+                bondDesc.textContent = "Your connection is fragile. Eric seems hesitant.";
+            } else {
+                bondDesc.textContent = "Your bond is weak. Eric seems distant.";
+            }
+            
+            // Update stats display
+            const bondBonus = Math.floor(gameState.relationship / 10);
+            document.getElementById('attackPower').textContent = gameState.calvin.attack + bondBonus;
+            document.getElementById('bondBonus').textContent = `+${bondBonus}%`;
+            document.getElementById('defensePower').textContent = gameState.calvin.defense + Math.floor(bondBonus / 2);
+        }
+
+        function addToLog(message, type = 'info') {
+            const eventLog = document.getElementById('eventLog');
+            const p = document.createElement('p');
+            p.textContent = `• ${message}`;
+            
+            if (type === 'combat') {
+                p.className = 'text-red-400';
+            } else if (type === 'romance') {
+                p.className = 'text-pink-400';
+            } else if (type === 'victory') {
+                p.className = 'text-yellow-400';
+            }
+            
+            eventLog.appendChild(p);
+            eventLog.scrollTop = eventLog.scrollHeight;
+        }
+
+        function addCombatLog(message, type = 'neutral') {
+            const combatLog = document.getElementById('combatLog');
+            const p = document.createElement('p');
+            p.textContent = message;
+            
+            if (type === 'damage') {
+                p.className = 'text-red-400';
+            } else if (type === 'heal') {
+                p.className = 'text-green-400';
+            } else if (type === 'special') {
+                p.className = 'text-purple-400';
+            }
+            
+            combatLog.appendChild(p);
+            combatLog.scrollTop = combatLog.scrollHeight;
+        }
+
+        // Game Functions
+        function startGame() {
+            showScreen('gameScreen');
+            updateUI();
+            addToLog("Adventure begins in Dark Forest", 'info');
+        }
+
+        function showInstructions() {
+            showScreen('instructionsScreen');
+        }
+
+        function hideInstructions() {
+            showScreen('menuScreen');
+        }
+
+        function encounterMonster() {
+            const currentArea = areas[gameState.area];
+            const monsterNames = currentArea.monsters;
+            const randomMonster = monsterTemplates.find(m => m.name === monsterNames[Math.floor(Math.random() * monsterNames.length)]);
+            
+            gameState.currentMonster = {
+                ...randomMonster,
+                currentHealth: randomMonster.health
+            };
+            
+            gameState.inCombat = true;
+            
+            // Switch to combat view
+            document.getElementById('explorationView').style.display = 'none';
+            document.getElementById('combatView').style.display = 'block';
+            document.getElementById('explorationActions').style.display = 'none';
+            document.getElementById('combatActions').style.display = 'block';
+            
+            // Update monster display
+            document.getElementById('monsterName').textContent = gameState.currentMonster.name;
+            document.getElementById('monsterSprite').textContent = gameState.currentMonster.emoji;
+            document.getElementById('monsterHealthText').textContent = `HP: ${gameState.currentMonster.currentHealth}/${gameState.currentMonster.health}`;
+            document.getElementById('monsterHealthBar').style.width = '100%';
+            
+            // Clear combat log
+            document.getElementById('combatLog').innerHTML = '<p class="text-gray-400 text-center">Combat begins...</p>';
+            
+            addToLog(`Encountered ${gameState.currentMonster.name}!`, 'combat');
+            addCombatLog(`${gameState.currentMonster.name} appears!`, 'special');
+        }
+
+        function playerAttack() {
+            if (!gameState.inCombat || !gameState.currentMonster) return;
+            
+            const bondBonus = Math.floor(gameState.relationship / 10);
+            const damage = gameState.calvin.attack + bondBonus + Math.floor(Math.random() * 10);
+            
+            gameState.currentMonster.currentHealth -= damage;
+            gameState.stats.totalDamage += damage;
+            
+            if (gameState.currentMonster.currentHealth <= 0) {
+                gameState.currentMonster.currentHealth = 0;
+                addCombatLog(`You dealt ${damage} damage! ${gameState.currentMonster.name} defeated!`, 'damage');
+                addToLog(`Defeated ${gameState.currentMonster.name}!`, 'victory');
+                
+                // Victory effects
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    colors: ['#ff6b6b', '#ff8e8e', '#ffb3b3']
+                });
+                
+                // Heal slightly after victory
+                gameState.calvin.health = Math.min(gameState.calvin.maxHealth, gameState.calvin.health + 10);
+                gameState.eric.health = Math.min(gameState.eric.maxHealth, gameState.eric.health + 10);
+                
+                gameState.stats.monstersDefeated++;
+                gameState.level++;
+                
+                setTimeout(() => {
+                    endCombat();
+                }, 2000);
+            } else {
+                addCombatLog(`You dealt ${damage} damage!`, 'damage');
+                updateMonsterUI();
+                setTimeout(() => monsterAttack(), 1000);
+            }
+            
+            updateUI();
+        }
+
+        function playerDefend() {
+            if (!gameState.inCombat || !gameState.currentMonster) return;
+            
+            const bondBonus = Math.floor(gameState.relationship / 10);
+            const defense = gameState.calvin.defense + Math.floor(bondBonus / 2) + Math.floor(Math.random() * 8);
+            
+            addCombatLog(`You take defensive stance! Defense increased!`, 'special');
+            
+            setTimeout(() => {
+                const monsterDamage = Math.max(0, gameState.currentMonster.attack - defense);
+                gameState.calvin.health -= monsterDamage;
+                addCombatLog(`${gameState.currentMonster.name} attacks! You take ${monsterDamage} damage!`, 'damage');
+                
+                if (gameState.calvin.health <= 0) {
+                    gameState.calvin.health = 0;
+                    gameOver("You were defeated in battle...");
+                }
+                
+                updateUI();
+            }, 1000);
+        }
+
+        function monsterAttack() {
+            if (!gameState.inCombat || !gameState.currentMonster) return;
+            
+            const damage = gameState.currentMonster.attack + Math.floor(Math.random() * 8);
+            gameState.calvin.health -= damage;
+            
+            addCombatLog(`${gameState.currentMonster.name} attacks! You take ${damage} damage!`, 'damage');
+            
+            if (gameState.calvin.health <= 0) {
+                gameState.calvin.health = 0;
+                gameOver("You were defeated in battle...");
+            }
+            
+            updateUI();
+        }
+
+        function fleeCombat() {
+            if (!gameState.inCombat) return;
+            
+            addCombatLog("You flee from combat!", 'special');
+            addToLog("Fled from battle", 'info');
+            
+            // Take some damage when fleeing
+            const fleeDamage = Math.floor(Math.random() * 15) + 5;
+            gameState.calvin.health -= fleeDamage;
+            
+            if (gameState.calvin.health <= 0) {
+                gameState.calvin.health = 0;
+                gameOver("You didn't make it...");
+            }
+            
+            endCombat();
+            updateUI();
+        }
+
+        function endCombat() {
+            gameState.inCombat = false;
+            gameState.currentMonster = null;
+            
+            document.getElementById('combatView').style.display = 'none';
+            document.getElementById('explorationView').style.display = 'block';
+            document.getElementById('combatActions').style.display = 'none';
+            document.getElementById('explorationActions').style.display = 'block';
+            
+            // Check if area is complete (defeated enough monsters)
+            if (gameState.stats.monstersDefeated >= (gameState.area + 1) * 3) {
+                if (gameState.area < areas.length - 1) {
+                    gameState.area++;
+                    addToLog(`Area cleared! Advancing to ${areas[gameState.area].name}!`, 'victory');
+                    
+                    confetti({
+                        particleCount: 150,
+                        spread: 90,
+                        origin: { y: 0.6 }
+                    });
+                } else {
+                    victory();
+                }
+            }
+            
+            updateUI();
+        }
+
+        function startDate() {
+            // Switch to dating view
+            document.getElementById('explorationView').style.display = 'none';
+            document.getElementById('datingView').style.display = 'block';
+            document.getElementById('explorationActions').style.display = 'none';
+            document.getElementById('datingActions').style.display = 'block';
+            
+            // Get random dialogue question
+            const randomQuestion = dialogueQuestions[Math.floor(Math.random() * dialogueQuestions.length)];
+            gameState.currentDialogue = randomQuestion;
+            
+            document.getElementById('dialogueText').textContent = randomQuestion.question;
+            
+            // Create choice buttons
+            const choicesContainer = document.getElementById('dialogueChoices');
+            choicesContainer.innerHTML = '';
+            
+            randomQuestion.choices.forEach((choice, index) => {
+                const button = document.createElement('button');
+                button.className = 'w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300 choice-hover mb-2';
+                button.textContent = choice.text;
+                button.onclick = () => makeDialogueChoice(index);
+                choicesContainer.appendChild(button);
+            });
+            
+            addToLog("Spending time with Eric...", 'romance');
+        }
+
+        function makeDialogueChoice(choiceIndex) {
+            const choice = gameState.currentDialogue.choices[choiceIndex];
+            
+            // Update relationship
+            gameState.relationship = Math.min(100, gameState.relationship + choice.relationship);
+            
+            // Show response
+            document.getElementById('dialogueText').textContent = choice.response;
+            document.getElementById('dialogueChoices').innerHTML = '';
+            
+            // Show feedback
+            const feedbackDiv = document.getElementById('datingFeedback');
+            const feedbackText = document.getElementById('feedbackText');
+            feedbackText.textContent = `Relationship +${choice.relationship}!`;
+            feedbackDiv.style.display = 'block';
+            
+            // Create floating hearts
+            createFloatingHearts();
+            
+            // Confetti for good answers
+            if (choice.relationship >= 20) {
+                confetti({
+                    particleCount: 50,
+                    spread: 60,
+                    origin: { y: 0.7 },
+                    colors: ['#ff6b6b', '#ff8e8e', '#ffb3b3', '#ffd6d6']
+                });
+            }
+            
+            gameState.stats.datesCompleted++;
+            addToLog(`Date with Eric completed! +${choice.relationship} relationship`, 'romance');
+            
+            // Heal both characters after date
+            gameState.calvin.health = Math.min(gameState.calvin.maxHealth, gameState.calvin.health + 15);
+            gameState.eric.health = Math.min(gameState.eric.maxHealth, gameState.eric.health + 15);
+            
+            // End date after delay
+            setTimeout(() => {
+                endDate();
+            }, 4000);
+            
+            updateUI();
+        }
+
+        function endDate() {
+            document.getElementById('datingView').style.display = 'none';
+            document.getElementById('explorationView').style.display = 'block';
+            document.getElementById('datingActions').style.display = 'none';
+            document.getElementById('explorationActions').style.display = 'block';
+            document.getElementById('datingFeedback').style.display = 'none';
+            
+            gameState.currentDialogue = null;
+        }
+
+        function exploreArea() {
+            const currentArea = areas[gameState.area];
+            const events = [
+                "You found a healing crystal! +10 HP",
+                "Eric discovered a hidden path!",
+                "You sense a powerful monster nearby...",
+                "You and Eric share a quiet moment together. +5 relationship",
+                "Found ancient runes that boost your power!",
+                "The area seems peaceful... for now."
+            ];
+            
+            const randomEvent = events[Math.floor(Math.random() * events.length)];
+            addToLog(randomEvent, 'info');
+            
+            // Apply random effects
+            const rand = Math.random();
+            if (rand < 0.3) {
+                gameState.calvin.health = Math.min(gameState.calvin.maxHealth, gameState.calvin.health + 10);
+                updateUI();
+            } else if (rand < 0.5) {
+                gameState.relationship = Math.min(100, gameState.relationship + 5);
+                updateUI();
+            } else if (rand < 0.7) {
+                // Small stat boost
+                gameState.calvin.attack += 1;
+                updateUI();
+            }
+        }
+
+        function createFloatingHearts() {
+            const container = document.getElementById('floatingHearts');
+            
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    const heart = document.createElement('div');
+                    heart.className = 'heart';
+                    heart.textContent = '❤️';
+                    heart.style.left = Math.random() * 100 + '%';
+                    heart.style.bottom = '20%';
+                    heart.style.fontSize = (Math.random() * 20 + 15) + 'px';
+                    container.appendChild(heart);
+                    
+                    setTimeout(() => {
+                        heart.remove();
+                    }, 3000);
+                }, i * 200);
+            }
+        }
+
+        function updateMonsterUI() {
+            if (!gameState.currentMonster) return;
+            
+            const healthPercent = (gameState.currentMonster.currentHealth / gameState.currentMonster.health) * 100;
+            document.getElementById('monsterHealthBar').style.width = healthPercent + '%';
+            document.getElementById('monsterHealthText').textContent = `HP: ${gameState.currentMonster.currentHealth}/${gameState.currentMonster.health}`;
+        }
+
+        function gameOver(message) {
+            document.getElementById('gameOverMessage').textContent = message;
+            document.getElementById('finalRelationship').textContent = gameState.relationship;
+            document.getElementById('finalMonsters').textContent = gameState.stats.monstersDefeated;
+            document.getElementById('finalAreas').textContent = gameState.area + 1;
+            
+            showScreen('gameOverScreen');
+        }
+
+        function victory() {
+            document.getElementById('victoryRelationship').textContent = gameState.relationship;
+            document.getElementById('victoryMonsters').textContent = gameState.stats.monstersDefeated;
+            document.getElementById('victoryDates').textContent = gameState.stats.datesCompleted;
+            
+            // Determine ending based on relationship score
+            const endingText = document.getElementById('endingText');
+            if (gameState.relationship >= 90) {
+                endingText.textContent = "Your love with Eric has become legendary. Together, you've proven that love can conquer any darkness. You walk into the sunset, hand in hand, ready for a peaceful future.";
+            } else if (gameState.relationship >= 70) {
+                endingText.textContent = "You and Eric have built a strong bond. While challenges remain, your love gives you both the strength to face anything. The world is safer with you together.";
+            } else if (gameState.relationship >= 50) {
+                endingText.textContent = "You've survived the darkness, but your bond with Eric still needs time to grow. With patience and care, your love story is just beginning.";
+            } else {
+                endingText.textContent = "You defeated the evil, but the distance between you and Eric remains. Sometimes victory comes at a cost, but there's always hope for reconciliation.";
+            }
+            
+            showScreen('victoryScreen');
+            
+            // Victory confetti
+            confetti({
+                particleCount: 200,
+                spread: 90,
+                origin: { y: 0.5 }
+            });
+            
+            setTimeout(() => {
+                confetti({
+                    particleCount: 150,
+                    spread: 90,
+                    origin: { y: 0.5 },
+                    colors: ['#ff6b6b', '#ff8e8e', '#ffb3b3', '#ffd6d6', '#ffffff']
+                });
+            }, 1000);
+        }
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (gameState.currentScreen !== 'gameScreen') return;
+            
+            if (e.key === '1' && gameState.inCombat) {
+                playerAttack();
+            } else if (e.key === '2' && gameState.inCombat) {
+                playerDefend();
+            } else if (e.key === '3' && gameState.inCombat) {
+                fleeCombat();
+            } else if (e.key === 'Escape' && gameState.inCombat) {
+                fleeCombat();
+            }
+        });
+
+        // Initialize
+        updateUI();
+    </script>
+</body>
+</html>
