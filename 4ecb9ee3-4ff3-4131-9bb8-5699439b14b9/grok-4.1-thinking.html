@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calvin with Eric</title>
+    <style>
+        body { margin:0; padding:0; background:#000; overflow:hidden; }
+        canvas { display:block; margin:0 auto; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+<script>
+
+// Prevent arrow keys / space from scrolling the page
+window.addEventListener("keydown", e => {
+    if (["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)) {
+        e.preventDefault();
+    }
+});
+
+let affinity = 0;
+
+const config = {
+    type: Phaser.AUTO,
+    width: 800,
+    height: 600,
+    physics: { default: "arcade", arcade: { debug: false } },
+    scene: [ MenuScene, Level1, Dialogue1, Level2, Dialogue2, Level3, VictoryScene, GameOverScene ]
+};
+
+new Phaser.Game(config);
+
+class MenuScene extends Phaser.Scene {
+    constructor() { super("Menu"); }
+    create() {
+        this.add.text(400, 160, "Calvin with Eric", { fontSize: "64px", fill: "#ffd700" }).setOrigin(0.5);
+        this.add.text(400, 250, "A romance-action adventure", { fontSize: "32px", fill: "#fff" }).setOrigin(0.5);
+        this.add.text(400, 340, "WASD / Arrows → move\nMouse click → shoot", { fontSize: "28px", fill: "#fff" }).setOrigin(0.5);
+        this.add.text(400, 460, "PRESS SPACE TO START", { fontSize: "36px", fill: "#ff69b4" }).setOrigin(0.5).setBlink();
+
+        this.input.keyboard.once("keydown-SPACE", () => {
+            affinity = 0;
+            this.scene.start("Level1");
+        });
+    }
+}
+
+class BaseLevel extends Phaser.Scene {
+    constructor(key, monsterCount, hasBoss, nextScene) {
+        super(key);
+        this.monsterCount = monsterCount;
+        this.hasBoss = hasBoss;
+        this.nextScene = nextScene;
+    }
+
+    create() {
+        affinity = affinity; // global
+
+        this.playerHP = 100;
+        this.ericHP = 100;
+
+        // Background
+        this.add.graphics().fillStyle(0x002200).fillRect(0, 0, 800, 600);
+
+        // Calvin (player)
+        this.player = this.physics.add.sprite(400, 500, null).setCircle(20).setTint(0x4488ff).setCollideWorldBounds(true);
+
+        // Eric (companion)
+        this.eric = this.physics.add.sprite(430, 500, null).setCircle(20).setTint(0xff4444);
+
+        // Bullets pool
+        this.bullets = this.physics.add.group();
+
+        // Monsters
+        this.monsters = this.physics.add.group();
+        for (let i = 0; i < (this.hasBoss ? this.monsterCount - 1 : this.monsterCount); i++) this.createMonster();
+        if (this.hasBoss) this.createBoss();
+
+        // Input
+        this.input.on("pointerdown", pointer => this.playerShoot(pointer.worldX, pointer.worldY));
+
+        // Eric auto-shoot
+        this.ericTimer = this.time.addEvent({ delay: 800, callback: this.ericShoot, callbackScope: this, loop: true });
+
+        // Collisions
+        this.physics.add.overlap(this.bullets, this.monsters, this.bulletHit, null, this);
+        this.physics.add.overlap(this.player, this.monsters, this.damagePlayer, null, this);
+        this.physics.add.overlap(this.eric, this.monsters, this.damageEric, null, this);
+
+        // UI
+        this.ui = this.add.text(10, 10, "", { fontSize: "22px", fill: "#fff", backgroundColor: "#00000088", padding: { x: 10, y: 8 } });
+
+        this.keys = this.input.keyboard.addKeys("W,A,S,D");
+        this.cursors = this.input.keyboard.createCursorKeys();
+    }
+
+    createMonster() {
+        const m = this.physics.add.sprite(Phaser.Math.Between(100, 700), Phaser.Math.Between(50, 300), null)
+            .setCircle(25).setTint(0x00ff00).setBounce(0.8);
+        m.hp = 60;
+        this.monsters.add(m);
+    }
+
+    createBoss() {
+        const b = this.physics.add.sprite(400, 150, null).setCircle(50).setTint(0x9900ff);
+        b.hp = 400;
+        b.isBoss = true;
+        this.monsters.add(b);
+    }
+
+    playerShoot(tx, ty) {
+        const bullet = this.bullets.get(this.player.x, this.player.y);
+        if (bullet) {
+            bullet.setActive(true).setVisible(true).setCircle(6).setTint(0xffff00);
+            const dx = tx - this.player.x;
+            const dy = ty - this.player.y;
+            const dist = Math.hypot(dx, dy) || 1;
+            bullet.body.velocity.set(dx / dist * 600, dy / dist * 600);
+            bullet.damage = 35 + Math.floor(affinity / 4);
+        }
+    }
+
+    ericShoot() {
+        if (affinity < 30) return;
+        let target = null;
+        let bestDist = Infinity;
+        this.monsters.getChildren().forEach(m => {
+            const d = Phaser.Math.Distance.Between(this.eric.x, this.eric.y, m.x, m.y);
+            if (d < bestDist) { bestDist = d; target = m; }
+        });
+        if (target && bestDist < 350) {
+            const bullet = this.bullets.get(this.eric.x, this.eric.y);
+            if (bullet) {
+                bullet.setActive(true).setVisible(true).setCircle(6).setTint(0xff69b4);
+                const dx = target.x - this.eric.x;
+                const dy = target.y - this.eric.y;
+                const dist = Math.hypot(dx, dy) || 1;
+                bullet.body.velocity.set(dx / dist * 550, dy / dist * 550);
+                bullet.damage = 40 + Math.floor(affinity / 3);
+            }
+        }
+    }
+
+    bulletHit(bullet, monster) {
+        bullet.setActive(false).setVisible(false);
+        monster.hp -= bullet.damage || 35;
+        if (monster.hp <= 0) monster.destroy();
+    }
+
+    damagePlayer(_, monster) {
+        this.playerHP -= monster.isBoss ? 25 : 12;
+        this.player.setTint(0xff0000);
+        this.time.delayedCall(150, () => this.player.setTint(0x4488ff));
+    }
+
+    damageEric(_, monster) {
+        this.ericHP -= monster.isBoss ? 20 : 10;
+        this.eric.setTint(0xffffff);
+        this.time.delayedCall(150, () => this.eric.setTint(0xff4444));
+    }
+
+    update() {
+        // Player movement
+        const speed = 220;
+        this.player.body.setVelocity(0);
+        if (this.keys.A.isDown || this.cursors.left.isDown) this.player.body.velocity.x = -speed;
+        if (this.keys.D.isDown || this.cursors.right.isDown) this.player.body.velocity.x = speed;
+        if (this.keys.W.isDown || this.cursors.up.isDown) this.player.body.velocity.y = -speed;
+        if (this.keys.S.isDown || this.cursors.down.isDown) this.player.body.velocity.y = speed;
+        if (this.player.body.velocity.x && this.player.body.velocity.y) this.player.body.velocity.normalize().scale(speed);
+
+        // Eric follows
+        this.physics.moveToObject(this.eric, this.player, 140);
+
+        // Monsters chase
+        this.monsters.getChildren().forEach(m => {
+            const speed = m.isBoss ? 90 : 65;
+            this.physics.moveToObject(m, this.player, speed);
+        });
+
+        // UI update
+        this.ui.setText(`Affinity: ${affinity}%\nCalvin ❤️ ${this.playerHP}\nEric ❤️ ${this.ericHP}\nMonsters: ${this.monsters.getChildren().length}`);
+
+        // Eric shoot rate scales with affinity
+        if (this.ericTimer) this.ericTimer.delay = Math.max(400, 1800 - affinity * 16);
+
+        // Check win / lose
+        if (this.playerHP <= 0 || this.ericHP <= 0) this.scene.start("GameOverScene");
+        if (this.monsters.getChildren().length === 0) this.scene.start(this.nextScene);
+    }
+}
+
+class Level1 extends BaseLevel { constructor() { super("Level1", 7, false, "Dialogue1"); } }
+class Level2 extends BaseLevel { constructor() { super("Level2", 11, false, "Dialogue2"); } }
+class Level3 extends BaseLevel { constructor() { super("Level3", 6, true, "VictoryScene"); } }
+
+class DialogueScene extends Phaser.Scene {
+    constructor(key, question, options, points, highFlavor = "", lowFlavor = "") {
+        super(key);
+        this.question = question;
+        this.options = options;
+        this.points = points;
+        this.highFlavor = highFlavor;
+        this.lowFlavor = lowFlavor;
+    }
+    create() {
+        this.add.rectangle(400, 300, 800, 600, 0x221144, 0.92);
+
+        let y = 100;
+        if (affinity > 65 && this.highFlavor) {
+            this.add.text(400, y, this.highFlavor, { fontSize: "30px", fill: "#ff69b4" }).setOrigin(0.5);
+            y += 100;
+        } else if (affinity < 40 && this.lowFlavor) {
+            this.add.text(400, y, this.lowFlavor, { fontSize: "28px", fill: "#8888ff" }).setOrigin(0.5);
+            y += 100;
+        }
+
+        this.add.text(400, y, "Eric: " + this.question, { fontSize: "32px", fill: "#ffd700" }).setOrigin(0.5);
+        y += 120;
+
+        this.options.forEach((opt, i) => {
+            const txt = this.add.text(400, y + i * 70, opt, { fontSize: "28px", fill: "#fff" }).setOrigin(0.5).setInteractive();
+            txt.on("pointerdown", () => {
+                affinity = Phaser.Math.Clamp(affinity + this.points[i], 0, 100);
+                this.scene.start(this.scene.key.includes("1") ? "Level2" : "Level3");
+            });
+            txt.on("pointerover", () => txt.setFill("#ff69b4"));
+            txt.on("pointerout", () => txt.setFill("#fff"));
+        });
+    }
+}
+
+class Dialogue1 extends DialogueScene {
+    constructor() {
+        super("Dialogue1",
+            "Calvin… when everything is trying to kill us, what makes your heart race the most with me?",
+            [
+                "The adrenaline of fighting together",
+                "Your smile and the quiet moments we steal",
+                "Honestly, just staying alive"
+            ],
+            [20, 40, -20],
+            "I feel our souls getting closer with every battle ❤️",
+            "Are we… just surviving? I need more than that..."
+        );
+    }
+}
+
+class Dialogue2 extends DialogueScene {
+    constructor() {
+        super("Dialogue2",
+            "Promise me—when this nightmare ends—what will we do first?",
+            [
+                "Keep adventuring forever, just us",
+                "Finally have that romantic night under real stars",
+                "Go our separate ways… too much danger together"
+            ],
+            [15, 45, -40],
+            "Calvin, your love is my strongest power-up!",
+            "Do you even want a future with me anymore…?"
+        );
+    }
+}
+
+class VictoryScene extends Phaser.Scene {
+    constructor() { super("VictoryScene"); }
+    create() {
+        this.add.rectangle(400, 300, 800, 600, 0x001122, 0.9);
+        let ending = "";
+        if (affinity >= 85) ending = "TRUE LOVE ENDING ❤️❤️❤️\nYour unbreakable bond literally glowed and obliterated the darkness. Calvin & Eric ride off into eternal romance!";
+        else if (affinity >= 60) ending = "HAPPY ENDING ❤️\nStrong love and perfect teamwork—you conquered everything together!";
+        else if (affinity >= 30) ending = "BITTERSWEET VICTORY\nYou survived, but the spark dimmed. Maybe love can still rekindle…";
+        else ending = "TRAGIC ENDING 💔\nThe monsters are gone, but Eric walks away. Love lost to the darkness.";
+
+        this.add.text(400, 200, "VICTORY!\n\n" + ending + "\n\nFinal Bond: " + affinity + "%", { fontSize: "36px", fill: "#ffd700", align: "center" }).setOrigin(0.5);
+        this.add.text(400, 480, "SPACE → Main Menu", { fontSize: "28px", fill: "#fff" }).setOrigin(0.5);
+
+        // High score
+        const key = "CalvinWithEric_highAffinity";
+        const high = Number(localStorage.getItem(key) || 0);
+        if (affinity > high) localStorage.setItem(key, affinity);
+
+        this.input.keyboard.once("keydown-SPACE", () => this.scene.start("Menu"));
+    }
+}
+
+class GameOverScene extends Phaser.Scene {
+    constructor() { super("GameOverScene"); }
+    create() {
+        this.add.text(400, 260, "GAME OVER", { fontSize: "72px", fill: "#ff0000" }).setOrigin(0.5);
+        this.add.text(400, 360, "The darkness claimed one of you…\nFinal Bond: " + affinity + "%", { fontSize: "32px", fill: "#fff" }).setOrigin(0.5);
+        this.add.text(400, 460, "SPACE → Try Again", { fontSize: "28px", fill: "#fff" }).setOrigin(0.5);
+
+        this.input.keyboard.once("keydown-SPACE", () => this.scene.start("Menu"));
+    }
+}
+
+</script>
+</body>
+</html>
