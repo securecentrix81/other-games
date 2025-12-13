@@ -13,35 +13,57 @@ class Calvin {
     this.sprite = scene.physics.add.sprite(x, y, 'calvin');
     this.sprite.setCollideWorldBounds(true);
     this.sprite.setOrigin(0.5, 1); // Bottom-center origin for platforming
+    this.sprite.setDepth(10);
     
     // Animation states
-    this.state = 'idle'; // 'idle', 'running', 'jumping', 'attacking', 'hurt'
+    this.state = 'idle'; // 'idle', 'running', 'jumping', 'attacking', 'hurt', 'dead'
     this.isAttacking = false;
     this.attackCooldown = 0;
     this.isInvincible = false;
     this.invincibilityTimer = 0;
+    this.damageFlashDuration = 0.1; // seconds
+    this.damageFlashTimer = 0;
+    this.flashAlpha = 1;
     
     // Movement properties
     this.lastDirection = 'right'; // 'left' or 'right'
     this.jumpCount = 0;
     this.maxJumps = 2; // Double jump capability
+    this.hasDoubleJump = false; // Unlocked via progression
+    
+    // Combat properties
+    this.comboCounter = 0;
+    this.comboTimer = 0;
+    this.comboWindow = 2.0; // seconds to continue combo
     
     // Initialize animations
     this.createAnimations();
     
     // Start with idle animation
     this.sprite.anims.play('calvin-idle', true);
+    
+    // Setup events
+    this.setupEvents();
   }
 
   /**
    * Create character animations
    */
   createAnimations() {
+    const frameRate = {
+      idle: 5,
+      run: 10,
+      jump: 1,
+      attack: 15,
+      hurt: 1,
+      die: 5
+    };
+    
     // Idle animation
     this.scene.anims.create({
       key: 'calvin-idle',
       frames: this.scene.anims.generateFrameNumbers('calvin', { start: 0, end: 3 }),
-      frameRate: 5,
+      frameRate: frameRate.idle,
       repeat: -1
     });
     
@@ -49,7 +71,7 @@ class Calvin {
     this.scene.anims.create({
       key: 'calvin-run',
       frames: this.scene.anims.generateFrameNumbers('calvin', { start: 4, end: 7 }),
-      frameRate: 10,
+      frameRate: frameRate.run,
       repeat: -1
     });
     
@@ -57,7 +79,7 @@ class Calvin {
     this.scene.anims.create({
       key: 'calvin-jump',
       frames: [{ key: 'calvin', frame: 8 }],
-      frameRate: 1,
+      frameRate: frameRate.jump,
       repeat: 0
     });
     
@@ -65,7 +87,7 @@ class Calvin {
     this.scene.anims.create({
       key: 'calvin-attack',
       frames: this.scene.anims.generateFrameNumbers('calvin', { start: 9, end: 11 }),
-      frameRate: 15,
+      frameRate: frameRate.attack,
       repeat: 0
     });
     
@@ -73,33 +95,55 @@ class Calvin {
     this.scene.anims.create({
       key: 'calvin-hurt',
       frames: [{ key: 'calvin', frame: 12 }],
-      frameRate: 1,
+      frameRate: frameRate.hurt,
       repeat: 0
+    });
+    
+    // Death animation
+    this.scene.anims.create({
+      key: 'calvin-die',
+      frames: this.scene.anims.generateFrameNumbers('calvin', { start: 13, end: 15 }),
+      frameRate: frameRate.die,
+      repeat: 0
+    });
+  }
+
+  /**
+   * Setup event listeners
+   */
+  setupEvents() {
+    // Listen for player death
+    this.scene.events.on('gameOver', () => {
+      this.destroy();
     });
   }
 
   /**
    * Update method called each frame
    * @param {Object} input - Movement input from InputHandler
-   * @param {string} relationshipTier - Current relationship tier
    */
-  update(input, relationshipTier) {
-    // Skip update if invincible (flashing)
-    if (this.isInvincible) {
-      this.invincibilityTimer -= this.scene.game.loop.delta / 1000;
-      if (this.invincibilityTimer <= 0) {
-        this.isInvincible = false;
-      }
-      
-      // Make sprite flash while invincible
-      this.sprite.alpha = Math.sin(Date.now() / 100) > 0 ? 1 : 0.5;
+  update(input) {
+    // Skip update if dead
+    if (this.state === 'dead') {
       return;
-    } else {
-      this.sprite.alpha = 1;
     }
+    
+    // Handle invincibility and flashing
+    this.updateInvincibility();
+    
+    // Get relationship tier for combat bonuses
+    const relationshipTier = GAME_CONFIG.getRelationshipTier(this.stateManager.relationshipScore);
     
     // Reset animation state
     let playAnimation = null;
+    
+    // Update combo timer
+    if (this.comboTimer > 0) {
+      this.comboTimer -= this.scene.game.loop.delta / 1000;
+      if (this.comboTimer <= 0) {
+        this.comboCounter = 0;
+      }
+    }
     
     // Horizontal movement
     if (input.left) {
@@ -118,17 +162,19 @@ class Calvin {
     }
     
     // Jumping logic
-    if (input.up) {
+    if ((input.up || input.space) && !this.isAttacking) {
       // Allow double jump
-      if ((this.sprite.body.onFloor() || this.jumpCount < this.maxJumps) && 
-          this.jumpCount < 2) {
+      const canJump = this.sprite.body.onFloor() || 
+                      (this.jumpCount < this.maxJumps && this.hasDoubleJump);
+      
+      if (canJump && this.jumpCount < 2) {
         this.sprite.setVelocityY(GAME_CONFIG.PLAYER.jumpForce);
         this.jumpCount++;
         playAnimation = 'calvin-jump';
         
         // Play jump sound
         if (this.scene.sound.exists('jump')) {
-          this.scene.sound.play('jump');
+          this.scene.sound.play('jump', { volume: this.stateManager.settings.effectsVolume });
         }
       }
     } else if (this.sprite.body.onFloor()) {
@@ -137,7 +183,7 @@ class Calvin {
     }
     
     // Attack logic
-    if (input.space && !this.isAttacking && this.attackCooldown <= 0) {
+    if ((input.space || input.z) && !this.isAttacking && this.attackCooldown <= 0) {
       this.attack(relationshipTier);
     }
     
@@ -154,6 +200,32 @@ class Calvin {
   }
 
   /**
+   * Update invincibility state and visual feedback
+   */
+  updateInvincibility() {
+    if (this.isInvincible) {
+      this.invincibilityTimer -= this.scene.game.loop.delta / 1000;
+      
+      if (this.invincibilityTimer <= 0) {
+        this.isInvincible = false;
+        this.sprite.setTint(0xffffff);
+      } else {
+        // Flash effect
+        this.damageFlashTimer -= this.scene.game.loop.delta / 1000;
+        if (this.damageFlashTimer <= 0) {
+          this.flashAlpha = this.flashAlpha === 1 ? 0.5 : 1;
+          this.damageFlashTimer = this.damageFlashDuration;
+        }
+        
+        const tintValue = this.flashAlpha === 1 ? 0xffffff : 0xff6666;
+        this.sprite.setTint(tintValue);
+      }
+    } else {
+      this.sprite.setTint(0xffffff);
+    }
+  }
+
+  /**
    * Perform attack action
    * @param {string} relationshipTier - Current relationship tier
    */
@@ -165,22 +237,34 @@ class Calvin {
     // Play attack animation
     this.sprite.anims.play('calvin-attack', true);
     
-    // Create attack hitbox
-    const attackRange = GAME_CONFIG.PLAYER.attackRange;
-    const offsetX = this.lastDirection === 'right' ? attackRange : -attackRange;
+    // Update combo
+    this.comboCounter++;
+    this.comboTimer = this.comboWindow;
     
-    // Calculate base damage
+    // Calculate damage
     let damage = GAME_CONFIG.PLAYER.attackDamage;
+    const baseDamage = GAME_CONFIG.PLAYER.attackDamage;
     
     // Apply relationship-based damage boost
     if (relationshipTier === 'strong' || relationshipTier === 'unbreakable') {
-      damage += Math.floor(damage * GAME_CONFIG.getCombatBonuses(relationshipTier).damageBoost);
+      const bonus = GAME_CONFIG.getCombatBonuses(relationshipTier).damageBoost;
+      damage += Math.floor(baseDamage * bonus);
     }
     
-    // Create hitbox
+    // Apply combo bonus
+    if (this.comboCounter >= 3) {
+      damage += Math.floor(baseDamage * 0.2 * Math.min(this.comboCounter, 10));
+    }
+    
+    // Create attack hitbox
+    const attackRange = GAME_CONFIG.PLAYER.attackRange;
+    const offsetY = -attackRange * 0.2; // Slightly above center
+    const offsetX = this.lastDirection === 'right' ? attackRange : -attackRange;
+    
+    // Create hitbox with physics
     const hitbox = this.scene.add.rectangle(
       this.sprite.x + offsetX,
-      this.sprite.y,
+      this.sprite.y + offsetY,
       attackRange,
       attackRange * 0.8,
       0xff0000,
@@ -191,17 +275,28 @@ class Calvin {
     this.scene.physics.world.enable(hitbox);
     hitbox.body.setAllowGravity(false);
     hitbox.body.setImmovable(true);
+    hitbox.body.setCircle(attackRange * 0.4);
+    
+    // Track hit targets to prevent double hits
+    const hitTargets = new Set();
     
     // Check for collisions with monsters
     this.scene.physics.add.overlap(hitbox, this.scene.monsters, (hitbox, monster) => {
+      // Prevent multiple hits from same attack
+      if (hitTargets.has(monster)) return;
+      hitTargets.add(monster);
+      
       monster.takeDamage(damage);
       
       // Create hit effect
       this.createHitEffect(monster.x, monster.y);
       
+      // Update score
+      this.stateManager.score += 10;
+      
       // Play hit sound
       if (this.scene.sound.exists('hit')) {
-        this.scene.sound.play('hit');
+        this.scene.sound.play('hit', { volume: this.stateManager.settings.effectsVolume });
       }
     });
     
@@ -224,6 +319,7 @@ class Calvin {
    * @param {number} y
    */
   createHitEffect(x, y) {
+    // Create blood-like particles
     const particles = this.scene.add.particles('particle');
     const emitter = particles.createEmitter({
       x: x,
@@ -233,9 +329,13 @@ class Calvin {
       scale: { start: 0.5, end: 0 },
       blendMode: 'ADD',
       lifespan: 500,
-      quantity: 10,
-      gravityY: 200
+      quantity: { min: 5, max: 10 },
+      gravityY: 200,
+      alpha: { start: 1, end: 0 }
     });
+    
+    // Screen shake effect
+    this.scene.cameras.main.shake(100, 0.005);
     
     // Clean up after effect
     this.scene.time.delayedCall(500, () => {
@@ -248,7 +348,7 @@ class Calvin {
    * @param {number} amount - Damage amount
    */
   takeDamage(amount) {
-    if (this.isInvincible) return;
+    if (this.isInvincible || this.state === 'dead') return;
     
     const actualDamage = this.stateManager.takeDamage(amount);
     
@@ -265,7 +365,7 @@ class Calvin {
       
       // Play hurt sound
       if (this.scene.sound.exists('hurt')) {
-        this.scene.sound.play('hurt');
+        this.scene.sound.play('hurt', { volume: this.stateManager.settings.effectsVolume });
       }
       
       // Check for death
@@ -288,7 +388,7 @@ class Calvin {
       
       // Play heal sound
       if (this.scene.sound.exists('heal')) {
-        this.scene.sound.play('heal');
+        this.scene.sound.play('heal', { volume: this.stateManager.settings.effectsVolume });
       }
     }
   }
@@ -310,7 +410,8 @@ class Calvin {
       blendMode: 'ADD',
       lifespan: 800,
       quantity: 15,
-      gravityY: -50
+      gravityY: -50,
+      alpha: { start: 0.8, end: 0 }
     });
     
     // Clean up after effect
@@ -330,7 +431,10 @@ class Calvin {
     
     // Play death animation
     this.sprite.setTint(0x666666);
-    this.sprite.anims.stop();
+    this.sprite.anims.play('calvin-die', true);
+    
+    // Screen shake
+    this.scene.cameras.main.shake(500, 0.03);
     
     // Notify scene
     this.scene.events.emit('playerDied');
@@ -340,6 +444,10 @@ class Calvin {
    * Cleanup resources
    */
   destroy() {
+    // Remove event listeners
+    this.scene.events.off('gameOver');
+    
+    // Destroy sprite
     if (this.sprite) {
       this.sprite.destroy();
       this.sprite = null;
