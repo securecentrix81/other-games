@@ -1,0 +1,5142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Calvin with Eric — Secure Centrix81</title>
+  <style>
+    :root{
+      --bg0:#05060a;
+      --bg1:#070a12;
+      --panel:rgba(16,18,28,.74);
+      --panel2:rgba(10,12,18,.72);
+      --stroke:rgba(255,255,255,.10);
+      --stroke2:rgba(255,255,255,.06);
+      --text:#eef0ff;
+      --muted:rgba(238,240,255,.70);
+      --muted2:rgba(238,240,255,.54);
+      --accent:#8ef0ff;
+      --accent2:#5de7ff;
+      --hot:#ff6bd6;
+      --good:#67ff9b;
+      --warn:#ffd36a;
+      --bad:#ff5d6c;
+      --shadow:rgba(0,0,0,.55);
+      --shadow2:rgba(0,0,0,.72);
+      --btnA:#1d7cff;
+      --btnB:#7c4dff;
+      --btnC:#ff4dd2;
+      --radius:18px;
+      --radius2:12px;
+      --glow:0 0 24px rgba(142,240,255,.18);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif;
+    }
+
+    * { box-sizing:border-box; }
+    html, body { height:100%; }
+    body{
+      margin:0;
+      overflow:hidden;
+      background: radial-gradient(1200px 700px at 60% 15%, #111b38 0%, var(--bg0) 55%, #03040a 100%);
+      color:var(--text);
+      font-family:var(--sans);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      touch-action:none;
+    }
+
+    #app{
+      position:fixed;
+      inset:0;
+      display:block;
+    }
+
+    canvas#game{
+      width:100%;
+      height:100%;
+      display:block;
+      background:
+        radial-gradient(800px 600px at 50% 35%, rgba(142,240,255,.07) 0%, rgba(0,0,0,0) 60%),
+        radial-gradient(900px 700px at 50% 120%, rgba(255,107,214,.06) 0%, rgba(0,0,0,0) 55%),
+        linear-gradient(180deg, #070914 0%, #04050b 100%);
+      touch-action:none;
+    }
+
+    .hidden{ display:none !important; }
+
+    .hud{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+    }
+
+    .hudTop{
+      position:absolute;
+      top:12px;
+      left:12px;
+      right:12px;
+      display:grid;
+      grid-template-columns: 1.2fr 1fr .9fr 220px;
+      gap:10px;
+      align-items:start;
+      pointer-events:none;
+    }
+
+    .panel{
+      background:var(--panel);
+      border:1px solid var(--stroke);
+      border-radius:var(--radius);
+      box-shadow: 0 18px 60px rgba(0,0,0,.35);
+      padding:10px 12px;
+      pointer-events:none;
+    }
+
+    .panel h3{
+      margin:0 0 8px 0;
+      font-size:14px;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color:var(--muted);
+      font-weight:700;
+    }
+
+    .bars .labelRow{
+      display:flex;
+      justify-content:space-between;
+      font-size:12px;
+      color:var(--muted2);
+      margin-top:6px;
+      font-family:var(--mono);
+    }
+
+    .bar{
+      height:10px;
+      width:100%;
+      border-radius:999px;
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.08);
+      overflow:hidden;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.35);
+      margin-top:6px;
+    }
+
+    .bar .fill{
+      height:100%;
+      width:50%;
+      border-radius:999px;
+      transition: width .08s linear;
+    }
+
+    .bar.health .fill{
+      background: linear-gradient(90deg, #ff5d6c 0%, #ffb56a 70%, #ffe36a 100%);
+      box-shadow: 0 0 18px rgba(255,93,108,.25);
+    }
+
+    .bar.stamina .fill{
+      background: linear-gradient(90deg, #5de7ff 0%, #8ef0ff 50%, #d3fbff 100%);
+      box-shadow: 0 0 18px rgba(93,231,255,.20);
+    }
+
+    .bar.bond .fill{
+      background: linear-gradient(90deg, #ff4dd2 0%, #7c4dff 55%, #2fb5ff 100%);
+      box-shadow: 0 0 18px rgba(255,77,210,.18);
+    }
+
+    .statsGridHUD{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:6px 10px;
+      font-family:var(--mono);
+      font-size:12px;
+    }
+
+    .statsGridHUD .row{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      color:var(--muted2);
+    }
+
+    .statsGridHUD .row strong{
+      color:var(--text);
+      font-weight:800;
+    }
+
+    .relTop{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:baseline;
+      font-family:var(--mono);
+    }
+
+    .relTop span{
+      color:var(--muted2);
+      font-size:12px;
+    }
+
+    .relTop strong{
+      color:var(--text);
+      font-weight:900;
+      font-size:13px;
+    }
+
+    .pips{
+      display:grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap:4px;
+      margin-top:10px;
+    }
+
+    .pip{
+      height:10px;
+      border-radius:999px;
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.25);
+    }
+
+    .pip.on{
+      background: linear-gradient(90deg, rgba(255,77,210,.95), rgba(142,240,255,.95));
+      box-shadow: 0 0 16px rgba(255,77,210,.14), 0 0 22px rgba(142,240,255,.10);
+      border-color: rgba(255,255,255,.12);
+    }
+
+    #synergyHint{
+      margin-top:8px;
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.35;
+    }
+
+    .minimapPanel{
+      padding:10px;
+    }
+
+    #minimap{
+      width:100%;
+      aspect-ratio: 1 / 1;
+      border-radius:12px;
+      background:rgba(0,0,0,.25);
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.35);
+    }
+
+    .prompt{
+      position:absolute;
+      left:50%;
+      bottom:92px;
+      transform:translateX(-50%);
+      background:rgba(0,0,0,.55);
+      border:1px solid rgba(255,255,255,.12);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.45);
+      backdrop-filter: blur(6px);
+      pointer-events:none;
+      max-width:min(720px, calc(100% - 28px));
+      font-size:14px;
+      line-height:1.35;
+    }
+
+    .toastWrap{
+      position:absolute;
+      left:12px;
+      bottom:12px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      pointer-events:none;
+      max-width:min(480px, calc(100% - 24px));
+    }
+
+    .toast{
+      background:rgba(0,0,0,.55);
+      border:1px solid rgba(255,255,255,.10);
+      border-left:3px solid rgba(142,240,255,.65);
+      border-radius:14px;
+      padding:10px 12px;
+      color:var(--text);
+      box-shadow: 0 12px 40px rgba(0,0,0,.35);
+      backdrop-filter: blur(6px);
+      font-size:13px;
+      line-height:1.35;
+      animation: toastIn .18s ease-out;
+    }
+
+    .toast.good{ border-left-color: rgba(103,255,155,.72); }
+    .toast.bad{ border-left-color: rgba(255,93,108,.72); }
+    .toast.warn{ border-left-color: rgba(255,211,106,.72); }
+    .toast.hot{ border-left-color: rgba(255,77,210,.72); }
+
+    @keyframes toastIn{
+      from { transform: translateY(8px); opacity:0; }
+      to { transform: translateY(0); opacity:1; }
+    }
+
+    .mobileControls{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      touch-action:none;
+    }
+
+    .stickZone{
+      position:absolute;
+      left:14px;
+      bottom:14px;
+      width:160px;
+      height:160px;
+      border-radius:999px;
+      pointer-events:auto;
+      touch-action:none;
+      background: radial-gradient(circle at 50% 50%, rgba(142,240,255,.08), rgba(0,0,0,0) 65%);
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.35);
+      overflow:hidden;
+    }
+
+    .stickBase{
+      position:absolute;
+      inset:0;
+      border-radius:999px;
+      background: radial-gradient(circle at 50% 50%, rgba(255,255,255,.08), rgba(0,0,0,0) 70%);
+    }
+
+    .stickNub{
+      position:absolute;
+      left:50%;
+      top:50%;
+      width:64px;
+      height:64px;
+      margin-left:-32px;
+      margin-top:-32px;
+      border-radius:999px;
+      background: radial-gradient(circle at 40% 35%, rgba(255,255,255,.25), rgba(255,255,255,.08) 55%, rgba(0,0,0,.12));
+      border:1px solid rgba(255,255,255,.14);
+      box-shadow: 0 14px 34px rgba(0,0,0,.35), 0 0 22px rgba(142,240,255,.12);
+      transform: translate(0,0);
+      touch-action:none;
+    }
+
+    .btnZone{
+      position:absolute;
+      right:14px;
+      bottom:14px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      width:min(260px, 44vw);
+      pointer-events:auto;
+      touch-action:none;
+    }
+
+    .mcBtn{
+      appearance:none;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(16,18,28,.72);
+      color:var(--text);
+      font-weight:800;
+      border-radius:14px;
+      padding:12px 10px;
+      font-size:13px;
+      letter-spacing:.02em;
+      box-shadow: 0 14px 40px rgba(0,0,0,.35);
+      touch-action:none;
+      user-select:none;
+    }
+
+    .mcBtn.primary{
+      background: linear-gradient(180deg, rgba(29,124,255,.92), rgba(124,77,255,.82));
+      border-color: rgba(255,255,255,.18);
+      box-shadow: 0 14px 40px rgba(0,0,0,.35), 0 0 24px rgba(93,231,255,.12);
+    }
+
+    .mcBtn.special{
+      background: linear-gradient(180deg, rgba(255,77,210,.86), rgba(124,77,255,.82));
+      border-color: rgba(255,255,255,.18);
+    }
+
+    .mcBtn.ready{
+      outline:2px solid rgba(142,240,255,.55);
+      box-shadow: 0 14px 40px rgba(0,0,0,.35), 0 0 22px rgba(142,240,255,.20), 0 0 42px rgba(255,77,210,.10);
+    }
+
+    .mcBtn:active{ transform: translateY(1px); }
+
+    .screenLayer{
+      position:absolute;
+      inset:0;
+      pointer-events:auto;
+    }
+
+    .screen{
+      position:absolute;
+      inset:0;
+      display:none;
+      overflow:auto;
+      padding: clamp(16px, 4vw, 34px);
+      background: linear-gradient(180deg, rgba(0,0,0,.58), rgba(0,0,0,.62));
+      backdrop-filter: blur(10px);
+    }
+
+    .screen.active{ display:block; }
+
+    .card{
+      max-width: 980px;
+      margin: 0 auto;
+      background: radial-gradient(900px 520px at 20% 0%, rgba(142,240,255,.12), rgba(0,0,0,0) 55%),
+                  radial-gradient(900px 520px at 90% 20%, rgba(255,77,210,.10), rgba(0,0,0,0) 55%),
+                  rgba(12,14,20,.78);
+      border: 1px solid rgba(255,255,255,.12);
+      box-shadow: 0 30px 90px rgba(0,0,0,.55);
+      border-radius: 22px;
+      padding: clamp(16px, 3.2vw, 28px);
+    }
+
+    .card.narrow{ max-width: 760px; }
+
+    .kicker{
+      font-family:var(--mono);
+      text-transform:uppercase;
+      letter-spacing:.12em;
+      font-size:12px;
+      color:var(--muted);
+      margin-bottom:10px;
+    }
+
+    h1{
+      margin:0;
+      font-size: clamp(30px, 5vw, 54px);
+      line-height:1.05;
+      letter-spacing:-.02em;
+      text-shadow: 0 18px 70px rgba(0,0,0,.55);
+    }
+
+    h2{
+      margin:0 0 8px 0;
+      font-size: clamp(22px, 3.5vw, 34px);
+      letter-spacing:-.01em;
+    }
+
+    h3{
+      margin:16px 0 8px 0;
+      font-size: 15px;
+      letter-spacing:.02em;
+      color:var(--text);
+    }
+
+    .tagline{
+      margin:10px 0 18px 0;
+      font-size:15px;
+      color:var(--muted);
+      max-width: 70ch;
+      line-height:1.5;
+    }
+
+    .menuGrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:14px;
+      align-items:start;
+    }
+
+    .menuCol{ display:flex; flex-direction:column; gap:10px; }
+
+    .btn{
+      appearance:none;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(16,18,28,.68);
+      color:var(--text);
+      border-radius: 16px;
+      padding: 12px 14px;
+      font-weight:900;
+      letter-spacing:.02em;
+      font-size:14px;
+      box-shadow: 0 16px 50px rgba(0,0,0,.35);
+      cursor:pointer;
+      user-select:none;
+    }
+
+    .btn.primary{
+      background: linear-gradient(180deg, rgba(29,124,255,.92), rgba(124,77,255,.80));
+      border-color: rgba(255,255,255,.18);
+      box-shadow: 0 16px 50px rgba(0,0,0,.35), 0 0 26px rgba(93,231,255,.13);
+    }
+
+    .btn.ghost{
+      background: rgba(16,18,28,.35);
+    }
+
+    .btn:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+      transform:none !important;
+    }
+
+    .btn:active{ transform: translateY(1px); }
+
+    .settingsBox{
+      background: rgba(0,0,0,.25);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 16px;
+      padding: 12px 14px;
+    }
+
+    .toggle{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:8px 0;
+      color:var(--muted);
+      font-weight:800;
+      user-select:none;
+      cursor:pointer;
+    }
+
+    .toggle input{ transform: scale(1.1); }
+
+    .small{
+      font-size: 12px;
+      color: var(--muted2);
+      line-height: 1.4;
+    }
+
+    .subtle{ color:var(--muted); }
+    .footerRow{
+      margin-top: 16px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      font-family:var(--mono);
+      font-size:12px;
+      color:var(--muted2);
+      opacity:.9;
+    }
+
+    .howGrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:14px;
+    }
+
+    ul, ol{
+      margin: 8px 0 0 18px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:16px;
+    }
+
+    .storyText{
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 15px;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.20);
+    }
+
+    .choiceRow{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:12px;
+    }
+
+    .choiceBtn{
+      appearance:none;
+      border:1px solid rgba(255,255,255,.14);
+      border-radius: 16px;
+      padding: 10px 12px;
+      background: rgba(16,18,28,.55);
+      color: var(--text);
+      font-weight:900;
+      cursor:pointer;
+      box-shadow: 0 16px 40px rgba(0,0,0,.25);
+      text-align:left;
+      min-width: min(280px, 100%);
+    }
+    .choiceBtn span{
+      display:block;
+      color: var(--muted2);
+      font-size: 12px;
+      font-family: var(--mono);
+      margin-top: 4px;
+    }
+    .choiceBtn.selected{
+      border-color: rgba(142,240,255,.35);
+      box-shadow: 0 16px 40px rgba(0,0,0,.25), 0 0 22px rgba(142,240,255,.12);
+      background: radial-gradient(640px 240px at 20% 0%, rgba(142,240,255,.14), rgba(0,0,0,0) 55%), rgba(16,18,28,.58);
+    }
+
+    .dateHeader{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:12px;
+      margin-bottom: 12px;
+    }
+
+    .dateMetrics{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(100px, 1fr));
+      gap:8px;
+      font-family:var(--mono);
+    }
+
+    .metric{
+      background: rgba(0,0,0,.22);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 16px;
+      padding: 8px 10px;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      color: var(--muted2);
+      font-size: 12px;
+      min-width: 150px;
+    }
+
+    .metric strong{ color:var(--text); font-weight:900; }
+
+    .dateGrid{
+      display:grid;
+      grid-template-columns: 1.25fr .95fr;
+      gap: 14px;
+      align-items:start;
+    }
+
+    .dateConvo{
+      min-height: 380px;
+      max-height: min(60vh, 520px);
+      overflow:auto;
+      padding: 12px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.22);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.35);
+    }
+
+    .line{
+      margin: 10px 0;
+      padding: 10px 12px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+
+    .line .who{
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted2);
+      margin-bottom: 6px;
+    }
+
+    .line .txt{
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .line.eric{
+      border-color: rgba(142,240,255,.14);
+      background: radial-gradient(500px 180px at 10% 0%, rgba(142,240,255,.10), rgba(255,255,255,.04)), rgba(255,255,255,.04);
+    }
+
+    .line.calvin{
+      border-color: rgba(255,77,210,.14);
+      background: radial-gradient(500px 180px at 10% 0%, rgba(255,77,210,.09), rgba(255,255,255,.04)), rgba(255,255,255,.04);
+    }
+
+    .stepTitle{
+      font-family:var(--mono);
+      text-transform:uppercase;
+      letter-spacing:.12em;
+      font-size:12px;
+      color:var(--muted2);
+      margin: 0 0 8px 0;
+    }
+
+    .dateQuestion{
+      padding: 12px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.22);
+      color: var(--text);
+      line-height: 1.55;
+    }
+
+    .dateOptions{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin-top: 10px;
+    }
+
+    .optBtn{
+      appearance:none;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 18px;
+      padding: 11px 12px;
+      background: rgba(16,18,28,.55);
+      color: var(--text);
+      font-weight:900;
+      cursor:pointer;
+      text-align:left;
+      box-shadow: 0 14px 40px rgba(0,0,0,.28);
+    }
+
+    .optBtn small{
+      display:block;
+      margin-top: 4px;
+      color: var(--muted2);
+      font-family: var(--mono);
+      font-weight:800;
+      font-size: 12px;
+      letter-spacing: .02em;
+    }
+
+    .giftBox, .activityBox{
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,.10);
+    }
+
+    .giftList{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin-top: 8px;
+    }
+
+    .giftBtn{
+      appearance:none;
+      border:1px solid rgba(255,255,255,.14);
+      border-radius: 18px;
+      padding: 10px 12px;
+      background: rgba(0,0,0,.18);
+      color: var(--text);
+      font-weight:900;
+      cursor:pointer;
+      text-align:left;
+      box-shadow: 0 14px 40px rgba(0,0,0,.22);
+    }
+
+    .giftBtn:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+    }
+
+    .activityChoices{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:10px;
+      margin-top:10px;
+    }
+
+    .activityCard{
+      border:1px solid rgba(255,255,255,.14);
+      border-radius: 18px;
+      background: rgba(16,18,28,.55);
+      padding: 12px;
+      cursor:pointer;
+      box-shadow: 0 14px 40px rgba(0,0,0,.26);
+      user-select:none;
+    }
+
+    .activityCard .name{
+      font-weight:1000;
+      letter-spacing:.02em;
+      margin-bottom:6px;
+    }
+    .activityCard .desc{
+      color:var(--muted);
+      line-height:1.45;
+      font-size:13px;
+    }
+    .activityCard.selected{
+      border-color: rgba(142,240,255,.35);
+      background: radial-gradient(700px 200px at 10% 0%, rgba(142,240,255,.14), rgba(0,0,0,0) 55%), rgba(16,18,28,.58);
+      box-shadow: 0 14px 40px rgba(0,0,0,.26), 0 0 22px rgba(142,240,255,.12);
+    }
+
+    .statsGrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      margin-top: 10px;
+      font-family: var(--mono);
+    }
+
+    .stat{
+      background: rgba(0,0,0,.22);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 16px;
+      padding: 10px 12px;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      color: var(--muted2);
+      font-size: 12px;
+    }
+
+    .stat strong{ color:var(--text); font-weight:900; }
+
+    @media (max-width: 980px){
+      .hudTop{
+        grid-template-columns: 1.2fr 1fr .9fr;
+        grid-template-rows: auto auto;
+      }
+      .minimapPanel{ grid-column: 1 / -1; }
+    }
+
+    @media (max-width: 820px){
+      .menuGrid{ grid-template-columns: 1fr; }
+      .howGrid{ grid-template-columns: 1fr; }
+      .dateGrid{ grid-template-columns: 1fr; }
+      .dateConvo{ max-height: min(52vh, 520px); }
+      .dateHeader{ flex-direction:column; }
+      .dateMetrics{ grid-template-columns: 1fr; width:100%; }
+      .metric{ min-width: 0; }
+    }
+
+    @media (max-width: 520px){
+      .hudTop{
+        grid-template-columns: 1fr;
+      }
+      .prompt{ bottom: 188px; }
+      .btnZone{ width: min(280px, 52vw); }
+      .stickZone{ width: 150px; height: 150px; }
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .bar .fill{ transition:none; }
+      .toast{ animation:none; }
+      .btn:active, .mcBtn:active{ transform:none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <canvas id="game" aria-label="Game canvas"></canvas>
+
+    <div id="hud" class="hud hidden" aria-hidden="true">
+      <div class="hudTop">
+        <div class="panel bars">
+          <div class="labelRow"><span>HP</span><span id="hpText">—</span></div>
+          <div class="bar health"><div id="hpFill" class="fill" style="width:100%"></div></div>
+
+          <div class="labelRow"><span>Stamina</span><span id="stamText">—</span></div>
+          <div class="bar stamina"><div id="stamFill" class="fill" style="width:100%"></div></div>
+
+          <div class="labelRow"><span>Bond</span><span id="bondText">—</span></div>
+          <div class="bar bond"><div id="bondFill" class="fill" style="width:35%"></div></div>
+        </div>
+
+        <div class="panel">
+          <h3>Run</h3>
+          <div class="statsGridHUD">
+            <div class="row"><span>Chapter</span><strong id="chapterText">1</strong></div>
+            <div class="row"><span>Objective</span><strong id="objectiveText">—</strong></div>
+            <div class="row"><span>Sigils</span><strong id="sigilText">0/0</strong></div>
+            <div class="row"><span>Potions</span><strong id="potionText">0</strong></div>
+            <div class="row"><span>Score</span><strong id="scoreText">0</strong></div>
+            <div class="row"><span>Time</span><strong id="timeText">0:00</strong></div>
+            <div class="row"><span>Eric</span><strong id="ericText">OK</strong></div>
+            <div class="row"><span>Buff</span><strong id="buffText">—</strong></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Bond</h3>
+          <div class="relTop"><span>Relationship</span><strong><span id="relText">50</span>/100</strong></div>
+          <div id="relPips" class="pips" aria-hidden="true"></div>
+          <div id="synergyHint"></div>
+        </div>
+
+        <div class="panel minimapPanel">
+          <h3>Map</h3>
+          <canvas id="minimap" width="180" height="180" aria-label="Mini map"></canvas>
+        </div>
+      </div>
+
+      <div id="prompt" class="prompt hidden"></div>
+      <div id="toastWrap" class="toastWrap" aria-live="polite"></div>
+
+      <div id="mobileControls" class="mobileControls hidden" aria-hidden="true">
+        <div id="stickZone" class="stickZone" aria-label="Movement joystick">
+          <div class="stickBase"></div>
+          <div id="stickNub" class="stickNub"></div>
+        </div>
+        <div class="btnZone" aria-label="Touch buttons">
+          <button id="btnAttack" class="mcBtn primary">Attack</button>
+          <button id="btnDodge" class="mcBtn">Dodge</button>
+          <button id="btnInteract" class="mcBtn">Interact</button>
+          <button id="btnSpecial" class="mcBtn special">Bond</button>
+          <button id="btnPotion" class="mcBtn">Potion</button>
+          <button id="btnPause" class="mcBtn">Pause</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="screenLayer" class="screenLayer">
+      <section id="menuScreen" class="screen active">
+        <div class="card">
+          <div class="kicker">Secure Centrix81 Presents</div>
+          <h1>Calvin with Eric</h1>
+          <p class="tagline">
+            A romance-action adventure where love grows in the middle of danger.
+            Your answers and choices shape the relationship—and that bond changes combat, dialogue, and the ending.
+          </p>
+
+          <div class="menuGrid">
+            <div class="menuCol">
+              <button id="startBtn" class="btn primary">Start New Journey</button>
+              <button id="continueBtn" class="btn">Continue (Last Checkpoint)</button>
+              <button id="howBtn" class="btn">How to Play</button>
+              <button id="creditsBtn" class="btn ghost">Credits</button>
+            </div>
+
+            <div class="menuCol">
+              <div class="settingsBox">
+                <h3 style="margin-top:0">Settings</h3>
+                <label class="toggle"><input id="setSound" type="checkbox" /> <span>Sound (procedural)</span></label>
+                <label class="toggle"><input id="setShake" type="checkbox" /> <span>Screen Shake</span></label>
+                <label class="toggle"><input id="setTouch" type="checkbox" /> <span>Always Show Touch Controls</span></label>
+                <div class="small" style="margin-top:8px">
+                  High Score: <strong id="highScoreText">0</strong><br />
+                  Best Ending: <strong id="bestEndingText">—</strong>
+                </div>
+              </div>
+
+              <div class="small subtle">
+                Tip: Staying close builds <strong>Bond</strong>. When it’s full, unleash <strong>Bond Burst</strong> (Q) to damage enemies, heal, and even revive.
+              </div>
+            </div>
+          </div>
+
+          <div class="footerRow">
+            <span>Open this file in any modern browser.</span>
+            <span>v1.0</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="howScreen" class="screen">
+        <div class="card">
+          <h2>How to Play</h2>
+          <div class="howGrid">
+            <div>
+              <h3>Controls</h3>
+              <ul>
+                <li><strong>Move:</strong> WASD / Arrow keys</li>
+                <li><strong>Aim (optional):</strong> Mouse movement</li>
+                <li><strong>Attack:</strong> Space / Left Click</li>
+                <li><strong>Dodge:</strong> Shift</li>
+                <li><strong>Interact:</strong> E</li>
+                <li><strong>Potion:</strong> F</li>
+                <li><strong>Bond Burst:</strong> Q (Bond must be full)</li>
+                <li><strong>Pause:</strong> Esc / P</li>
+              </ul>
+              <p class="small subtle">
+                Mobile: Use the left joystick + on-screen buttons.
+              </p>
+            </div>
+
+            <div>
+              <h3>The Loop</h3>
+              <ol>
+                <li>Explore each chapter and fight monsters.</li>
+                <li>Collect <strong>Sigils</strong> to open the portal.</li>
+                <li>Open chests for potions and gifts.</li>
+                <li>Between chapters, a <strong>campfire date</strong> lets you choose answers and activities that change the next chapter’s buffs.</li>
+              </ol>
+
+              <h3>Bond Matters</h3>
+              <ul>
+                <li>Higher relationship improves Eric’s support (heals, shields, faster attacks).</li>
+                <li>Higher trust helps with revives and defensive synergy.</li>
+                <li>Higher playfulness boosts bond gain and combat tempo.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="row">
+            <button id="howBackBtn" class="btn">Back</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="introScreen" class="screen">
+        <div class="card narrow">
+          <h2 id="introTitle">Prologue</h2>
+          <div id="introText" class="storyText"></div>
+          <div id="introChoices" class="choiceRow"></div>
+
+          <div class="row">
+            <button id="introContinueBtn" class="btn primary">Begin Chapter 1</button>
+            <button id="introToMenuBtn" class="btn ghost">Back to Menu</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="dateScreen" class="screen">
+        <div class="card">
+          <div class="dateHeader">
+            <div>
+              <h2 id="dateTitle">Campfire Date</h2>
+              <div id="dateSubtitle" class="subtle">A quiet moment between storms.</div>
+            </div>
+            <div class="dateMetrics">
+              <div class="metric"><span>Relationship</span><strong id="dateRel">50</strong></div>
+              <div class="metric"><span>Trust</span><strong id="dateTrust">50</strong></div>
+              <div class="metric"><span>Playful</span><strong id="datePlay">50</strong></div>
+            </div>
+          </div>
+
+          <div class="dateGrid">
+            <div class="dateConvoWrap">
+              <div id="dateConvo" class="dateConvo"></div>
+            </div>
+
+            <div class="dateChoiceWrap">
+              <div id="dateStepTitle" class="stepTitle">Question</div>
+              <div id="dateQuestion" class="dateQuestion"></div>
+              <div id="dateOptions" class="dateOptions"></div>
+              <button id="dateNextBtn" class="btn primary hidden">Next</button>
+
+              <div class="giftBox">
+                <h3>Gifts</h3>
+                <div id="giftList" class="giftList"></div>
+                <div id="giftHint" class="small subtle"></div>
+              </div>
+
+              <div id="activityBox" class="activityBox hidden">
+                <h3>Pick an activity</h3>
+                <div id="activityChoices" class="activityChoices"></div>
+              </div>
+
+              <button id="dateContinueBtn" class="btn primary hidden">Continue</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="pauseScreen" class="screen">
+        <div class="card narrow">
+          <h2>Paused</h2>
+          <p class="subtle">Take a breath. The darkness can wait.</p>
+          <div class="row">
+            <button id="resumeBtn" class="btn primary">Resume</button>
+            <button id="restartBtn" class="btn">Restart Run</button>
+            <button id="pauseToMenuBtn" class="btn ghost">Quit to Menu</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="gameoverScreen" class="screen">
+        <div class="card narrow">
+          <h2>Game Over</h2>
+          <p id="gameoverReason" class="subtle"></p>
+
+          <div class="statsGrid">
+            <div class="stat"><span>Score</span><strong id="goScore">0</strong></div>
+            <div class="stat"><span>Chapter</span><strong id="goChapter">1</strong></div>
+            <div class="stat"><span>Time</span><strong id="goTime">0:00</strong></div>
+            <div class="stat"><span>Relationship</span><strong id="goRel">0</strong></div>
+          </div>
+
+          <div class="row">
+            <button id="retryBtn" class="btn primary">Try Again</button>
+            <button id="goToMenuBtn" class="btn ghost">Back to Menu</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="victoryScreen" class="screen">
+        <div class="card narrow">
+          <h2 id="victoryTitle">Victory</h2>
+          <p id="victoryEnding" class="subtle"></p>
+
+          <div class="statsGrid">
+            <div class="stat"><span>Final Score</span><strong id="winScore">0</strong></div>
+            <div class="stat"><span>Time</span><strong id="winTime">0:00</strong></div>
+            <div class="stat"><span>Relationship</span><strong id="winRel">0</strong></div>
+            <div class="stat"><span>Chapters</span><strong id="winChapters">3</strong></div>
+          </div>
+
+          <div id="winBreakdown" class="small subtle" style="margin-top:10px"></div>
+
+          <div class="row">
+            <button id="playAgainBtn" class="btn primary">Play Again</button>
+            <button id="winToMenuBtn" class="btn ghost">Back to Menu</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="creditsScreen" class="screen">
+        <div class="card narrow">
+          <h2>Credits</h2>
+          <p class="subtle">Built as a single-file HTML game for Secure Centrix81.</p>
+          <ul>
+            <li>Visuals: procedural canvas art</li>
+            <li>Audio: procedural Web Audio (toggle in settings)</li>
+            <li>Gameplay: action + dating choices that affect combat</li>
+          </ul>
+          <div class="row">
+            <button id="creditsBackBtn" class="btn">Back</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const el = (id) => document.getElementById(id);
+
+      const canvas = el('game');
+      const ctx = canvas.getContext('2d', { alpha: false });
+
+      let viewW = 0, viewH = 0, dpr = 1;
+
+      function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+      function lerp(a, b, t){ return a + (b - a) * t; }
+      function h2(n){ return String(n).padStart(2, '0'); }
+      function formatTime(sec){
+        sec = Math.max(0, sec);
+        const m = Math.floor(sec / 60);
+        const s = Math.floor(sec % 60);
+        return `${m}:${h2(s)}`;
+      }
+      function vecLen(x, y){ return Math.hypot(x, y); }
+      function norm(x, y){
+        const l = Math.hypot(x, y) || 1;
+        return { x: x / l, y: y / l, l };
+      }
+      function dot(ax, ay, bx, by){ return ax * bx + ay * by; }
+
+      function mulberry32(seed){
+        let a = seed >>> 0;
+        return function(){
+          a |= 0;
+          a = (a + 0x6D2B79F5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      function resize(){
+        dpr = Math.max(1, Math.min(2.5, window.devicePixelRatio || 1));
+        const cw = canvas.clientWidth || window.innerWidth;
+        const ch = canvas.clientHeight || window.innerHeight;
+        viewW = Math.max(320, Math.floor(cw));
+        viewH = Math.max(240, Math.floor(ch));
+        canvas.width = Math.floor(viewW * dpr);
+        canvas.height = Math.floor(viewH * dpr);
+        ctx.imageSmoothingEnabled = true;
+      }
+      window.addEventListener('resize', resize, { passive: true });
+      resize();
+
+      const STORAGE_PREFIX = location.pathname + '::CalvinWithEric::';
+      function lsGet(key, fallback){
+        try{
+          const raw = localStorage.getItem(STORAGE_PREFIX + key);
+          if (raw === null) return fallback;
+          return JSON.parse(raw);
+        }catch{
+          return fallback;
+        }
+      }
+      function lsSet(key, val){
+        try{
+          localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(val));
+        }catch{}
+      }
+      function lsDel(key){
+        try{ localStorage.removeItem(STORAGE_PREFIX + key); }catch{}
+      }
+      function lsHas(key){
+        try{ return localStorage.getItem(STORAGE_PREFIX + key) !== null; }catch{ return false; }
+      }
+
+      const DEFAULT_SETTINGS = { sound: true, shake: true, touch: 'auto' };
+      const settings = Object.assign({}, DEFAULT_SETTINGS, lsGet('settings', {}));
+      function persistSettings(){ lsSet('settings', settings); }
+
+      class AudioManager{
+        constructor(){
+          this.ctx = null;
+          this.master = null;
+          this.enabled = true;
+          this.noiseBuffer = null;
+          this.amb = null;
+          this.ambGain = null;
+          this.ambLfo = null;
+        }
+        ensure(){
+          if (!this.enabled) return false;
+          if (this.ctx) return true;
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return false;
+          const ctx = new AC();
+          const master = ctx.createGain();
+          master.gain.value = 0.75;
+          master.connect(ctx.destination);
+          this.ctx = ctx;
+          this.master = master;
+          this._makeNoiseBuffer();
+          return true;
+        }
+        _makeNoiseBuffer(){
+          if (!this.ctx) return;
+          const ctx = this.ctx;
+          const len = Math.floor(ctx.sampleRate * 0.22);
+          const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+          const data = buf.getChannelData(0);
+          for (let i = 0; i < len; i++){
+            const t = i / len;
+            data[i] = (Math.random() * 2 - 1) * (1 - t);
+          }
+          this.noiseBuffer = buf;
+        }
+        setEnabled(on){
+          this.enabled = !!on;
+          if (!this.ctx) return;
+          if (!this.enabled){
+            this.stopAmbient();
+            try{ this.ctx.suspend(); }catch{}
+          }else{
+            try{ this.ctx.resume(); }catch{}
+          }
+        }
+        _tone(type, freq, dur, vol){
+          if (!this.enabled) return;
+          if (!this.ensure()) return;
+          const ctx = this.ctx;
+          const t0 = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const filt = ctx.createBiquadFilter();
+          filt.type = 'lowpass';
+          filt.frequency.value = Math.max(120, freq * 4);
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, t0);
+          gain.gain.setValueAtTime(0.0001, t0);
+          gain.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t0 + Math.max(0.03, dur));
+          osc.connect(filt);
+          filt.connect(gain);
+          gain.connect(this.master);
+          osc.start(t0);
+          osc.stop(t0 + dur + 0.06);
+        }
+        _noise(dur, vol, hp){
+          if (!this.enabled) return;
+          if (!this.ensure()) return;
+          const ctx = this.ctx;
+          const t0 = ctx.currentTime;
+          const src = ctx.createBufferSource();
+          src.buffer = this.noiseBuffer;
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'highpass';
+          filter.frequency.value = hp;
+          const gain = ctx.createGain();
+          gain.gain.setValueAtTime(0.0001, t0);
+          gain.gain.exponentialRampToValueAtTime(vol, t0 + 0.01);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+          src.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.master);
+          src.start(t0);
+          src.stop(t0 + dur + 0.02);
+        }
+        sfx(name){
+          if (!this.enabled) return;
+          if (!this.ensure()) return;
+          switch(name){
+            case 'ui':
+              this._tone('triangle', 740, 0.08, 0.18);
+              break;
+            case 'start':
+              this._tone('sine', 220, 0.10, 0.14);
+              this._tone('triangle', 440, 0.12, 0.12);
+              break;
+            case 'swing':
+              this._noise(0.06, 0.09, 900);
+              this._tone('square', 180, 0.06, 0.07);
+              break;
+            case 'hit':
+              this._noise(0.08, 0.12, 780);
+              this._tone('sine', 110, 0.08, 0.08);
+              break;
+            case 'hurt':
+              this._noise(0.10, 0.16, 600);
+              this._tone('sawtooth', 90, 0.12, 0.06);
+              break;
+            case 'heal':
+              this._tone('sine', 520, 0.12, 0.14);
+              this._tone('triangle', 880, 0.10, 0.10);
+              break;
+            case 'sigil':
+              this._tone('triangle', 960, 0.07, 0.12);
+              break;
+            case 'chest':
+              this._tone('square', 260, 0.08, 0.10);
+              this._noise(0.06, 0.07, 900);
+              break;
+            case 'portal':
+              this._tone('sine', 320, 0.16, 0.12);
+              this._tone('triangle', 640, 0.14, 0.09);
+              break;
+            case 'bond':
+              this._tone('triangle', 440, 0.10, 0.14);
+              this._tone('sine', 660, 0.14, 0.12);
+              this._noise(0.10, 0.08, 950);
+              break;
+            case 'boss':
+              this._tone('sawtooth', 72, 0.18, 0.08);
+              this._noise(0.12, 0.10, 420);
+              break;
+            case 'down':
+              this._tone('sawtooth', 98, 0.22, 0.06);
+              this._noise(0.14, 0.14, 520);
+              break;
+            default:
+              this._tone('triangle', 520, 0.07, 0.10);
+              break;
+          }
+        }
+        startAmbient(mode){
+          if (!this.enabled) return;
+          if (!this.ensure()) return;
+          this.stopAmbient();
+          const ctx = this.ctx;
+          const base = (mode === 'citadel') ? 58 : (mode === 'wood' ? 64 : 62);
+
+          const o1 = ctx.createOscillator();
+          const o2 = ctx.createOscillator();
+          const lfo = ctx.createOscillator();
+          const lfoGain = ctx.createGain();
+          const gain = ctx.createGain();
+          const filt = ctx.createBiquadFilter();
+
+          o1.type = 'sine';
+          o2.type = 'triangle';
+          lfo.type = 'sine';
+
+          o1.frequency.value = base;
+          o2.frequency.value = base * 1.5;
+          lfo.frequency.value = 0.07;
+
+          gain.gain.value = 0.0001;
+          filt.type = 'lowpass';
+          filt.frequency.value = mode === 'citadel' ? 520 : 680;
+
+          lfoGain.gain.value = 0.015;
+
+          lfo.connect(lfoGain);
+          lfoGain.connect(gain.gain);
+
+          o1.connect(filt);
+          o2.connect(filt);
+          filt.connect(gain);
+          gain.connect(this.master);
+
+          const t0 = ctx.currentTime;
+          gain.gain.setValueAtTime(0.0001, t0);
+          gain.gain.exponentialRampToValueAtTime(0.06, t0 + 1.0);
+
+          o1.start();
+          o2.start();
+          lfo.start();
+
+          this.amb = { o1, o2 };
+          this.ambGain = gain;
+          this.ambLfo = lfo;
+        }
+        stopAmbient(){
+          if (!this.ctx) return;
+          const ctx = this.ctx;
+          const t0 = ctx.currentTime;
+          if (this.ambGain){
+            try{
+              this.ambGain.gain.cancelScheduledValues(t0);
+              this.ambGain.gain.setValueAtTime(this.ambGain.gain.value, t0);
+              this.ambGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.35);
+            }catch{}
+          }
+          if (this.amb){
+            const { o1, o2 } = this.amb;
+            try{ o1.stop(t0 + 0.4); }catch{}
+            try{ o2.stop(t0 + 0.4); }catch{}
+          }
+          if (this.ambLfo){
+            try{ this.ambLfo.stop(t0 + 0.4); }catch{}
+          }
+          this.amb = null;
+          this.ambGain = null;
+          this.ambLfo = null;
+        }
+      }
+
+      const audio = new AudioManager();
+      audio.setEnabled(!!settings.sound);
+
+      let audioUnlocked = false;
+      function unlockAudioOnce(){
+        if (audioUnlocked) return;
+        audioUnlocked = true;
+        audio.ensure();
+        audio.setEnabled(!!settings.sound);
+      }
+      window.addEventListener('pointerdown', unlockAudioOnce, { passive: true });
+
+      const input = {
+        keys: new Set(),
+        just: new Set(),
+        pointer: { sx: 0, sy: 0, down: false, justDown: false, type: 'mouse', movedAt: 0 },
+      };
+
+      const SCROLL_BLOCK = new Set(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space']);
+      window.addEventListener('keydown', (e) => {
+        if (SCROLL_BLOCK.has(e.code)) e.preventDefault();
+        if (!input.keys.has(e.code)) input.just.add(e.code);
+        input.keys.add(e.code);
+      }, { passive: false });
+
+      window.addEventListener('keyup', (e) => {
+        input.keys.delete(e.code);
+      }, { passive: true });
+
+      function isDown(code){ return input.keys.has(code); }
+      function consumePressed(code){
+        if (input.just.has(code)){
+          input.just.delete(code);
+          return true;
+        }
+        return false;
+      }
+
+      function pointerPosFromEvent(e){
+        const r = canvas.getBoundingClientRect();
+        const sx = clamp(e.clientX - r.left, 0, r.width);
+        const sy = clamp(e.clientY - r.top, 0, r.height);
+        input.pointer.sx = sx;
+        input.pointer.sy = sy;
+        input.pointer.type = e.pointerType || 'mouse';
+        input.pointer.movedAt = performance.now();
+      }
+
+      canvas.addEventListener('pointermove', (e) => {
+        pointerPosFromEvent(e);
+      }, { passive: true });
+
+      canvas.addEventListener('pointerdown', (e) => {
+        pointerPosFromEvent(e);
+        input.pointer.down = true;
+        input.pointer.justDown = true;
+        try{ canvas.setPointerCapture(e.pointerId); }catch{}
+      }, { passive: true });
+
+      canvas.addEventListener('pointerup', () => {
+        input.pointer.down = false;
+      }, { passive: true });
+
+      canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+      const ui = {
+        screens: {
+          menu: el('menuScreen'),
+          how: el('howScreen'),
+          intro: el('introScreen'),
+          date: el('dateScreen'),
+          pause: el('pauseScreen'),
+          gameover: el('gameoverScreen'),
+          victory: el('victoryScreen'),
+          credits: el('creditsScreen'),
+        },
+        hud: el('hud'),
+        hpFill: el('hpFill'),
+        hpText: el('hpText'),
+        stamFill: el('stamFill'),
+        stamText: el('stamText'),
+        bondFill: el('bondFill'),
+        bondText: el('bondText'),
+        chapterText: el('chapterText'),
+        objectiveText: el('objectiveText'),
+        sigilText: el('sigilText'),
+        potionText: el('potionText'),
+        scoreText: el('scoreText'),
+        timeText: el('timeText'),
+        relText: el('relText'),
+        relPips: el('relPips'),
+        synergyHint: el('synergyHint'),
+        ericText: el('ericText'),
+        buffText: el('buffText'),
+        prompt: el('prompt'),
+        toastWrap: el('toastWrap'),
+        minimap: el('minimap'),
+        mobileControls: el('mobileControls'),
+        stickZone: el('stickZone'),
+        stickNub: el('stickNub'),
+        btnAttack: el('btnAttack'),
+        btnDodge: el('btnDodge'),
+        btnInteract: el('btnInteract'),
+        btnSpecial: el('btnSpecial'),
+        btnPotion: el('btnPotion'),
+        btnPause: el('btnPause'),
+
+        startBtn: el('startBtn'),
+        continueBtn: el('continueBtn'),
+        howBtn: el('howBtn'),
+        creditsBtn: el('creditsBtn'),
+        howBackBtn: el('howBackBtn'),
+        creditsBackBtn: el('creditsBackBtn'),
+
+        setSound: el('setSound'),
+        setShake: el('setShake'),
+        setTouch: el('setTouch'),
+        highScoreText: el('highScoreText'),
+        bestEndingText: el('bestEndingText'),
+
+        introTitle: el('introTitle'),
+        introText: el('introText'),
+        introChoices: el('introChoices'),
+        introContinueBtn: el('introContinueBtn'),
+        introToMenuBtn: el('introToMenuBtn'),
+
+        dateTitle: el('dateTitle'),
+        dateSubtitle: el('dateSubtitle'),
+        dateRel: el('dateRel'),
+        dateTrust: el('dateTrust'),
+        datePlay: el('datePlay'),
+        dateConvo: el('dateConvo'),
+        dateStepTitle: el('dateStepTitle'),
+        dateQuestion: el('dateQuestion'),
+        dateOptions: el('dateOptions'),
+        dateNextBtn: el('dateNextBtn'),
+        giftList: el('giftList'),
+        giftHint: el('giftHint'),
+        activityBox: el('activityBox'),
+        activityChoices: el('activityChoices'),
+        dateContinueBtn: el('dateContinueBtn'),
+
+        resumeBtn: el('resumeBtn'),
+        restartBtn: el('restartBtn'),
+        pauseToMenuBtn: el('pauseToMenuBtn'),
+
+        gameoverReason: el('gameoverReason'),
+        goScore: el('goScore'),
+        goChapter: el('goChapter'),
+        goTime: el('goTime'),
+        goRel: el('goRel'),
+        retryBtn: el('retryBtn'),
+        goToMenuBtn: el('goToMenuBtn'),
+
+        victoryTitle: el('victoryTitle'),
+        victoryEnding: el('victoryEnding'),
+        winScore: el('winScore'),
+        winTime: el('winTime'),
+        winRel: el('winRel'),
+        winChapters: el('winChapters'),
+        winBreakdown: el('winBreakdown'),
+        playAgainBtn: el('playAgainBtn'),
+        winToMenuBtn: el('winToMenuBtn'),
+      };
+
+      function showScreen(name){
+        for (const k in ui.screens){
+          ui.screens[k].classList.toggle('active', k === name);
+        }
+      }
+
+      function setHudVisible(on){
+        ui.hud.classList.toggle('hidden', !on);
+        ui.hud.setAttribute('aria-hidden', on ? 'false' : 'true');
+      }
+
+      function toast(msg, kind){
+        const d = document.createElement('div');
+        d.className = 'toast' + (kind ? ' ' + kind : '');
+        d.textContent = msg;
+        ui.toastWrap.appendChild(d);
+        setTimeout(() => {
+          d.style.opacity = '0';
+          d.style.transform = 'translateY(6px)';
+          d.style.transition = 'opacity .18s ease, transform .18s ease';
+          setTimeout(() => d.remove(), 220);
+        }, 2600);
+      }
+
+      function buildPips(){
+        ui.relPips.innerHTML = '';
+        for (let i = 0; i < 10; i++){
+          const s = document.createElement('div');
+          s.className = 'pip';
+          ui.relPips.appendChild(s);
+        }
+      }
+      buildPips();
+
+      const starfield = (() => {
+        const stars = [];
+        const rng = mulberry32(0xC0FFEE ^ (Date.now() & 0xffffffff));
+        for (let i = 0; i < 160; i++){
+          stars.push({
+            x: rng(),
+            y: rng(),
+            z: rng(),
+            s: 0.15 + rng() * 0.75
+          });
+        }
+        return {
+          stars,
+          update(dt){
+            for (const st of stars){
+              st.y += dt * (0.02 + st.s * 0.08);
+              if (st.y > 1) { st.y -= 1; st.x = rng(); st.z = rng(); st.s = 0.15 + rng() * 0.75; }
+            }
+          },
+          render(ctx){
+            const w = viewW, h = viewH;
+            ctx.save();
+            ctx.globalAlpha = 0.85;
+            for (const st of stars){
+              const px = st.x * w;
+              const py = st.y * h;
+              const r = 0.6 + st.s * 1.4;
+              const a = 0.25 + st.s * 0.45;
+              ctx.fillStyle = `rgba(200,220,255,${a})`;
+              ctx.beginPath();
+              ctx.arc(px, py, r, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.restore();
+          }
+        };
+      })();
+
+      const patternCache = new Map();
+      function getThemePattern(theme){
+        if (patternCache.has(theme)) return patternCache.get(theme);
+        const tile = document.createElement('canvas');
+        tile.width = 256;
+        tile.height = 256;
+        const c = tile.getContext('2d');
+
+        const base = theme === 'citadel' ? '#0b0d14' : (theme === 'wood' ? '#070d0a' : '#0a0b12');
+        const tint = theme === 'citadel' ? 'rgba(142,240,255,.06)' : (theme === 'wood' ? 'rgba(103,255,155,.06)' : 'rgba(255,77,210,.05)');
+
+        c.fillStyle = base;
+        c.fillRect(0,0,256,256);
+
+        c.fillStyle = 'rgba(255,255,255,.025)';
+        for (let i=0;i<140;i++){
+          const x = Math.random()*256;
+          const y = Math.random()*256;
+          const w = 1 + Math.random()*2;
+          const h = 1 + Math.random()*2;
+          c.fillRect(x,y,w,h);
+        }
+
+        c.strokeStyle = tint;
+        c.lineWidth = 2;
+        c.globalAlpha = 0.9;
+        for (let i=0;i<8;i++){
+          c.beginPath();
+          const y = Math.random()*256;
+          c.moveTo(0, y);
+          c.bezierCurveTo(70, y + (Math.random()*60-30), 180, y + (Math.random()*60-30), 256, y + (Math.random()*40-20));
+          c.stroke();
+        }
+        c.globalAlpha = 1;
+
+        const pat = ctx.createPattern(tile, 'repeat');
+        patternCache.set(theme, pat);
+        return pat;
+      }
+
+      let ID = 0;
+
+      function resolveCircleRect(ent, rect){
+        const cx = clamp(ent.x, rect.x, rect.x + rect.w);
+        const cy = clamp(ent.y, rect.y, rect.y + rect.h);
+        const dx = ent.x - cx;
+        const dy = ent.y - cy;
+        const rr = ent.r;
+        const d2 = dx*dx + dy*dy;
+        if (d2 < rr*rr){
+          const d = Math.sqrt(d2) || 0.0001;
+          const overlap = rr - d;
+          const nx = dx / d;
+          const ny = dy / d;
+          ent.x += nx * overlap;
+          ent.y += ny * overlap;
+          const vn = ent.vx * nx + ent.vy * ny;
+          if (vn < 0){
+            ent.vx -= vn * nx;
+            ent.vy -= vn * ny;
+          }
+          return true;
+        }
+        return false;
+      }
+
+      function separateCircles(a, b, pushA = 0.5, pushB = 0.5){
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const r = a.r + b.r;
+        const d2 = dx*dx + dy*dy;
+        if (d2 <= 0 || d2 >= r*r) return false;
+        const d = Math.sqrt(d2);
+        const nx = dx / d;
+        const ny = dy / d;
+        const overlap = r - d;
+        a.x -= nx * overlap * pushA;
+        a.y -= ny * overlap * pushA;
+        b.x += nx * overlap * pushB;
+        b.y += ny * overlap * pushB;
+        return true;
+      }
+
+      const GIFT_DEFS = [
+        { id:'moonflower', name:'Moonflower', desc:'Soft light in a hard world.', delta:{ rel: +12, trust:+3, play:+6 }, sfx:'heal' },
+        { id:'warden-charm', name:'Warden Charm', desc:'A promise you can carry.', delta:{ rel: +10, trust:+12, play:+0 }, sfx:'ui' },
+        { id:'silly-sketch', name:'Silly Sketch', desc:'A laugh that cuts the fear.', delta:{ rel: +8, trust:+1, play:+14 }, sfx:'ui' },
+        { id:'warm-scarf', name:'Warm Scarf', desc:'For the cold nights between fights.', delta:{ rel: +9, trust:+7, play:+2 }, sfx:'heal' },
+      ];
+
+      const ACTIVITY_DEFS = [
+        {
+          id: 'training',
+          name: 'Train Together',
+          desc: 'Sharpen your timing. Next chapter: +12% damage, +15 max stamina.',
+          delta: { rel:+4, trust:+3, play:+1 },
+          buff: { id:'training', label:'Training', dmg:0.12, stamina:15, regen:0, trapSense:0, ericRange:0 }
+        },
+        {
+          id: 'stargaze',
+          name: 'Stargaze & Talk',
+          desc: 'A quiet moment that steadies the heart. Next chapter: +20 max HP, +1.2 HP regen.',
+          delta: { rel:+6, trust:+6, play:+0 },
+          buff: { id:'stargaze', label:'Stargaze', dmg:0, stamina:0, hp:20, regen:1.2, trapSense:0, ericRange:0 }
+        },
+        {
+          id: 'strategy',
+          name: 'Plan Strategy',
+          desc: 'You map the dangers together. Next chapter: traps reveal earlier, Eric +120 range.',
+          delta: { rel:+3, trust:+7, play:+0 },
+          buff: { id:'strategy', label:'Strategy', dmg:0, stamina:0, regen:0, trapSense:90, ericRange:120 }
+        }
+      ];
+
+      const QUESTION_POOL = [
+        {
+          id:'fear',
+          prompt:'When the darkness presses in, what do you want from me?',
+          options:[
+            { text:'“Stay close. Even silence helps.”', calvin:'Stay close. Even silence helps.', eric:'Then I’ll be quiet—and I’ll be here.', delta:{ rel:+8, trust:+10, play:+0 } },
+            { text:'“Make me laugh until it isn’t scary.”', calvin:'Make me laugh until it isn’t scary.', eric:'Deal. I’ll be ridiculous on purpose.', delta:{ rel:+6, trust:+4, play:+10 } },
+            { text:'“Give me space. I fight better alone.”', calvin:'Give me space. I fight better alone.', eric:'…I hear you. Just don’t vanish on me.', delta:{ rel:-6, trust:-4, play:+0 } },
+          ]
+        },
+        {
+          id:'truth',
+          prompt:'If I ask something you don’t want to answer… what do you do?',
+          options:[
+            { text:'“Tell you the truth—even if it’s messy.”', calvin:'Tell you the truth—even if it’s messy.', eric:'Messy is okay. Lying is louder than monsters.', delta:{ rel:+7, trust:+10, play:+0 } },
+            { text:'“Deflect with a joke… then circle back.”', calvin:'Deflect with a joke… then circle back.', eric:'That’s… very you. But come back to me after.', delta:{ rel:+5, trust:+4, play:+8 } },
+            { text:'“Keep it to myself.”', calvin:'Keep it to myself.', eric:'I can’t protect what you won’t share.', delta:{ rel:-7, trust:-9, play:+0 } },
+          ]
+        },
+        {
+          id:'mission',
+          prompt:'On a dangerous day, what matters most?',
+          options:[
+            { text:'“Getting you home.”', calvin:'Getting you home.', eric:'Then we’ll get each other home.', delta:{ rel:+8, trust:+6, play:+0 } },
+            { text:'“Winning—fast.”', calvin:'Winning—fast.', eric:'Okay. But don’t confuse fast with careless.', delta:{ rel:+2, trust:+3, play:+0 } },
+            { text:'“Proving I don’t need help.”', calvin:'Proving I don’t need help.', eric:'You don’t have to earn being cared about.', delta:{ rel:-6, trust:-4, play:+0 } },
+          ]
+        },
+        {
+          id:'tease',
+          prompt:'Pick tomorrow’s “danger-date” vibe.',
+          options:[
+            { text:'“Heroic. Dramatic. Wind in our hair.”', calvin:'Heroic. Dramatic. Wind in our hair.', eric:'If you trip, I’m laughing first—then catching you.', delta:{ rel:+6, trust:+2, play:+10 } },
+            { text:'“Quiet. Efficient. Kind.”', calvin:'Quiet. Efficient. Kind.', eric:'Kind is the part I’m not willing to lose.', delta:{ rel:+7, trust:+7, play:+0 } },
+            { text:'“No vibe. Just survive.”', calvin:'No vibe. Just survive.', eric:'Survival’s easier with something worth it.', delta:{ rel:-4, trust:-2, play:-2 } },
+          ]
+        },
+        {
+          id:'touch',
+          prompt:'When we’re safe for a second… what do you reach for?',
+          options:[
+            { text:'“Your hand.”', calvin:'Your hand.', eric:'…Yeah. Mine too.', delta:{ rel:+9, trust:+6, play:+0 } },
+            { text:'“A joke. A stupid little smile.”', calvin:'A joke. A stupid little smile.', eric:'Stupid little smiles are my weakness.', delta:{ rel:+6, trust:+1, play:+10 } },
+            { text:'“My weapon.”', calvin:'My weapon.', eric:'Then I’ll be the thing that reminds you to breathe.', delta:{ rel:-3, trust:+2, play:+0 } },
+          ]
+        },
+        {
+          id:'conflict',
+          prompt:'If we disagree in the field, what’s the rule?',
+          options:[
+            { text:'“Speak fast. Listen faster.”', calvin:'Speak fast. Listen faster.', eric:'That’s a rule I can live by.', delta:{ rel:+6, trust:+9, play:+0 } },
+            { text:'“Rock-paper-scissors.”', calvin:'Rock-paper-scissors.', eric:'That is the worst plan. …I love it.', delta:{ rel:+5, trust:+2, play:+11 } },
+            { text:'“My call. Always.”', calvin:'My call. Always.', eric:'I’ll follow you… but it’ll cost us.', delta:{ rel:-7, trust:-8, play:+0 } },
+          ]
+        },
+        {
+          id:'future',
+          prompt:'When this is over… what does “home” look like?',
+          options:[
+            { text:'“A door I open with you beside me.”', calvin:'A door I open with you beside me.', eric:'Then I’ll learn the sound of that lock by heart.', delta:{ rel:+10, trust:+8, play:+0 } },
+            { text:'“A road. We keep moving.”', calvin:'A road. We keep moving.', eric:'As long as you don’t run from me on it.', delta:{ rel:+5, trust:+4, play:+4 } },
+            { text:'“I don’t think that far.”', calvin:'I don’t think that far.', eric:'I will. For both of us—until you can.', delta:{ rel:-2, trust:+2, play:+0 } },
+          ]
+        },
+        {
+          id:'apology',
+          prompt:'If I get hurt protecting you… what do you say?',
+          options:[
+            { text:'“Thank you. Then I heal you.”', calvin:'Thank you. Then I heal you.', eric:'That’s the kind of thanks I like.', delta:{ rel:+7, trust:+8, play:+0 } },
+            { text:'“I’ll scold you… then kiss your forehead.”', calvin:'I’ll scold you… then kiss your forehead.', eric:'You’d better scold gently.', delta:{ rel:+7, trust:+4, play:+6 } },
+            { text:'“You shouldn’t have.”', calvin:'You shouldn’t have.', eric:'I choose you. Let me choose you.', delta:{ rel:-4, trust:-2, play:+0 } },
+          ]
+        }
+      ];
+
+      const LEVEL_DEFS = [
+        {
+          id: 'ruins',
+          name: 'Whispering Ruins',
+          subtitle: 'Stone remembers what people forget.',
+          theme: 'ruins',
+          size: { w: 2000, h: 1200 },
+          sigilsNeeded: 6,
+          enemies: { lurker: 10, spitter: 5, brute: 0, stalker: 0 },
+          chests: 3,
+          traps: 6,
+          intro: [
+            'The world didn’t end with fire.',
+            'It ended with whispers—thin, clever things that slid between thoughts and made fear feel reasonable.',
+            'You and Eric follow the fading light through broken stone, searching for the first Sigils… and for proof that the dark can still be pushed back.'
+          ]
+        },
+        {
+          id: 'wood',
+          name: 'Gloomwood Hollow',
+          subtitle: 'Leaves hide teeth. Shadows hide intentions.',
+          theme: 'wood',
+          size: { w: 2200, h: 1400 },
+          sigilsNeeded: 8,
+          enemies: { lurker: 7, spitter: 6, brute: 3, stalker: 4 },
+          chests: 4,
+          traps: 10,
+          intro: [
+            'The forest is too quiet.',
+            'Every branch seems to lean in, listening.',
+            'Eric walks a half-step closer—close enough that your shoulders almost touch.'
+          ]
+        },
+        {
+          id: 'citadel',
+          name: 'Eclipse Citadel',
+          subtitle: 'The heart of the dark learns your name.',
+          theme: 'citadel',
+          size: { w: 2400, h: 1600 },
+          boss: true,
+          sigilsNeeded: 0,
+          enemies: { lurker: 4, spitter: 3, brute: 2, stalker: 2 },
+          chests: 2,
+          traps: 0,
+          intro: [
+            'The Citadel rises like a question you don’t want to answer.',
+            'Inside, the air tastes like metal and old promises.',
+            'Eric looks at you and speaks softly: “Whatever happens—don’t let go.”'
+          ]
+        }
+      ];
+
+      class Player{
+        constructor(x, y){
+          this.id = ++ID;
+          this.x = x; this.y = y;
+          this.vx = 0; this.vy = 0;
+          this.r = 18;
+
+          this.maxHp = 100;
+          this.hp = this.maxHp;
+          this.maxStamina = 100;
+          this.stamina = this.maxStamina;
+          this.staminaRegen = 28;
+
+          this.faceX = 1;
+          this.faceY = 0;
+
+          this.invuln = 0;
+          this.hitFlash = 0;
+
+          this.attackCd = 0;
+          this.attackWind = 0;
+          this.attackActive = 0;
+          this.attackDidHit = false;
+          this.attackDirX = 1;
+          this.attackDirY = 0;
+
+          this.dodgeCd = 0;
+          this.dodgeT = 0;
+          this.isDodging = false;
+          this.dodgeDirX = 1;
+          this.dodgeDirY = 0;
+
+          this.aegis = 0;
+          this.potionCd = 0;
+
+          this.regen = 0;
+          this.damageBonus = 0;
+          this.defenseBonus = 0;
+        }
+
+        startAttack(game){
+          if (this.attackCd > 0) return false;
+          if (this.isDodging) return false;
+          const cost = 16;
+          if (this.stamina < cost) return false;
+          this.stamina -= cost;
+          this.attackCd = 0.35;
+          this.attackWind = 0.07;
+          this.attackActive = 0.11;
+          this.attackDidHit = false;
+
+          const ax = game.aimActive ? game.aimX : this.faceX;
+          const ay = game.aimActive ? game.aimY : this.faceY;
+          const n = norm(ax, ay);
+          this.attackDirX = n.x;
+          this.attackDirY = n.y;
+
+          audio.sfx('swing');
+          return true;
+        }
+
+        doAttackHit(game){
+          const arc = (110 * Math.PI) / 180;
+          const range = 46;
+          const baseDamage = 18;
+          const mod = game.mod;
+
+          const px = this.x, py = this.y;
+          const ax = this.attackDirX, ay = this.attackDirY;
+
+          let hits = 0;
+          for (const e of game.enemies){
+            if (e.dead) continue;
+            if (e.type === 'boss' && e.invuln > 0.05) continue;
+            const dx = e.x - px;
+            const dy = e.y - py;
+            const dist = Math.hypot(dx, dy);
+            if (dist > range + e.r) continue;
+
+            const nx = dx / (dist || 1);
+            const ny = dy / (dist || 1);
+            const c = clamp(dot(ax, ay, nx, ny), -1, 1);
+            const ang = Math.acos(c);
+            if (ang <= arc * 0.5){
+              const dmg = baseDamage * mod.playerDmgMult;
+              game.damageEnemy(e, dmg, { kind:'player' });
+              const kb = 140;
+              e.vx += nx * kb;
+              e.vy += ny * kb;
+              hits++;
+            }
+          }
+
+          if (hits > 0){
+            audio.sfx('hit');
+            game.addBond(6 + hits * 2);
+            game.shake(0.18, 6);
+          }
+        }
+
+        startDodge(game, mvx, mvy){
+          if (this.isDodging) return false;
+          if (this.dodgeCd > 0) return false;
+          const cost = 22;
+          if (this.stamina < cost) return false;
+          this.stamina -= cost;
+
+          let dx = mvx, dy = mvy;
+          if (Math.hypot(dx, dy) < 0.15){
+            dx = this.faceX; dy = this.faceY;
+          }
+          const n = norm(dx, dy);
+          this.dodgeDirX = n.x;
+          this.dodgeDirY = n.y;
+          this.isDodging = true;
+          this.dodgeT = 0.22;
+          this.dodgeCd = 0.9;
+          this.invuln = Math.max(this.invuln, 0.25);
+
+          audio.sfx('ui');
+          game.shake(0.12, 4);
+          return true;
+        }
+
+        tryPotion(game){
+          if (this.potionCd > 0) return false;
+          if (game.inventory.potions <= 0) return false;
+          if (this.hp >= this.maxHp - 1) return false;
+          game.inventory.potions -= 1;
+          const heal = 45;
+          this.hp = Math.min(this.maxHp, this.hp + heal);
+          this.potionCd = 0.65;
+          audio.sfx('heal');
+          game.particlesBurst(this.x, this.y, 18, 'rgba(103,255,155,.85)', 220);
+          game.toast(`Potion +${heal} HP`, 'good');
+          return true;
+        }
+
+        update(dt, game, mv){
+          this.invuln = Math.max(0, this.invuln - dt);
+          this.hitFlash = Math.max(0, this.hitFlash - dt);
+          this.attackCd = Math.max(0, this.attackCd - dt);
+          this.dodgeCd = Math.max(0, this.dodgeCd - dt);
+          this.potionCd = Math.max(0, this.potionCd - dt);
+
+          const mod = game.mod;
+
+          const staminaRegenMult = this.isDodging ? 0.4 : (this.attackWind > 0 || this.attackActive > 0 ? 0.75 : 1);
+          this.stamina = Math.min(this.maxStamina, this.stamina + dt * this.staminaRegen * staminaRegenMult);
+
+          if (this.regen > 0){
+            this.hp = Math.min(this.maxHp, this.hp + dt * this.regen);
+          }
+
+          if (this.isDodging){
+            const speed = 540;
+            this.vx = this.dodgeDirX * speed;
+            this.vy = this.dodgeDirY * speed;
+            this.dodgeT -= dt;
+            if (this.dodgeT <= 0){
+              this.isDodging = false;
+            }
+            game.moveEntity(this, dt);
+            return;
+          }
+
+          if (Math.hypot(mv.x, mv.y) > 0.01 && !game.aimActive){
+            const n = norm(mv.x, mv.y);
+            this.faceX = n.x;
+            this.faceY = n.y;
+          }else if (game.aimActive){
+            this.faceX = game.aimX;
+            this.faceY = game.aimY;
+          }
+
+          const desired = { x: mv.x * (this.speed * mod.moveMult), y: mv.y * (this.speed * mod.moveMult) };
+          const smooth = 1 - Math.exp(-dt * 18);
+          this.vx = lerp(this.vx, desired.x, smooth);
+          this.vy = lerp(this.vy, desired.y, smooth);
+
+          if (this.attackWind > 0){
+            this.attackWind -= dt;
+            if (this.attackWind <= 0){
+              this.attackWind = 0;
+            }
+          }else if (this.attackActive > 0){
+            if (!this.attackDidHit){
+              this.attackDidHit = true;
+              this.doAttackHit(game);
+            }
+            this.attackActive -= dt;
+            if (this.attackActive <= 0) this.attackActive = 0;
+          }
+
+          game.moveEntity(this, dt);
+        }
+
+        render(ctx, game){
+          const x = this.x - game.camX;
+          const y = this.y - game.camY;
+
+          const dodgeAlpha = this.isDodging ? 0.65 : 1;
+          const hurt = this.hitFlash > 0 ? (0.35 + 0.65 * Math.min(1, this.hitFlash / 0.15)) : 0;
+
+          ctx.save();
+          ctx.translate(x, y);
+
+          if (this.isDodging){
+            ctx.globalAlpha = 0.25;
+            ctx.fillStyle = 'rgba(142,240,255,.25)';
+            ctx.beginPath();
+            ctx.arc(-this.faceX*10, -this.faceY*10, this.r * 1.25, 0, Math.PI*2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+          }
+
+          ctx.globalAlpha = dodgeAlpha;
+          const grad = ctx.createRadialGradient(-6, -6, 6, 0, 0, this.r*1.8);
+          grad.addColorStop(0, `rgba(${hurt?255:142},${hurt?110:240},${hurt?120:255},.95)`);
+          grad.addColorStop(1, 'rgba(40,60,90,.95)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(0, 0, this.r, 0, Math.PI*2);
+          ctx.fill();
+
+          ctx.strokeStyle = 'rgba(255,255,255,.18)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(0, 0, this.r, 0, Math.PI*2);
+          ctx.stroke();
+
+          ctx.strokeStyle = 'rgba(255,255,255,.28)';
+          ctx.lineWidth = 3;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(this.faceX * (this.r + 10), this.faceY * (this.r + 10));
+          ctx.stroke();
+
+          if (this.aegis > 0){
+            ctx.globalAlpha = 0.65;
+            ctx.strokeStyle = 'rgba(142,240,255,.75)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.r + 7, 0, Math.PI*2);
+            ctx.stroke();
+            ctx.globalAlpha = dodgeAlpha;
+          }
+
+          if (this.attackWind > 0 || this.attackActive > 0){
+            const t = this.attackWind > 0 ? (1 - this.attackWind / 0.07) : 1;
+            const alpha = this.attackActive > 0 ? 0.22 : 0.12;
+            const arc = (110 * Math.PI) / 180;
+            const ang = Math.atan2(this.attackDirY, this.attackDirX);
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = 'rgba(255,77,210,.9)';
+            ctx.beginPath();
+            ctx.moveTo(0,0);
+            ctx.arc(0,0,this.r+44, ang - arc/2, ang + arc/2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.globalAlpha = dodgeAlpha;
+          }
+
+          ctx.restore();
+        }
+      }
+
+      class Eric{
+        constructor(x, y){
+          this.id = ++ID;
+          this.x = x; this.y = y;
+          this.vx = 0; this.vy = 0;
+          this.r = 16;
+
+          this.maxHp = 85;
+          this.hp = this.maxHp;
+
+          this.faceX = 1;
+          this.faceY = 0;
+
+          this.invuln = 0;
+          this.hitFlash = 0;
+
+          this.shootCd = 0.5;
+          this.healCd = 4.0;
+          this.shieldCd = 8.0;
+
+          this.downed = false;
+          this.downTimer = 0;
+
+          this.retired = false;
+
+          this.warnTrapCd = 0;
+        }
+
+        down(game){
+          if (this.downed || this.retired) return;
+          this.downed = true;
+          this.downTimer = 22;
+          this.hp = 0;
+          audio.sfx('down');
+          game.toast('Eric is down! Stay close and HOLD E to help him up.', 'warn');
+          game.addRelationship(-8, -6, 0, 'Eric went down');
+          game.stats.ericDowns++;
+          game.particlesBurst(this.x, this.y, 28, 'rgba(255,93,108,.8)', 260);
+          game.shake(0.28, 10);
+        }
+
+        revive(game){
+          this.downed = false;
+          this.hp = Math.max(25, Math.floor(this.maxHp * 0.45));
+          this.invuln = 0.6;
+          this.healCd = Math.max(this.healCd, 2.0);
+          audio.sfx('heal');
+          game.toast('Eric is back up.', 'good');
+          game.addBond(12);
+          game.particlesBurst(this.x, this.y, 22, 'rgba(142,240,255,.85)', 260);
+        }
+
+        update(dt, game){
+          if (this.retired) return;
+
+          this.invuln = Math.max(0, this.invuln - dt);
+          this.hitFlash = Math.max(0, this.hitFlash - dt);
+          this.shootCd = Math.max(0, this.shootCd - dt);
+          this.healCd = Math.max(0, this.healCd - dt);
+          this.shieldCd = Math.max(0, this.shieldCd - dt);
+          this.warnTrapCd = Math.max(0, this.warnTrapCd - dt);
+
+          if (this.downed){
+            this.downTimer -= dt;
+            if (this.downTimer <= 0){
+              this.retired = true;
+              game.toast('Eric had to retreat. You can still finish… but it will be harder.', 'bad');
+              game.addRelationship(-12, -10, 0, 'Eric retreated');
+            }
+            return;
+          }
+
+          const mod = game.mod;
+
+          const desiredDist = 78;
+          const ox = -game.player.faceX * 40 + game.player.faceY * 20;
+          const oy = -game.player.faceY * 40 - game.player.faceX * 20;
+          const tx = game.player.x + ox;
+          const ty = game.player.y + oy;
+
+          let dx = tx - this.x;
+          let dy = ty - this.y;
+          const d = Math.hypot(dx, dy);
+
+          if (d > desiredDist){
+            const n = norm(dx, dy);
+            const sp = 210 * mod.ericMoveMult;
+            const desiredVX = n.x * sp;
+            const desiredVY = n.y * sp;
+            const smooth = 1 - Math.exp(-dt * 12);
+            this.vx = lerp(this.vx, desiredVX, smooth);
+            this.vy = lerp(this.vy, desiredVY, smooth);
+            this.faceX = n.x;
+            this.faceY = n.y;
+          }else{
+            const smooth = 1 - Math.exp(-dt * 10);
+            this.vx = lerp(this.vx, 0, smooth);
+            this.vy = lerp(this.vy, 0, smooth);
+          }
+
+          game.moveEntity(this, dt);
+
+          const target = game.getNearestEnemy(this.x, this.y, 900);
+          if (target){
+            const ddx = target.x - this.x;
+            const ddy = target.y - this.y;
+            const nd = norm(ddx, ddy);
+            this.faceX = nd.x;
+            this.faceY = nd.y;
+
+            if (this.shootCd <= 0){
+              const spd = 540;
+              const dmg = 10 * mod.ericDmgMult;
+              game.projectiles.push({
+                id: ++ID,
+                from: 'eric',
+                x: this.x + nd.x * (this.r + 10),
+                y: this.y + nd.y * (this.r + 10),
+                vx: nd.x * spd,
+                vy: nd.y * spd,
+                r: 4,
+                life: 2.0,
+                dmg,
+                color: 'rgba(142,240,255,.95)'
+              });
+              this.shootCd = mod.ericShotCd;
+              game.particlesBurst(this.x + nd.x*12, this.y + nd.y*12, 5, 'rgba(142,240,255,.8)', 150);
+            }
+          }
+
+          if (this.healCd <= 0 && (game.player.hp / game.player.maxHp) < 0.58){
+            const heal = 12 + Math.round(12 * mod.synergy);
+            game.player.hp = Math.min(game.player.maxHp, game.player.hp + heal);
+            this.healCd = 6.2 - 2.6 * mod.synergy;
+            audio.sfx('heal');
+            game.toast(`Eric heals you +${heal}`, 'good');
+            game.particlesBurst(game.player.x, game.player.y, 16, 'rgba(103,255,155,.85)', 260);
+            game.addBond(6);
+          }
+
+          if (this.shieldCd <= 0 && mod.synergy >= 0.78 && game.player.aegis <= 0){
+            game.player.aegis = 1;
+            this.shieldCd = 16 - 7 * mod.synergy;
+            audio.sfx('ui');
+            game.toast('Eric shields you (next hit reduced).', 'good');
+            game.particlesBurst(game.player.x, game.player.y, 12, 'rgba(142,240,255,.75)', 220);
+          }
+
+          if (mod.trapReveal && this.warnTrapCd <= 0){
+            const nearTrap = game.getNearestTrap(this.x, this.y, 140);
+            if (nearTrap && nearTrap.state === 'idle'){
+              this.warnTrapCd = 6.5;
+              game.toast('Eric: “Careful. Something’s buried here.”', 'warn');
+            }
+          }
+        }
+
+        render(ctx, game){
+          if (this.retired) return;
+
+          const x = this.x - game.camX;
+          const y = this.y - game.camY;
+
+          ctx.save();
+          ctx.translate(x, y);
+
+          if (this.downed){
+            ctx.globalAlpha = 0.85;
+            ctx.fillStyle = 'rgba(255,93,108,.85)';
+            ctx.beginPath();
+            ctx.arc(0,0,this.r,0,Math.PI*2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,.22)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0,0,this.r,0,Math.PI*2);
+            ctx.stroke();
+
+            ctx.strokeStyle = 'rgba(255,255,255,.65)';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(-8,-8); ctx.lineTo(8,8);
+            ctx.moveTo(8,-8); ctx.lineTo(-8,8);
+            ctx.stroke();
+
+            ctx.restore();
+            return;
+          }
+
+          const hurt = this.hitFlash > 0 ? (0.35 + 0.65 * Math.min(1, this.hitFlash / 0.15)) : 0;
+
+          const grad = ctx.createRadialGradient(-5,-5,4, 0,0,this.r*1.8);
+          grad.addColorStop(0, `rgba(${hurt?255:142},${hurt?120:240},${hurt?140:255},.95)`);
+          grad.addColorStop(1, 'rgba(20,40,70,.95)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(0,0,this.r,0,Math.PI*2);
+          ctx.fill();
+
+          ctx.strokeStyle = 'rgba(255,255,255,.16)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(0,0,this.r,0,Math.PI*2);
+          ctx.stroke();
+
+          ctx.strokeStyle = 'rgba(255,255,255,.22)';
+          ctx.lineWidth = 3;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(0,0);
+          ctx.lineTo(this.faceX*(this.r+9), this.faceY*(this.r+9));
+          ctx.stroke();
+
+          ctx.restore();
+        }
+      }
+
+      class Enemy{
+        constructor(type, x, y, game){
+          this.id = ++ID;
+          this.type = type;
+          this.x = x; this.y = y;
+          this.vx = 0; this.vy = 0;
+          this.dead = false;
+
+          this.invuln = 0;
+          this.hitFlash = 0;
+
+          this.state = 'idle';
+          this.t = 0;
+
+          this.atkCd = 0;
+
+          this.invis = (type === 'stalker') ? 1 : 0;
+
+          this.slamWind = 0;
+          this.slamCd = 0;
+
+          this.shootCd = 0;
+
+          this.boss = null;
+
+          if (type === 'lurker'){
+            this.r = 18;
+            this.maxHp = 46;
+            this.hp = this.maxHp;
+            this.speed = 145;
+            this.meleeDmg = 11;
+            this.atkInterval = 1.05;
+          }else if (type === 'spitter'){
+            this.r = 16;
+            this.maxHp = 34;
+            this.hp = this.maxHp;
+            this.speed = 120;
+            this.projDmg = 8;
+            this.shootCd = 0.6 + Math.random()*0.8;
+            this.shootInterval = 1.35;
+          }else if (type === 'brute'){
+            this.r = 26;
+            this.maxHp = 95;
+            this.hp = this.maxHp;
+            this.speed = 92;
+            this.meleeDmg = 18;
+            this.slamCd = 1.2 + Math.random()*1.3;
+          }else if (type === 'stalker'){
+            this.r = 15;
+            this.maxHp = 32;
+            this.hp = this.maxHp;
+            this.speed = 170;
+            this.meleeDmg = 12;
+            this.atkInterval = 1.0;
+            this.pounceCd = 1.2 + Math.random()*1.5;
+            this.pounceT = 0;
+          }else if (type === 'boss'){
+            this.r = 54;
+            const diff = 1 + 0.18 * (1 - game.getSynergy());
+            this.maxHp = Math.floor(450 * diff);
+            this.hp = this.maxHp;
+            this.speed = 86;
+            this.boss = {
+              phase: 1,
+              attackCd: 2.0,
+              cur: null,
+              curT: 0,
+              zones: [],
+              dashVX: 0,
+              dashVY: 0,
+              dashT: 0,
+              summonCd: 0,
+            };
+          }else{
+            this.r = 18;
+            this.maxHp = 40;
+            this.hp = this.maxHp;
+            this.speed = 130;
+            this.meleeDmg = 10;
+            this.atkInterval = 1.1;
+          }
+        }
+
+        update(dt, game){
+          if (this.dead) return;
+
+          this.invuln = Math.max(0, this.invuln - dt);
+          this.hitFlash = Math.max(0, this.hitFlash - dt);
+          this.atkCd = Math.max(0, this.atkCd - dt);
+
+          if (this.type === 'boss'){
+            this.updateBoss(dt, game);
+            return;
+          }
+
+          const mod = game.mod;
+          const player = game.player;
+          const eric = game.eric;
+
+          const target = (() => {
+            if (!eric.retired && !eric.downed){
+              const dP = Math.hypot(player.x - this.x, player.y - this.y);
+              const dE = Math.hypot(eric.x - this.x, eric.y - this.y);
+              if (dE < dP * 0.82) return eric;
+              if (Math.random() < 0.18) return eric;
+            }
+            return player;
+          })();
+
+          if (this.type === 'lurker'){
+            const dx = target.x - this.x;
+            const dy = target.y - this.y;
+            const n = norm(dx, dy);
+            this.vx = n.x * this.speed;
+            this.vy = n.y * this.speed;
+            game.moveEntity(this, dt);
+
+            if (n.l <= this.r + target.r + 6 && this.atkCd <= 0){
+              this.atkCd = this.atkInterval;
+              game.damageTarget(target, this.meleeDmg, { kind:'enemy', src:this });
+              const kb = 120;
+              target.vx += n.x * kb;
+              target.vy += n.y * kb;
+              game.shake(0.16, 6);
+            }
+          }else if (this.type === 'spitter'){
+            const dx = target.x - this.x;
+            const dy = target.y - this.y;
+            const d = Math.hypot(dx, dy);
+            const n = norm(dx, dy);
+            const desired = 320;
+
+            let mx = 0, my = 0;
+            if (d < 220){
+              mx = -n.x; my = -n.y;
+            }else if (d > 480){
+              mx = n.x; my = n.y;
+            }else{
+              mx = -n.y * 0.8; my = n.x * 0.8;
+            }
+
+            const sp = this.speed;
+            this.vx = mx * sp;
+            this.vy = my * sp;
+            game.moveEntity(this, dt);
+
+            this.shootCd = Math.max(0, this.shootCd - dt);
+            if (this.shootCd <= 0 && d < desired){
+              this.shootCd = this.shootInterval * (0.92 + 0.25 * (1 - mod.synergy));
+              const spd = 360;
+              const dmg = this.projDmg * (1 + 0.08 * (1 - mod.synergy));
+              game.projectiles.push({
+                id: ++ID,
+                from: 'enemy',
+                x: this.x + n.x * (this.r + 8),
+                y: this.y + n.y * (this.r + 8),
+                vx: n.x * spd,
+                vy: n.y * spd,
+                r: 4,
+                life: 2.6,
+                dmg,
+                color: 'rgba(180,120,255,.95)'
+              });
+              game.particlesBurst(this.x + n.x*10, this.y + n.y*10, 4, 'rgba(180,120,255,.75)', 140);
+            }
+          }else if (this.type === 'brute'){
+            const dx = target.x - this.x;
+            const dy = target.y - this.y;
+            const n = norm(dx, dy);
+
+            this.slamCd = Math.max(0, this.slamCd - dt);
+
+            if (this.slamWind > 0){
+              this.slamWind -= dt;
+              this.vx *= 0.86;
+              this.vy *= 0.86;
+              game.moveEntity(this, dt);
+
+              if (this.slamWind <= 0){
+                const radius = 120;
+                const ddx = target.x - this.x;
+                const ddy = target.y - this.y;
+                const dd = Math.hypot(ddx, ddy);
+                if (dd <= radius + target.r){
+                  const dmg = this.meleeDmg;
+                  game.damageTarget(target, dmg, { kind:'enemy', src:this });
+                  const kn = norm(ddx, ddy);
+                  target.vx += kn.x * 220;
+                  target.vy += kn.y * 220;
+                }
+                game.particlesBurst(this.x, this.y, 28, 'rgba(255,211,106,.75)', 320);
+                game.shake(0.26, 10);
+                audio.sfx('hit');
+                this.slamCd = 2.0 + Math.random() * 0.7;
+              }
+              return;
+            }
+
+            if (n.l < 145 && this.slamCd <= 0){
+              this.slamWind = 0.65 + 0.15*(1-mod.synergy);
+              this.vx = 0;
+              this.vy = 0;
+              return;
+            }
+
+            this.vx = n.x * this.speed;
+            this.vy = n.y * this.speed;
+            game.moveEntity(this, dt);
+
+            if (n.l <= this.r + target.r + 6 && this.atkCd <= 0){
+              this.atkCd = 1.65;
+              game.damageTarget(target, this.meleeDmg - 2, { kind:'enemy', src:this });
+              target.vx += n.x * 180;
+              target.vy += n.y * 180;
+              game.shake(0.20, 8);
+            }
+
+          }else if (this.type === 'stalker'){
+            this.pounceCd = Math.max(0, this.pounceCd - dt);
+
+            const revealDist = mod.stalkerRevealDist;
+            const dP = Math.hypot(player.x - this.x, player.y - this.y);
+            const dE = (!eric.retired && !eric.downed) ? Math.hypot(eric.x - this.x, eric.y - this.y) : 99999;
+            const nearest = Math.min(dP, dE);
+
+            const visible = nearest < revealDist || mod.synergy > 0.8;
+
+            if (visible){
+              this.invis = Math.max(0, this.invis - dt * 3.2);
+            }else{
+              this.invis = Math.min(1, this.invis + dt * 2.0);
+            }
+
+            if (this.pounceT > 0){
+              this.pounceT -= dt;
+              game.moveEntity(this, dt);
+              if (this.pounceT <= 0){
+                this.vx *= 0.25;
+                this.vy *= 0.25;
+              }
+            }else{
+              const dx = target.x - this.x;
+              const dy = target.y - this.y;
+              const n = norm(dx, dy);
+
+              const flank = visible ? 0.6 : 1.2;
+              const fx = n.x - n.y * 0.6 * flank;
+              const fy = n.y + n.x * 0.6 * flank;
+              const fn = norm(fx, fy);
+
+              this.vx = fn.x * this.speed;
+              this.vy = fn.y * this.speed;
+              game.moveEntity(this, dt);
+
+              if (this.pounceCd <= 0 && n.l < 280){
+                this.pounceCd = 2.1 + Math.random()*1.2;
+                this.pounceT = 0.22;
+                this.vx = n.x * 640;
+                this.vy = n.y * 640;
+                audio.sfx('ui');
+                game.particlesBurst(this.x, this.y, 10, 'rgba(60,255,210,.55)', 220);
+              }
+
+              if (n.l <= this.r + target.r + 6 && this.atkCd <= 0){
+                this.atkCd = this.atkInterval;
+                game.damageTarget(target, this.meleeDmg, { kind:'enemy', src:this });
+                target.vx += n.x * 150;
+                target.vy += n.y * 150;
+                game.shake(0.16, 7);
+              }
+            }
+          }
+        }
+
+        updateBoss(dt, game){
+          const mod = game.mod;
+          const boss = this.boss;
+
+          const hpRatio = this.hp / this.maxHp;
+          const newPhase = (hpRatio < 0.35) ? 3 : (hpRatio < 0.70 ? 2 : 1);
+          if (newPhase !== boss.phase){
+            boss.phase = newPhase;
+            boss.attackCd = Math.max(0.8, boss.attackCd);
+            game.toast(newPhase === 2 ? 'The Shadeheart adapts. The air grows heavier.' : 'The Shadeheart is desperate now. Stay close!', 'warn');
+            audio.sfx('boss');
+            game.addBond(8);
+          }
+
+          boss.attackCd = Math.max(0, boss.attackCd - dt);
+
+          for (let i = boss.zones.length - 1; i >= 0; i--){
+            const z = boss.zones[i];
+            z.t -= dt;
+            if (z.t <= 0 && !z.boom){
+              z.boom = true;
+              z.t = 0.2;
+              const targets = [game.player];
+              if (!game.eric.retired && !game.eric.downed) targets.push(game.eric);
+              for (const t of targets){
+                const dd = Math.hypot(t.x - z.x, t.y - z.y);
+                if (dd <= z.r + t.r){
+                  game.damageTarget(t, 14 + 4 * (1 - mod.synergy), { kind:'boss', src:this });
+                  const kn = norm(t.x - z.x, t.y - z.y);
+                  t.vx += kn.x * 220;
+                  t.vy += kn.y * 220;
+                }
+              }
+              game.particlesBurst(z.x, z.y, 26, 'rgba(255,93,108,.78)', 340);
+              game.shake(0.22, 9);
+            }
+            if (z.t <= 0 && z.boom){
+              boss.zones.splice(i, 1);
+            }
+          }
+
+          if (boss.dashT > 0){
+            boss.dashT -= dt;
+            this.vx = boss.dashVX;
+            this.vy = boss.dashVY;
+            game.moveEntity(this, dt);
+
+            const hitTargets = [game.player];
+            if (!game.eric.retired && !game.eric.downed) hitTargets.push(game.eric);
+            for (const t of hitTargets){
+              const dd = Math.hypot(t.x - this.x, t.y - this.y);
+              if (dd <= this.r + t.r + 2){
+                game.damageTarget(t, 16 + 6 * (1 - mod.synergy), { kind:'boss', src:this });
+                const kn = norm(t.x - this.x, t.y - this.y);
+                t.vx += kn.x * 260;
+                t.vy += kn.y * 260;
+                game.shake(0.25, 10);
+              }
+            }
+
+            return;
+          }
+
+          if (boss.cur){
+            boss.curT -= dt;
+
+            if (boss.cur === 'barrage' && boss.curT <= 0.65 && !boss._barrageFired){
+              boss._barrageFired = true;
+              const shots = 10 + boss.phase * 4;
+              for (let i = 0; i < shots; i++){
+                const a = (i / shots) * Math.PI * 2;
+                const spd = 240 + boss.phase*30;
+                game.projectiles.push({
+                  id: ++ID,
+                  from: 'boss',
+                  x: this.x + Math.cos(a) * (this.r + 10),
+                  y: this.y + Math.sin(a) * (this.r + 10),
+                  vx: Math.cos(a) * spd,
+                  vy: Math.sin(a) * spd,
+                  r: 6,
+                  life: 3.0,
+                  dmg: 10 + 3 * boss.phase,
+                  color: 'rgba(255,77,210,.95)'
+                });
+              }
+              const tdx = game.player.x - this.x;
+              const tdy = game.player.y - this.y;
+              const tn = norm(tdx, tdy);
+              game.projectiles.push({
+                id: ++ID,
+                from: 'boss',
+                x: this.x + tn.x * (this.r + 12),
+                y: this.y + tn.y * (this.r + 12),
+                vx: tn.x * 360,
+                vy: tn.y * 360,
+                r: 8,
+                life: 2.6,
+                dmg: 14 + 4 * boss.phase,
+                color: 'rgba(255,211,106,.95)'
+              });
+              audio.sfx('boss');
+              game.shake(0.22, 8);
+            }
+
+            if (boss.cur === 'spikes' && boss.curT <= 0.65 && !boss._spikesPlaced){
+              boss._spikesPlaced = true;
+              const count = 6 + boss.phase * 2;
+              const rng = game.levelRng;
+              for (let i = 0; i < count; i++){
+                const ang = rng() * Math.PI * 2;
+                const rad = 60 + rng() * 160;
+                boss.zones.push({
+                  x: game.player.x + Math.cos(ang) * rad,
+                  y: game.player.y + Math.sin(ang) * rad,
+                  r: 38 + rng() * 24,
+                  t: 0.95 - 0.15 * mod.synergy,
+                  boom: false
+                });
+              }
+              audio.sfx('boss');
+            }
+
+            if (boss.cur === 'summon' && boss.curT <= 0.65 && !boss._summoned){
+              boss._summoned = true;
+              const extra = Math.round(2 + 5 * (1 - mod.synergy)) + (boss.phase - 1);
+              for (let i = 0; i < extra; i++){
+                const ang = Math.random() * Math.PI * 2;
+                const rad = 160 + Math.random() * 220;
+                const t = (Math.random() < 0.65) ? 'lurker' : 'spitter';
+                game.spawnEnemy(t, this.x + Math.cos(ang)*rad, this.y + Math.sin(ang)*rad);
+              }
+              game.toast('The Shadeheart calls for shadows.', 'warn');
+              audio.sfx('boss');
+            }
+
+            if (boss.cur === 'dash' && boss.curT <= 0.55 && !boss._dashStarted){
+              boss._dashStarted = true;
+              const dx = game.player.x - this.x;
+              const dy = game.player.y - this.y;
+              const n = norm(dx, dy);
+              boss.dashVX = n.x * (780 + boss.phase * 60);
+              boss.dashVY = n.y * (780 + boss.phase * 60);
+              boss.dashT = 0.30;
+              game.particlesBurst(this.x, this.y, 22, 'rgba(255,77,210,.75)', 420);
+              game.shake(0.18, 8);
+              audio.sfx('boss');
+            }
+
+            if (boss.curT <= 0){
+              boss.cur = null;
+              boss._barrageFired = false;
+              boss._spikesPlaced = false;
+              boss._summoned = false;
+              boss._dashStarted = false;
+              boss.attackCd = 1.6 - 0.25 * mod.synergy + (boss.phase-1)*0.1;
+            }
+
+            return;
+          }
+
+          const dx = game.player.x - this.x;
+          const dy = game.player.y - this.y;
+          const d = Math.hypot(dx, dy);
+          const n = norm(dx, dy);
+
+          const preferred = 360;
+          let mx = 0, my = 0;
+          if (d < preferred * 0.75){
+            mx = -n.x; my = -n.y;
+          }else if (d > preferred * 1.2){
+            mx = n.x; my = n.y;
+          }else{
+            mx = -n.y * 0.4; my = n.x * 0.4;
+          }
+          this.vx = mx * this.speed;
+          this.vy = my * this.speed;
+          game.moveEntity(this, dt);
+
+          if (boss.attackCd <= 0){
+            const choices = [];
+            choices.push('barrage');
+            choices.push('dash');
+            choices.push('spikes');
+            if (boss.phase >= 2) choices.push('summon');
+            const pick = choices[Math.floor(Math.random() * choices.length)];
+            boss.cur = pick;
+            boss.curT = 1.35 - 0.12 * mod.synergy;
+            if (pick === 'barrage') boss.curT = 1.45 - 0.15 * mod.synergy;
+            if (pick === 'dash') boss.curT = 1.10 - 0.12 * mod.synergy;
+            if (pick === 'summon') boss.curT = 1.35;
+            boss._barrageFired = false;
+            boss._spikesPlaced = false;
+            boss._summoned = false;
+            boss._dashStarted = false;
+          }
+
+          const contactTargets = [game.player];
+          if (!game.eric.retired && !game.eric.downed) contactTargets.push(game.eric);
+          for (const t of contactTargets){
+            const dd = Math.hypot(t.x - this.x, t.y - this.y);
+            if (dd <= this.r + t.r + 2){
+              game.damageTarget(t, 10 + boss.phase * 2, { kind:'boss', src:this });
+              const kn = norm(t.x - this.x, t.y - this.y);
+              t.vx += kn.x * 240;
+              t.vy += kn.y * 240;
+              game.shake(0.20, 9);
+            }
+          }
+        }
+
+        render(ctx, game){
+          if (this.dead) return;
+
+          const x = this.x - game.camX;
+          const y = this.y - game.camY;
+
+          ctx.save();
+          ctx.translate(x, y);
+
+          let alpha = 1;
+          if (this.type === 'stalker'){
+            alpha = 1 - 0.78 * this.invis;
+          }
+          ctx.globalAlpha = alpha;
+
+          const hurt = this.hitFlash > 0 ? (0.35 + 0.65 * Math.min(1, this.hitFlash / 0.15)) : 0;
+
+          if (this.type === 'lurker'){
+            const grad = ctx.createRadialGradient(-6,-6,4, 0,0,this.r*1.9);
+            grad.addColorStop(0, `rgba(${hurt?255:255},${hurt?130:93},${hurt?130:108},.95)`);
+            grad.addColorStop(1, 'rgba(40,10,18,.95)');
+            ctx.fillStyle = grad;
+            ctx.beginPath(); ctx.arc(0,0,this.r,0,Math.PI*2); ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,.10)';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(0,0,this.r,0,Math.PI*2); ctx.stroke();
+          }else if (this.type === 'spitter'){
+            ctx.fillStyle = `rgba(${hurt?255:180},${hurt?150:120},${hurt?170:255},.95)`;
+            ctx.beginPath(); ctx.arc(0,0,this.r,0,Math.PI*2); ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,.10)';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(0,0,this.r,0,Math.PI*2); ctx.stroke();
+            ctx.globalAlpha *= 0.75;
+            ctx.fillStyle = 'rgba(142,240,255,.35)';
+            ctx.beginPath(); ctx.arc(0,0,this.r*0.6,0,Math.PI*2); ctx.fill();
+          }else if (this.type === 'brute'){
+            ctx.fillStyle = `rgba(${hurt?255:255},${hurt?170:211},${hurt?140:106},.92)`;
+            ctx.beginPath(); ctx.arc(0,0,this.r,0,Math.PI*2); ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,.12)';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(0,0,this.r,0,Math.PI*2); ctx.stroke();
+
+            if (this.slamWind > 0){
+              ctx.globalAlpha = 0.22;
+              ctx.fillStyle = 'rgba(255,93,108,.9)';
+              ctx.beginPath();
+              ctx.arc(0,0, 120, 0, Math.PI*2);
+              ctx.fill();
+            }
+          }else if (this.type === 'stalker'){
+            ctx.fillStyle = `rgba(${hurt?255:80},${hurt?150:255},${hurt?170:210},.92)`;
+            ctx.beginPath(); ctx.arc(0,0,this.r,0,Math.PI*2); ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,.12)';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(0,0,this.r,0,Math.PI*2); ctx.stroke();
+          }else if (this.type === 'boss'){
+            const boss = this.boss;
+            ctx.globalAlpha = 1;
+            const grad = ctx.createRadialGradient(-12,-12,6, 0,0,this.r*2.2);
+            grad.addColorStop(0, `rgba(${hurt?255:255},${hurt?120:77},${hurt?140:210},.95)`);
+            grad.addColorStop(1, 'rgba(15,10,22,.98)');
+            ctx.fillStyle = grad;
+            ctx.beginPath(); ctx.arc(0,0,this.r,0,Math.PI*2); ctx.fill();
+
+            ctx.strokeStyle = 'rgba(255,255,255,.14)';
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(0,0,this.r,0,Math.PI*2); ctx.stroke();
+
+            ctx.globalAlpha = 0.55;
+            ctx.fillStyle = boss.phase === 3 ? 'rgba(255,93,108,.22)' : 'rgba(255,77,210,.20)';
+            ctx.beginPath(); ctx.arc(0,0,this.r+26,0,Math.PI*2); ctx.fill();
+            ctx.globalAlpha = 1;
+
+            if (boss.cur){
+              ctx.globalAlpha = 0.20;
+              ctx.fillStyle = 'rgba(255,211,106,.9)';
+              ctx.beginPath(); ctx.arc(0,0,this.r+70,0,Math.PI*2); ctx.fill();
+              ctx.globalAlpha = 1;
+            }
+          }
+
+          ctx.restore();
+
+          if (this.type === 'boss'){
+            const boss = this.boss;
+            for (const z of boss.zones){
+              const sx = z.x - game.camX;
+              const sy = z.y - game.camY;
+              ctx.save();
+              ctx.globalAlpha = z.boom ? 0.18 : 0.14;
+              ctx.fillStyle = z.boom ? 'rgba(255,93,108,.9)' : 'rgba(255,77,210,.9)';
+              ctx.beginPath();
+              ctx.arc(sx, sy, z.r, 0, Math.PI*2);
+              ctx.fill();
+              ctx.restore();
+            }
+          }
+        }
+      }
+
+      function enemyScore(type){
+        switch(type){
+          case 'lurker': return 25;
+          case 'spitter': return 32;
+          case 'brute': return 52;
+          case 'stalker': return 42;
+          case 'boss': return 700;
+          default: return 30;
+        }
+      }
+
+      class Game{
+        constructor(){
+          this.state = 'menu';
+
+          this.seed = 0;
+          this.levelIndex = 0;
+          this.level = null;
+          this.levelRng = null;
+
+          this.camX = 0;
+          this.camY = 0;
+          this.shakeT = 0;
+          this.shakePow = 0;
+
+          this.player = null;
+          this.eric = null;
+
+          this.enemies = [];
+          this.projectiles = [];
+          this.pickups = [];
+          this.chests = [];
+          this.traps = [];
+          this.particles = [];
+          this.floatText = [];
+
+          this.portal = null;
+
+          this.relationship = 52;
+          this.trust = 48;
+          this.play = 50;
+
+          this.bond = 35;
+          this.revivesUsed = 0;
+
+          this.inventory = { potions: 2, gifts: [] };
+
+          this.sigilCount = 0;
+          this.sigilNeeded = 0;
+
+          this.objective = '—';
+
+          this.aimActive = false;
+          this.aimX = 1;
+          this.aimY = 0;
+
+          this.touch = {
+            moveX: 0,
+            moveY: 0,
+            actions: { attack:false, dodge:false, interact:false, special:false, potion:false, pause:false },
+            hold: { interact:false },
+            stick: { active:false, id:null, cx:0, cy:0, nx:0, ny:0 }
+          };
+
+          this.mod = this.computeMod();
+
+          this.time = 0;
+          this.score = 0;
+          this.chapterTime = 0;
+
+          this.moment = { t: 22, active:false, kind:null };
+          this.reviveHold = { t: 0, need: 1.6 };
+
+          this.stats = { kills:0, chests:0, damageTaken:0, timesDowned:0, ericDowns:0 };
+
+          this.activeBuff = null;
+          this.pendingBuff = null;
+
+          this.usedQuestions = new Set();
+          this.prologuePick = null;
+
+          this.highScore = lsGet('highScore', 0);
+          this.bestEnding = lsGet('bestEnding', '—');
+
+          this.minimapAcc = 0;
+
+          this.initUI();
+          this.initTouch();
+          this.updateMenuUI();
+
+          this.setState('menu');
+        }
+
+        toast(msg, kind){ toast(msg, kind); }
+
+        setState(state){
+          this.state = state;
+          if (state === 'play'){
+            showScreen('menu');
+            for (const k in ui.screens) ui.screens[k].classList.remove('active');
+            setHudVisible(true);
+            audio.startAmbient(this.level?.def?.theme || 'ruins');
+          }else{
+            setHudVisible(false);
+            audio.stopAmbient();
+            showScreen(state);
+          }
+        }
+
+        updateMenuUI(){
+          ui.setSound.checked = !!settings.sound;
+          ui.setShake.checked = !!settings.shake;
+          ui.setTouch.checked = settings.touch === 'always';
+          ui.highScoreText.textContent = String(this.highScore || 0);
+          ui.bestEndingText.textContent = this.bestEnding || '—';
+
+          const hasSave = lsHas('save');
+          ui.continueBtn.disabled = !hasSave;
+        }
+
+        initUI(){
+          ui.setSound.checked = !!settings.sound;
+          ui.setShake.checked = !!settings.shake;
+          ui.setTouch.checked = settings.touch === 'always';
+
+          ui.setSound.addEventListener('change', () => {
+            settings.sound = !!ui.setSound.checked;
+            persistSettings();
+            audio.setEnabled(!!settings.sound);
+            if (settings.sound) audio.sfx('ui');
+            this.updateMenuUI();
+          });
+
+          ui.setShake.addEventListener('change', () => {
+            settings.shake = !!ui.setShake.checked;
+            persistSettings();
+            if (settings.sound) audio.sfx('ui');
+          });
+
+          ui.setTouch.addEventListener('change', () => {
+            settings.touch = ui.setTouch.checked ? 'always' : 'auto';
+            persistSettings();
+            this.updateTouchVisibility();
+            if (settings.sound) audio.sfx('ui');
+          });
+
+          ui.startBtn.addEventListener('click', () => {
+            unlockAudioOnce();
+            audio.sfx('start');
+            this.startNewRun();
+          });
+
+          ui.continueBtn.addEventListener('click', () => {
+            unlockAudioOnce();
+            audio.sfx('ui');
+            this.loadFromSave();
+          });
+
+          ui.howBtn.addEventListener('click', () => {
+            unlockAudioOnce();
+            audio.sfx('ui');
+            this.setState('how');
+          });
+
+          ui.howBackBtn.addEventListener('click', () => {
+            unlockAudioOnce();
+            audio.sfx('ui');
+            this.setState('menu');
+            this.updateMenuUI();
+          });
+
+          ui.creditsBtn.addEventListener('click', () => {
+            unlockAudioOnce();
+            audio.sfx('ui');
+            this.setState('credits');
+          });
+
+          ui.creditsBackBtn.addEventListener('click', () => {
+            unlockAudioOnce();
+            audio.sfx('ui');
+            this.setState('menu');
+            this.updateMenuUI();
+          });
+
+          ui.introContinueBtn.addEventListener('click', () => {
+            unlockAudioOnce();
+            audio.sfx('ui');
+            this.beginChapter(0);
+          });
+
+          ui.introToMenuBtn.addEventListener('click', () => {
+            unlockAudioOnce();
+            audio.sfx('ui');
+            this.setState('menu');
+            this.updateMenuUI();
+          });
+
+          ui.resumeBtn.addEventListener('click', () => {
+            unlockAudioOnce();
+            audio.sfx('ui');
+            this.resume();
+          });
+
+          ui.restartBtn.addEventListener('click', () => {
+            unlockAudioOnce();
+            audio.sfx('ui');
+            this.startNewRun();
+          });
+
+          ui.pauseToMenuBtn.addEventListener('click', () => {
+            unlockAudioOnce();
+            audio.sfx('ui');
+            this.quitToMenu();
+          });
+
+          ui.retryBtn.addEventListener('click', () => {
+            unlockAudioOnce();
+            audio.sfx('ui');
+            this.startNewRun();
+          });
+
+          ui.goToMenuBtn.addEventListener('click', () => {
+            unlockAudioOnce();
+            audio.sfx('ui');
+            this.quitToMenu();
+          });
+
+          ui.playAgainBtn.addEventListener('click', () => {
+            unlockAudioOnce();
+            audio.sfx('ui');
+            this.startNewRun();
+          });
+
+          ui.winToMenuBtn.addEventListener('click', () => {
+            unlockAudioOnce();
+            audio.sfx('ui');
+            this.quitToMenu();
+          });
+
+          ui.btnAttack.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.touch.actions.attack = true; unlockAudioOnce(); }, { passive:false });
+          ui.btnDodge.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.touch.actions.dodge = true; unlockAudioOnce(); }, { passive:false });
+          ui.btnSpecial.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.touch.actions.special = true; unlockAudioOnce(); }, { passive:false });
+          ui.btnPotion.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.touch.actions.potion = true; unlockAudioOnce(); }, { passive:false });
+          ui.btnPause.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.touch.actions.pause = true; unlockAudioOnce(); }, { passive:false });
+
+          ui.btnInteract.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.touch.actions.interact = true; this.touch.hold.interact = true; unlockAudioOnce(); }, { passive:false });
+          ui.btnInteract.addEventListener('pointerup', (e) => { e.preventDefault(); e.stopPropagation(); this.touch.hold.interact = false; }, { passive:false });
+          ui.btnInteract.addEventListener('pointercancel', (e) => { e.preventDefault(); e.stopPropagation(); this.touch.hold.interact = false; }, { passive:false });
+
+          this.updateTouchVisibility();
+        }
+
+        updateTouchVisibility(){
+          const isCoarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+          const show = (settings.touch === 'always') || (settings.touch === 'auto' && isCoarse);
+          ui.mobileControls.classList.toggle('hidden', !show);
+          ui.mobileControls.setAttribute('aria-hidden', show ? 'false' : 'true');
+        }
+
+        initTouch(){
+          const zone = ui.stickZone;
+          const nub = ui.stickNub;
+
+          const setNub = (nx, ny) => {
+            const max = 44;
+            const x = nx * max;
+            const y = ny * max;
+            nub.style.transform = `translate(${x}px, ${y}px)`;
+          };
+          setNub(0,0);
+
+          const updateFromPointer = (e) => {
+            const r = zone.getBoundingClientRect();
+            const cx = r.left + r.width/2;
+            const cy = r.top + r.height/2;
+            const dx = (e.clientX - cx);
+            const dy = (e.clientY - cy);
+            const dist = Math.hypot(dx, dy);
+            const max = Math.min(r.width, r.height) * 0.33;
+            const nx = dist > 0 ? clamp(dx / max, -1, 1) : 0;
+            const ny = dist > 0 ? clamp(dy / max, -1, 1) : 0;
+            const n = norm(nx, ny);
+            const mag = Math.min(1, dist / max);
+            this.touch.moveX = n.x * mag;
+            this.touch.moveY = n.y * mag;
+            setNub(this.touch.moveX, this.touch.moveY);
+          };
+
+          zone.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            unlockAudioOnce();
+            this.touch.stick.active = true;
+            this.touch.stick.id = e.pointerId;
+            try{ zone.setPointerCapture(e.pointerId); }catch{}
+            updateFromPointer(e);
+          }, { passive:false });
+
+          zone.addEventListener('pointermove', (e) => {
+            if (!this.touch.stick.active) return;
+            if (this.touch.stick.id !== e.pointerId) return;
+            e.preventDefault();
+            updateFromPointer(e);
+          }, { passive:false });
+
+          const stopStick = (e) => {
+            if (!this.touch.stick.active) return;
+            if (e && this.touch.stick.id !== e.pointerId) return;
+            this.touch.stick.active = false;
+            this.touch.stick.id = null;
+            this.touch.moveX = 0;
+            this.touch.moveY = 0;
+            setNub(0,0);
+          };
+
+          zone.addEventListener('pointerup', (e) => { e.preventDefault(); stopStick(e); }, { passive:false });
+          zone.addEventListener('pointercancel', (e) => { e.preventDefault(); stopStick(e); }, { passive:false });
+        }
+
+        computeMod(){
+          const synergy = this.getSynergy();
+          const together = this.isTogether() ? 1 : 0;
+
+          const buff = this.activeBuff || { dmg:0, stamina:0, regen:0, hp:0, trapSense:0, ericRange:0, label:'—' };
+          const moveMult = 1 + (buff.id === 'stargaze' ? 0.02 : 0);
+
+          const playerDmgMult = (0.9 + 0.32 * synergy) * (1 + (buff.dmg || 0)) * (together ? 1.12 : 1);
+          const playerIncomingMult = (1.18 - 0.38 * synergy) * (together ? 0.92 : 1);
+
+          const ericShotCd = (1.25 - 0.55 * synergy) * (together ? 0.92 : 1);
+          const ericDmgMult = (0.9 + 0.35 * synergy);
+          const ericMoveMult = 1 + 0.08 * synergy;
+
+          const trapReveal = (synergy >= 0.55) || ((buff.trapSense || 0) > 0);
+          const stalkerRevealDist = 110 + 170 * synergy + (buff.trapSense || 0);
+
+          return {
+            synergy,
+            playerDmgMult,
+            playerIncomingMult,
+            ericShotCd,
+            ericDmgMult,
+            ericMoveMult,
+            moveMult,
+            trapReveal,
+            stalkerRevealDist,
+            ericRangeBonus: (buff.ericRange || 0),
+            buffLabel: buff.label || '—',
+          };
+        }
+
+        getSynergy(){
+          const r = clamp(this.relationship, 0, 100);
+          const t = clamp(this.trust, 0, 100);
+          const p = clamp(this.play, 0, 100);
+          return clamp((r*0.7 + t*0.2 + p*0.1) / 100, 0, 1);
+        }
+
+        isTogether(){
+          if (!this.player || !this.eric || this.eric.retired || this.eric.downed) return false;
+          const d = Math.hypot(this.player.x - this.eric.x, this.player.y - this.eric.y);
+          return d < 120;
+        }
+
+        addRelationship(dr, dt, dp, reason){
+          const before = this.relationship;
+          this.relationship = clamp(this.relationship + dr, 0, 100);
+          this.trust = clamp(this.trust + dt, 0, 100);
+          this.play = clamp(this.play + dp, 0, 100);
+
+          const delta = this.relationship - before;
+          if (Math.abs(delta) >= 1){
+            if (delta > 0) this.toast(`Relationship +${delta}${reason ? ` (${reason})` : ''}`, 'hot');
+            else this.toast(`Relationship ${delta}${reason ? ` (${reason})` : ''}`, 'bad');
+          }
+        }
+
+        addBond(v){
+          this.bond = clamp(this.bond + v, 0, 100);
+        }
+
+        shake(t, pow){
+          if (!settings.shake) return;
+          this.shakeT = Math.max(this.shakeT, t);
+          this.shakePow = Math.max(this.shakePow, pow);
+        }
+
+        particlesBurst(x, y, n, color, spd){
+          for (let i=0;i<n;i++){
+            const a = Math.random() * Math.PI * 2;
+            const s = (0.2 + Math.random()*0.8) * spd;
+            this.particles.push({
+              x, y,
+              vx: Math.cos(a) * s,
+              vy: Math.sin(a) * s,
+              r: 1 + Math.random()*2.8,
+              life: 0.45 + Math.random()*0.55,
+              max: 0.45 + Math.random()*0.55,
+              color
+            });
+          }
+        }
+
+        spawnEnemy(type, x, y){
+          const e = new Enemy(type, x, y, this);
+          this.enemies.push(e);
+        }
+
+        startNewRun(){
+          lsDel('save');
+
+          this.seed = ((Date.now() & 0xffffffff) ^ ((Math.random() * 0xffffffff) >>> 0)) >>> 0;
+          this.levelIndex = 0;
+
+          this.relationship = 52;
+          this.trust = 48;
+          this.play = 50;
+
+          this.bond = 35;
+          this.revivesUsed = 0;
+
+          this.inventory = { potions: 2, gifts: [] };
+          this.score = 0;
+          this.time = 0;
+          this.chapterTime = 0;
+
+          this.activeBuff = null;
+          this.pendingBuff = null;
+
+          this.usedQuestions = new Set();
+          this.stats = { kills:0, chests:0, damageTaken:0, timesDowned:0, ericDowns:0 };
+
+          this.showPrologue();
+        }
+
+        loadFromSave(){
+          const save = lsGet('save', null);
+          if (!save || !save.seed){
+            this.toast('No checkpoint found.', 'warn');
+            this.setState('menu');
+            this.updateMenuUI();
+            return;
+          }
+          this.seed = save.seed >>> 0;
+          this.levelIndex = clamp(save.levelIndex || 0, 0, LEVEL_DEFS.length - 1);
+
+          this.relationship = clamp(save.relationship ?? 52, 0, 100);
+          this.trust = clamp(save.trust ?? 48, 0, 100);
+          this.play = clamp(save.play ?? 50, 0, 100);
+
+          this.bond = clamp(save.bond ?? 35, 0, 100);
+          this.revivesUsed = save.revivesUsed || 0;
+
+          this.inventory = save.inventory || { potions: 2, gifts: [] };
+          this.score = save.score || 0;
+          this.time = save.time || 0;
+
+          this.activeBuff = save.activeBuff || null;
+          this.pendingBuff = save.pendingBuff || null;
+
+          this.usedQuestions = new Set(save.usedQuestions || []);
+          this.stats = save.stats || { kills:0, chests:0, damageTaken:0, timesDowned:0, ericDowns:0 };
+
+          this.beginChapter(this.levelIndex);
+        }
+
+        saveCheckpoint(){
+          const save = {
+            version: 1,
+            seed: this.seed >>> 0,
+            levelIndex: this.levelIndex,
+            relationship: this.relationship,
+            trust: this.trust,
+            play: this.play,
+            bond: this.bond,
+            revivesUsed: this.revivesUsed,
+            inventory: this.inventory,
+            score: this.score,
+            time: this.time,
+            activeBuff: this.activeBuff,
+            pendingBuff: this.pendingBuff,
+            usedQuestions: Array.from(this.usedQuestions),
+            stats: this.stats
+          };
+          lsSet('save', save);
+          this.updateMenuUI();
+        }
+
+        showPrologue(){
+          this.setState('intro');
+
+          const story = [
+            '<p><strong>Umbra Vale</strong> is a place that eats lantern light.</p>',
+            '<p>Somewhere ahead, monsters patrol the ruins—drawn to Sigils like moths to flame.</p>',
+            '<p>Eric walks with you anyway. Not because he’s fearless… but because he refuses to leave you to it alone.</p>',
+            '<p><em>Before the first fight, you get one honest moment.</em></p>'
+          ].join('');
+
+          ui.introTitle.textContent = 'Prologue';
+          ui.introText.innerHTML = story;
+
+          ui.introChoices.innerHTML = '';
+          this.prologuePick = null;
+
+          const choices = [
+            {
+              id:'hand',
+              title:'Reach for his hand.',
+              detail:'Relationship +5, Trust +4, Bond +10',
+              delta:{ rel:+5, trust:+4, play:+0, bond:+10 },
+              calvin:'Here. Don’t drift.',
+              eric:'I wasn’t planning to.'
+            },
+            {
+              id:'joke',
+              title:'Crack a joke to cut the tension.',
+              detail:'Relationship +3, Playful +6, Bond +10',
+              delta:{ rel:+3, trust:+0, play:+6, bond:+10 },
+              calvin:'If we die, I want it noted I looked heroic.',
+              eric:'You look heroic right now. Terrible timing… but heroic.'
+            },
+            {
+              id:'focus',
+              title:'Focus on the mission first.',
+              detail:'Trust +4, Relationship -2, Bond +6',
+              delta:{ rel:-2, trust:+4, play:+0, bond:+6 },
+              calvin:'We stay sharp. We stay alive.',
+              eric:'Okay. I’m with you. Just… don’t lock me out.'
+            }
+          ];
+
+          const applyChoice = (c, btn) => {
+            for (const b of ui.introChoices.querySelectorAll('.choiceBtn')) b.classList.remove('selected');
+            btn.classList.add('selected');
+            this.prologuePick = c.id;
+            this.addRelationship(c.delta.rel, c.delta.trust, c.delta.play, 'Prologue');
+            this.addBond(c.delta.bond);
+            this.appendDateLine(ui.introText, 'calvin', 'Calvin', c.calvin, true);
+            this.appendDateLine(ui.introText, 'eric', 'Eric', c.eric, true);
+          };
+
+          for (const c of choices){
+            const b = document.createElement('button');
+            b.className = 'choiceBtn';
+            b.innerHTML = `${c.title}<span>${c.detail}</span>`;
+            b.addEventListener('click', () => {
+              unlockAudioOnce();
+              audio.sfx('ui');
+              applyChoice(c, b);
+            });
+            ui.introChoices.appendChild(b);
+          }
+
+          ui.introContinueBtn.textContent = 'Begin Chapter 1';
+        }
+
+        beginChapter(idx){
+          this.levelIndex = idx;
+          this.loadLevel(idx);
+          this.setState('play');
+        }
+
+        quitToMenu(){
+          this.setState('menu');
+          this.updateMenuUI();
+        }
+
+        pause(){
+          if (this.state !== 'play') return;
+          this.setState('pause');
+        }
+
+        resume(){
+          if (this.state !== 'pause') return;
+          this.setState('play');
+        }
+
+        loadLevel(idx){
+          const def = LEVEL_DEFS[idx];
+          const levelSeed = (this.seed ^ ((idx + 1) * 0x9E3779B1)) >>> 0;
+          const rng = mulberry32(levelSeed);
+          this.levelRng = rng;
+
+          const w = def.size.w, h = def.size.h;
+
+          const spawn = idx === 0 ? { x: 180, y: h - 180 } : (idx === 1 ? { x: 210, y: 210 } : { x: 220, y: h - 220 });
+          const exit  = idx === 0 ? { x: w - 180, y: 180 } : (idx === 1 ? { x: w - 220, y: h - 220 } : { x: w - 220, y: 220 });
+          const bossPos = { x: Math.floor(w * 0.55), y: Math.floor(h * 0.50) };
+
+          const obstacles = [];
+          const obsCount = def.theme === 'citadel' ? 18 : 26;
+
+          const pushObstacle = (x, y, ow, oh) => obstacles.push({ x, y, w: ow, h: oh });
+
+          const safeZones = [
+            { x: spawn.x - 220, y: spawn.y - 220, w: 440, h: 440 },
+            { x: exit.x - 240, y: exit.y - 240, w: 480, h: 480 },
+            def.boss ? { x: bossPos.x - 360, y: bossPos.y - 300, w: 720, h: 600 } : null
+          ].filter(Boolean);
+
+          const overlapsSafe = (r) => {
+            for (const s of safeZones){
+              if (r.x < s.x + s.w && r.x + r.w > s.x && r.y < s.y + s.h && r.y + r.h > s.y) return true;
+            }
+            return false;
+          };
+
+          for (let i=0;i<obsCount;i++){
+            const ow = Math.floor(70 + rng()*220);
+            const oh = Math.floor(40 + rng()*170);
+            const x = Math.floor(40 + rng()*(w - ow - 80));
+            const y = Math.floor(40 + rng()*(h - oh - 80));
+            const r = { x, y, w: ow, h: oh };
+            if (overlapsSafe(r)) continue;
+
+            let ok = true;
+            for (const o of obstacles){
+              const pad = 20;
+              if (x < o.x + o.w + pad && x + ow + pad > o.x && y < o.y + o.h + pad && y + oh + pad > o.y) { ok = false; break; }
+            }
+            if (!ok) continue;
+
+            pushObstacle(x, y, ow, oh);
+          }
+
+          if (def.boss){
+            pushObstacle(Math.floor(w*0.38), Math.floor(h*0.42), 70, 280);
+            pushObstacle(Math.floor(w*0.70), Math.floor(h*0.34), 80, 320);
+            pushObstacle(Math.floor(w*0.58), Math.floor(h*0.66), 280, 70);
+          }
+
+          const traps = [];
+          for (let i=0;i<(def.traps||0);i++){
+            let tries = 0;
+            while (tries++ < 40){
+              const x = Math.floor(80 + rng()*(w - 160));
+              const y = Math.floor(80 + rng()*(h - 160));
+              const nearSpawn = Math.hypot(x - spawn.x, y - spawn.y) < 220;
+              const nearExit  = Math.hypot(x - exit.x, y - exit.y) < 220;
+              const nearBoss  = def.boss && Math.hypot(x - bossPos.x, y - bossPos.y) < 340;
+              if (nearSpawn || nearExit || nearBoss) continue;
+
+              let bad = false;
+              for (const o of obstacles){
+                if (x > o.x - 30 && x < o.x + o.w + 30 && y > o.y - 30 && y < o.y + o.h + 30){ bad = true; break; }
+              }
+              if (bad) continue;
+
+              traps.push({ id: ++ID, x, y, r: 12, state: 'idle', t: 0, used: false });
+              break;
+            }
+          }
+
+          const chests = [];
+          for (let i=0;i<(def.chests||0);i++){
+            let tries = 0;
+            while (tries++ < 60){
+              const x = Math.floor(100 + rng()*(w - 200));
+              const y = Math.floor(100 + rng()*(h - 200));
+              const nearSpawn = Math.hypot(x - spawn.x, y - spawn.y) < 220;
+              const nearExit = Math.hypot(x - exit.x, y - exit.y) < 220;
+              const nearBoss = def.boss && Math.hypot(x - bossPos.x, y - bossPos.y) < 340;
+              if (nearSpawn || nearExit || nearBoss) continue;
+
+              let bad = false;
+              for (const o of obstacles){
+                if (x > o.x - 30 && x < o.x + o.w + 30 && y > o.y - 30 && y < o.y + o.h + 30){ bad = true; break; }
+              }
+              if (bad) continue;
+
+              let tooClose = false;
+              for (const c of chests){
+                if (Math.hypot(x - c.x, y - c.y) < 140){ tooClose = true; break; }
+              }
+              if (tooClose) continue;
+
+              chests.push({ id: ++ID, x, y, r: 18, opened: false });
+              break;
+            }
+          }
+
+          this.level = {
+            def,
+            w, h,
+            obstacles,
+            traps,
+            chests,
+            spawn,
+            exit,
+            bossPos,
+            pattern: getThemePattern(def.theme),
+          };
+
+          this.player = new Player(spawn.x, spawn.y);
+          this.eric = new Eric(spawn.x - 50, spawn.y + 34);
+
+          this.enemies = [];
+          this.projectiles = [];
+          this.pickups = [];
+          this.particles = [];
+          this.floatText = [];
+
+          this.portal = { x: exit.x, y: exit.y, r: 44, active:false, t:0 };
+
+          this.sigilCount = 0;
+          this.sigilNeeded = def.sigilsNeeded || 0;
+
+          this.objective = def.boss ? 'Defeat Shadeheart' : 'Collect Sigils';
+          this.chapterTime = 0;
+
+          this.moment = { t: 18 + rng()*16, active:false, kind:null };
+          this.reviveHold = { t: 0, need: 1.6 - 0.5 * this.getSynergy() };
+
+          if (this.pendingBuff){
+            this.activeBuff = this.pendingBuff;
+            this.pendingBuff = null;
+          }else{
+            this.activeBuff = null;
+          }
+
+          if (this.activeBuff){
+            if (this.activeBuff.hp){
+              this.player.maxHp += this.activeBuff.hp;
+              this.player.hp = this.player.maxHp;
+            }
+            if (this.activeBuff.stamina){
+              this.player.maxStamina += this.activeBuff.stamina;
+              this.player.stamina = this.player.maxStamina;
+            }
+            if (this.activeBuff.regen){
+              this.player.regen += this.activeBuff.regen;
+            }
+          }
+
+          const basePotions = this.inventory.potions;
+          if (typeof basePotions !== 'number') this.inventory.potions = 2;
+
+          for (const [type, count] of Object.entries(def.enemies || {})){
+            for (let i=0;i<count;i++){
+              let tries = 0;
+              while (tries++ < 50){
+                const x = Math.floor(80 + rng()*(w - 160));
+                const y = Math.floor(80 + rng()*(h - 160));
+                const nearSpawn = Math.hypot(x - spawn.x, y - spawn.y) < 260;
+                const nearExit = Math.hypot(x - exit.x, y - exit.y) < 220;
+                const nearBoss = def.boss && Math.hypot(x - bossPos.x, y - bossPos.y) < 260;
+                if (nearSpawn || nearExit || nearBoss) continue;
+
+                let bad = false;
+                for (const o of obstacles){
+                  if (x > o.x - 40 && x < o.x + o.w + 40 && y > o.y - 40 && y < o.y + o.h + 40){ bad = true; break; }
+                }
+                if (bad) continue;
+
+                this.spawnEnemy(type, x, y);
+                break;
+              }
+            }
+          }
+
+          if (def.boss){
+            this.enemies.push(new Enemy('boss', bossPos.x, bossPos.y, this));
+          }
+
+          this.camX = clamp(this.player.x - viewW*0.5, 0, w - viewW);
+          this.camY = clamp(this.player.y - viewH*0.5, 0, h - viewH);
+
+          this.toast(`${def.name} — ${def.subtitle}`, 'hot');
+          for (const line of def.intro){
+            this.toast(line, 'warn');
+          }
+
+          this.mod = this.computeMod();
+          this.saveCheckpoint();
+        }
+
+        moveEntity(ent, dt){
+          ent.x += ent.vx * dt;
+          ent.y += ent.vy * dt;
+
+          ent.vx *= Math.exp(-dt * 1.9);
+          ent.vy *= Math.exp(-dt * 1.9);
+
+          const r = ent.r;
+          ent.x = clamp(ent.x, r, this.level.w - r);
+          ent.y = clamp(ent.y, r, this.level.h - r);
+
+          for (const o of this.level.obstacles){
+            resolveCircleRect(ent, o);
+          }
+        }
+
+        getMoveVector(){
+          let x = 0, y = 0;
+          if (isDown('KeyA') || isDown('ArrowLeft')) x -= 1;
+          if (isDown('KeyD') || isDown('ArrowRight')) x += 1;
+          if (isDown('KeyW') || isDown('ArrowUp')) y -= 1;
+          if (isDown('KeyS') || isDown('ArrowDown')) y += 1;
+
+          x += this.touch.moveX;
+          y += this.touch.moveY;
+
+          const n = norm(x, y);
+          const mag = Math.min(1, Math.hypot(x, y));
+          return { x: n.x * mag, y: n.y * mag };
+        }
+
+        collectActions(){
+          const act = {
+            attack: consumePressed('Space') || input.pointer.justDown || this.touch.actions.attack,
+            dodge: consumePressed('ShiftLeft') || consumePressed('ShiftRight') || this.touch.actions.dodge,
+            interact: consumePressed('KeyE') || this.touch.actions.interact,
+            interactHeld: isDown('KeyE') || this.touch.hold.interact,
+            special: consumePressed('KeyQ') || this.touch.actions.special,
+            potion: consumePressed('KeyF') || this.touch.actions.potion,
+            pause: consumePressed('Escape') || consumePressed('KeyP') || this.touch.actions.pause,
+          };
+
+          this.touch.actions.attack = false;
+          this.touch.actions.dodge = false;
+          this.touch.actions.interact = false;
+          this.touch.actions.special = false;
+          this.touch.actions.potion = false;
+          this.touch.actions.pause = false;
+
+          return act;
+        }
+
+        getNearestEnemy(x, y, maxDist){
+          let best = null;
+          let bestD = maxDist*maxDist;
+          for (const e of this.enemies){
+            if (e.dead) continue;
+            const dx = e.x - x, dy = e.y - y;
+            const d2 = dx*dx + dy*dy;
+            if (d2 < bestD){
+              bestD = d2;
+              best = e;
+            }
+          }
+          return best;
+        }
+
+        getNearestTrap(x, y, maxDist){
+          let best = null;
+          let bestD = maxDist*maxDist;
+          for (const t of this.traps){
+            if (t.used) continue;
+            const dx = t.x - x, dy = t.y - y;
+            const d2 = dx*dx + dy*dy;
+            if (d2 < bestD){
+              bestD = d2;
+              best = t;
+            }
+          }
+          return best;
+        }
+
+        damageTarget(target, amount, meta){
+          if (!target || amount <= 0) return;
+
+          if (target.invuln > 0) return;
+
+          if (target === this.player){
+            let dmg = amount * this.mod.playerIncomingMult;
+
+            if (this.player.aegis > 0){
+              dmg *= 0.55;
+              this.player.aegis = 0;
+              this.toast('Shield absorbed part of the hit.', 'good');
+              this.particlesBurst(this.player.x, this.player.y, 10, 'rgba(142,240,255,.75)', 220);
+            }
+
+            if (this.player.isDodging) return;
+
+            this.player.hp -= dmg;
+            this.player.invuln = 0.55;
+            this.player.hitFlash = 0.15;
+            this.stats.damageTaken += dmg;
+            audio.sfx('hurt');
+            this.shake(0.22, 10);
+
+            this.floatText.push({ x: this.player.x, y: this.player.y - 22, text: `-${Math.round(dmg)}`, color:'rgba(255,93,108,.95)', life: 0.9, max:0.9 });
+
+            if (this.player.hp <= 0){
+              this.onPlayerDown(meta);
+            }
+            return;
+          }
+
+          if (target === this.eric){
+            if (this.eric.retired || this.eric.downed) return;
+            const dmg = amount * (1.05 - 0.12 * this.mod.synergy);
+            this.eric.hp -= dmg;
+            this.eric.invuln = 0.45;
+            this.eric.hitFlash = 0.15;
+            audio.sfx('hurt');
+            this.shake(0.16, 7);
+            this.floatText.push({ x: this.eric.x, y: this.eric.y - 22, text: `-${Math.round(dmg)}`, color:'rgba(255,93,108,.9)', life: 0.9, max:0.9 });
+            if (this.eric.hp <= 0){
+              this.eric.down(this);
+            }
+          }
+        }
+
+        damageEnemy(enemy, amount){
+          if (!enemy || enemy.dead) return;
+          if (enemy.invuln > 0) return;
+
+          enemy.hp -= amount;
+          enemy.invuln = (enemy.type === 'boss') ? 0.06 : 0.04;
+          enemy.hitFlash = 0.12;
+
+          this.floatText.push({ x: enemy.x, y: enemy.y - 22, text: `${Math.round(amount)}`, color:'rgba(255,211,106,.95)', life: 0.8, max:0.8 });
+
+          if (enemy.hp <= 0){
+            enemy.dead = true;
+            this.onEnemyKilled(enemy);
+          }
+        }
+
+        onEnemyKilled(enemy){
+          this.stats.kills++;
+          this.score += enemyScore(enemy.type);
+          this.addBond(enemy.type === 'boss' ? 25 : 6);
+
+          const col = enemy.type === 'boss' ? 'rgba(255,77,210,.85)' : 'rgba(255,211,106,.65)';
+          this.particlesBurst(enemy.x, enemy.y, enemy.type === 'boss' ? 90 : 18, col, enemy.type === 'boss' ? 560 : 260);
+          if (enemy.type === 'boss'){
+            audio.sfx('boss');
+            this.toast('Shadeheart falters. One last push.', 'good');
+            this.onVictory();
+          }else{
+            if (Math.random() < 0.88){
+              this.pickups.push({ id: ++ID, type:'sigil', x: enemy.x, y: enemy.y, r: 10, vx: (Math.random()*2-1)*80, vy:(Math.random()*2-1)*80, life: 10 });
+            }
+            if (Math.random() < 0.12){
+              this.pickups.push({ id: ++ID, type:'potion', x: enemy.x + (Math.random()*2-1)*16, y: enemy.y + (Math.random()*2-1)*16, r: 10, vx:0, vy:0, life: 10 });
+            }
+          }
+        }
+
+        onPlayerDown(meta){
+          if (!this.eric.retired && !this.eric.downed && this.relationship >= 70 && this.revivesUsed < 1){
+            this.revivesUsed++;
+            this.player.hp = Math.max(35, Math.floor(this.player.maxHp * 0.35));
+            this.player.invuln = 1.4;
+            this.bond = 0;
+            audio.sfx('bond');
+            this.toast('Eric pulls you back from the edge. “Not today.”', 'good');
+            this.particlesBurst(this.player.x, this.player.y, 40, 'rgba(142,240,255,.85)', 420);
+            this.shake(0.35, 14);
+            return;
+          }
+
+          this.stats.timesDowned++;
+          this.gameOver(meta?.kind === 'boss' ? 'The Shadeheart’s darkness overwhelmed you.' : 'The monsters dragged you under the whispering dark.');
+        }
+
+        gameOver(reason){
+          lsDel('save');
+          ui.gameoverReason.textContent = reason;
+          ui.goScore.textContent = String(Math.floor(this.score));
+          ui.goChapter.textContent = String(this.levelIndex + 1);
+          ui.goTime.textContent = formatTime(this.time);
+          ui.goRel.textContent = String(Math.floor(this.relationship));
+          this.setState('gameover');
+        }
+
+        onVictory(){
+          lsDel('save');
+
+          const rel = this.relationship;
+          const trust = this.trust;
+          const play = this.play;
+
+          const ericGone = this.eric && this.eric.retired;
+
+          let title = 'Victory';
+          let ending = '';
+          let tier = '—';
+
+          if (ericGone){
+            title = 'Victory — Alone at Dawn';
+            tier = 'Alone at Dawn';
+            ending = 'You stopped the Citadel… but the silence afterward is brutal. The world is saved, yet your heart aches with what it cost.';
+          }else if (rel >= 80 && trust >= 70){
+            title = 'Victory — Radiant Promise';
+            tier = 'Radiant Promise';
+            ending = 'When the darkness breaks, it breaks around your joined hands. You and Eric step into the dawn together—scarred, laughing, and unafraid to choose each other.';
+          }else if (rel >= 55){
+            title = 'Victory — Fragile Dawn';
+            tier = 'Fragile Dawn';
+            ending = 'The world turns lighter… slowly. You survive. You keep walking. Love isn’t effortless—but it’s real, and it’s still here.';
+          }else{
+            title = 'Victory — Quiet Rift';
+            tier = 'Quiet Rift';
+            ending = 'You win the fight, but something between you stays unsaid. Maybe one day you’ll find the words. For now, the road is lonely even with company.';
+          }
+
+          const finalScore = Math.max(0, Math.floor(
+            this.score
+            + rel * 12
+            + trust * 6
+            + play * 4
+            - this.time * 2
+            + (this.stats.kills * 4)
+            + (this.stats.chests * 25)
+          ));
+
+          if (finalScore > (this.highScore || 0)){
+            this.highScore = finalScore;
+            lsSet('highScore', this.highScore);
+            this.toast('New High Score!', 'good');
+          }
+
+          const bestRank = (prev, cur) => {
+            const order = ['Quiet Rift','Fragile Dawn','Radiant Promise','Alone at Dawn'];
+            if (!prev || prev === '—') return cur;
+            const pi = order.indexOf(prev);
+            const ci = order.indexOf(cur);
+            if (pi === -1) return cur;
+            if (ci === -1) return prev;
+            if (cur === 'Alone at Dawn') return prev;
+            return ci > pi ? cur : prev;
+          };
+
+          if (tier !== '—'){
+            const prev = this.bestEnding || lsGet('bestEnding','—');
+            const next = bestRank(prev, tier);
+            this.bestEnding = next;
+            lsSet('bestEnding', this.bestEnding);
+          }
+
+          ui.victoryTitle.textContent = title;
+          ui.victoryEnding.textContent = ending;
+          ui.winScore.textContent = String(finalScore);
+          ui.winTime.textContent = formatTime(this.time);
+          ui.winRel.textContent = String(Math.floor(rel));
+          ui.winChapters.textContent = String(LEVEL_DEFS.length);
+
+          ui.winBreakdown.innerHTML = [
+            `Kills: <strong>${this.stats.kills}</strong>`,
+            `Chests: <strong>${this.stats.chests}</strong>`,
+            `Damage Taken: <strong>${Math.round(this.stats.damageTaken)}</strong>`,
+            `Times Downed: <strong>${this.stats.timesDowned}</strong>`,
+            `Relationship: <strong>${Math.floor(rel)}</strong>`,
+            `Trust: <strong>${Math.floor(trust)}</strong>`,
+            `Playful: <strong>${Math.floor(play)}</strong>`,
+          ].join('<br>');
+
+          this.setState('victory');
+          this.updateMenuUI();
+        }
+
+        startDateBetweenChapters(){
+          this.setState('date');
+
+          const def = this.level.def;
+          ui.dateConvo.innerHTML = '';
+          ui.dateNextBtn.classList.add('hidden');
+          ui.dateContinueBtn.classList.add('hidden');
+          ui.activityBox.classList.add('hidden');
+
+          const chapterDone = this.levelIndex;
+          ui.dateTitle.textContent = (chapterDone === 0) ? 'Campfire Date — After the Ruins'
+            : (chapterDone === 1) ? 'Campfire Date — After the Forest'
+            : 'Campfire Date';
+
+          ui.dateSubtitle.textContent = (chapterDone === 0) ? 'Stone dust on your hands. Warmth in the silence.'
+            : (chapterDone === 1) ? 'Leaf-shadow on your clothes. Smoke and small laughter.'
+            : 'A pause between storms.';
+
+          this.updateDateMetrics();
+
+          const openers = [
+            { who:'Eric', cls:'eric', txt:'“You’re shaking. Don’t pretend you’re not.”' },
+            { who:'Calvin', cls:'calvin', txt:'“I’m not shaking. The world is.”' },
+            { who:'Eric', cls:'eric', txt:'“Mm. Then lean on me while it does.”' }
+          ];
+
+          if (this.relationship < 40){
+            openers[0].txt = '“You’re hurt. Sit down.”';
+            openers[2].txt = '“No speeches. Just… let me help.”';
+          }else if (this.relationship > 75){
+            openers[0].txt = '“You did good in there.”';
+            openers[2].txt = '“Come here. I’m not letting the dark have you.”';
+          }
+
+          for (const l of openers){
+            this.appendDateLine(ui.dateConvo, l.cls, l.who, l.txt);
+          }
+
+          const qs = [];
+          const pool = QUESTION_POOL.slice();
+          const rng = this.levelRng || Math.random;
+
+          const pickQ = () => {
+            const tries = 20;
+            for (let i=0;i<tries;i++){
+              const q = pool[Math.floor((typeof rng === 'function' ? rng() : Math.random()) * pool.length)];
+              if (!q) continue;
+              if (this.usedQuestions.has(q.id)) continue;
+              return q;
+            }
+            for (const q of pool){
+              if (!this.usedQuestions.has(q.id)) return q;
+            }
+            return pool[0];
+          };
+
+          qs.push(pickQ()); this.usedQuestions.add(qs[0].id);
+          qs.push(pickQ()); this.usedQuestions.add(qs[1].id);
+          qs.push(pickQ()); this.usedQuestions.add(qs[2].id);
+
+          this.dateState = {
+            phase: 'questions',
+            qi: 0,
+            questions: qs,
+            locked: false,
+            giftGiven: false,
+            activity: null,
+            selectedActivityId: null
+          };
+
+          this.renderGiftList();
+          this.showDateQuestion();
+          this.saveCheckpoint();
+        }
+
+        appendDateLine(containerEl, cls, who, txt, toIntroText){
+          const host = (toIntroText ? containerEl : containerEl);
+          if (toIntroText){
+            const div = document.createElement('div');
+            div.style.marginTop = '10px';
+            div.style.padding = '10px 12px';
+            div.style.borderRadius = '16px';
+            div.style.border = '1px solid rgba(255,255,255,.10)';
+            div.style.background = cls === 'eric' ? 'rgba(142,240,255,.08)' : 'rgba(255,77,210,.07)';
+            div.innerHTML = `<div style="font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:rgba(238,240,255,.65);margin-bottom:6px">${who}</div><div style="color:var(--text);line-height:1.55">${txt}</div>`;
+            host.appendChild(div);
+            host.scrollTop = host.scrollHeight;
+            return;
+          }
+
+          const line = document.createElement('div');
+          line.className = `line ${cls}`;
+          line.innerHTML = `<div class="who">${who}</div><div class="txt">${txt}</div>`;
+          host.appendChild(line);
+          host.scrollTop = host.scrollHeight;
+        }
+
+        updateDateMetrics(){
+          ui.dateRel.textContent = String(Math.floor(this.relationship));
+          ui.dateTrust.textContent = String(Math.floor(this.trust));
+          ui.datePlay.textContent = String(Math.floor(this.play));
+        }
+
+        renderGiftList(){
+          ui.giftList.innerHTML = '';
+          const gifts = this.inventory.gifts || [];
+          if (gifts.length === 0){
+            ui.giftHint.textContent = 'No gifts right now. Find chests during chapters to discover small keepsakes.';
+            return;
+          }
+          ui.giftHint.textContent = this.dateState?.giftGiven ? 'You already gave a gift tonight.' : 'You can give 1 gift per date.';
+          for (let i=0;i<gifts.length;i++){
+            const g = gifts[i];
+            const b = document.createElement('button');
+            b.className = 'giftBtn';
+            b.disabled = !!this.dateState?.giftGiven;
+            b.innerHTML = `${g.name} <span style="display:block;color:rgba(238,240,255,.54);font-family:var(--mono);font-size:12px;margin-top:4px">Δ Rel ${g.delta.rel >= 0 ? '+' : ''}${g.delta.rel}, Trust ${g.delta.trust >= 0 ? '+' : ''}${g.delta.trust}, Play ${g.delta.play >= 0 ? '+' : ''}${g.delta.play}</span>`;
+            b.addEventListener('click', () => {
+              unlockAudioOnce();
+              if (!this.dateState || this.dateState.giftGiven) return;
+              this.dateState.giftGiven = true;
+              this.inventory.gifts.splice(i, 1);
+              this.addRelationship(g.delta.rel, g.delta.trust, g.delta.play, 'Gift');
+              this.addBond(12);
+              audio.sfx(g.sfx || 'ui');
+              this.appendDateLine(ui.dateConvo, 'calvin', 'Calvin', `“I found this. It reminded me of you.”`);
+              this.appendDateLine(ui.dateConvo, 'eric', 'Eric', `“…You’re not making this easy to pretend I’m not terrified.”`);
+              this.updateDateMetrics();
+              this.renderGiftList();
+            });
+            ui.giftList.appendChild(b);
+          }
+        }
+
+        showDateQuestion(){
+          if (!this.dateState) return;
+          this.updateDateMetrics();
+
+          if (this.dateState.phase !== 'questions'){
+            this.showActivityPick();
+            return;
+          }
+
+          const q = this.dateState.questions[this.dateState.qi];
+          ui.dateStepTitle.textContent = `Question ${this.dateState.qi + 1} / ${this.dateState.questions.length}`;
+          ui.dateQuestion.textContent = q.prompt;
+
+          ui.dateOptions.innerHTML = '';
+          ui.dateNextBtn.classList.add('hidden');
+          ui.dateContinueBtn.classList.add('hidden');
+          ui.activityBox.classList.add('hidden');
+
+          for (let oi = 0; oi < q.options.length; oi++){
+            const opt = q.options[oi];
+            const b = document.createElement('button');
+            b.className = 'optBtn';
+            const deltaStr = `Δ Rel ${opt.delta.rel >= 0 ? '+' : ''}${opt.delta.rel}, Trust ${opt.delta.trust >= 0 ? '+' : ''}${opt.delta.trust}, Play ${opt.delta.play >= 0 ? '+' : ''}${opt.delta.play}`;
+            b.innerHTML = `${opt.text}<small>${deltaStr}</small>`;
+            b.addEventListener('click', () => {
+              unlockAudioOnce();
+              audio.sfx('ui');
+              this.pickDateOption(q, opt);
+            });
+            ui.dateOptions.appendChild(b);
+          }
+
+          ui.dateNextBtn.onclick = null;
+        }
+
+        pickDateOption(q, opt){
+          if (!this.dateState || this.dateState.locked) return;
+          this.dateState.locked = true;
+
+          this.appendDateLine(ui.dateConvo, 'calvin', 'Calvin', `“${opt.calvin}”`);
+          this.appendDateLine(ui.dateConvo, 'eric', 'Eric', `“${opt.eric}”`);
+
+          this.addRelationship(opt.delta.rel, opt.delta.trust, opt.delta.play, 'Date');
+          this.addBond(10);
+
+          this.updateDateMetrics();
+
+          ui.dateOptions.innerHTML = '';
+          ui.dateQuestion.textContent = '...';
+          ui.dateNextBtn.classList.remove('hidden');
+
+          ui.dateNextBtn.onclick = () => {
+            unlockAudioOnce();
+            audio.sfx('ui');
+            this.dateState.locked = false;
+            this.dateState.qi++;
+            if (this.dateState.qi >= this.dateState.questions.length){
+              this.dateState.phase = 'activity';
+              this.showActivityPick();
+            }else{
+              this.showDateQuestion();
+            }
+          };
+        }
+
+        showActivityPick(){
+          ui.activityBox.classList.remove('hidden');
+          ui.dateStepTitle.textContent = 'Activity';
+          ui.dateQuestion.textContent = 'How do you spend the rest of the night?';
+
+          ui.dateOptions.innerHTML = '';
+          ui.dateNextBtn.classList.add('hidden');
+          ui.dateContinueBtn.classList.add('hidden');
+
+          ui.activityChoices.innerHTML = '';
+
+          const select = (id) => {
+            for (const c of ui.activityChoices.querySelectorAll('.activityCard')) c.classList.remove('selected');
+            const card = ui.activityChoices.querySelector(`[data-id="${id}"]`);
+            if (card) card.classList.add('selected');
+            this.dateState.selectedActivityId = id;
+            ui.dateContinueBtn.classList.remove('hidden');
+          };
+
+          for (const a of ACTIVITY_DEFS){
+            const card = document.createElement('div');
+            card.className = 'activityCard';
+            card.dataset.id = a.id;
+            card.innerHTML = `<div class="name">${a.name}</div><div class="desc">${a.desc}</div>`;
+            card.addEventListener('click', () => {
+              unlockAudioOnce();
+              audio.sfx('ui');
+              select(a.id);
+            });
+            ui.activityChoices.appendChild(card);
+          }
+
+          ui.dateContinueBtn.textContent = `Continue to Chapter ${this.levelIndex + 2}`;
+          ui.dateContinueBtn.onclick = () => {
+            unlockAudioOnce();
+            audio.sfx('start');
+            const id = this.dateState.selectedActivityId;
+            const act = ACTIVITY_DEFS.find(x => x.id === id) || ACTIVITY_DEFS[0];
+            this.pendingBuff = act.buff;
+            this.addRelationship(act.delta.rel, act.delta.trust, act.delta.play, 'Activity');
+            this.addBond(8);
+
+            this.appendDateLine(ui.dateConvo, 'calvin', 'Calvin', '“Okay. Just… stay close tonight.”');
+            this.appendDateLine(ui.dateConvo, 'eric', 'Eric', '“Always.”');
+
+            this.updateDateMetrics();
+            this.saveCheckpoint();
+
+            const next = this.levelIndex + 1;
+            if (next >= LEVEL_DEFS.length){
+              this.onVictory();
+            }else{
+              this.beginChapter(next);
+            }
+          };
+        }
+
+        bondBurst(){
+          if (this.bond < 100) return false;
+          this.bond = 0;
+
+          audio.sfx('bond');
+          this.toast('Bond Burst!', 'hot');
+          this.shake(0.35, 16);
+
+          const radius = 210;
+          const dmg = 42 + 42 * this.mod.synergy;
+          const heal = 18 + Math.round(20 * this.mod.synergy);
+
+          const x = this.player.x, y = this.player.y;
+          for (const e of this.enemies){
+            if (e.dead) continue;
+            const d = Math.hypot(e.x - x, e.y - y);
+            if (d <= radius + e.r){
+              this.damageEnemy(e, dmg);
+              const n = norm(e.x - x, e.y - y);
+              e.vx += n.x * 420;
+              e.vy += n.y * 420;
+            }
+          }
+
+          this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal);
+          this.player.invuln = Math.max(this.player.invuln, 0.9);
+          this.particlesBurst(x, y, 90, 'rgba(255,77,210,.85)', 600);
+          this.particlesBurst(x, y, 60, 'rgba(142,240,255,.85)', 520);
+
+          if (!this.eric.retired){
+            if (this.eric.downed){
+              this.eric.revive(this);
+            }else{
+              this.eric.hp = Math.min(this.eric.maxHp, this.eric.hp + Math.max(10, heal - 6));
+              this.eric.invuln = Math.max(this.eric.invuln, 0.8);
+              this.particlesBurst(this.eric.x, this.eric.y, 24, 'rgba(142,240,255,.8)', 360);
+            }
+          }
+
+          this.toast(`You heal +${heal}`, 'good');
+          return true;
+        }
+
+        update(dt){
+          starfield.update(dt);
+
+          if (this.state === 'play'){
+            this.updatePlay(dt);
+          }else if (this.state === 'pause'){
+            if (consumePressed('Escape') || consumePressed('KeyP') || this.touch.actions.pause){
+              this.touch.actions.pause = false;
+              this.resume();
+            }
+          }
+
+          input.just.clear();
+          input.pointer.justDown = false;
+        }
+
+        updatePlay(dt){
+          this.time += dt;
+          this.chapterTime += dt;
+
+          const now = performance.now();
+          const aimRecent = (now - input.pointer.movedAt) < 420;
+          this.aimActive = (input.pointer.type === 'mouse') && aimRecent;
+
+          if (this.aimActive){
+            const wx = this.camX + input.pointer.sx;
+            const wy = this.camY + input.pointer.sy;
+            const dx = wx - this.player.x;
+            const dy = wy - this.player.y;
+            const n = norm(dx, dy);
+            this.aimX = n.x;
+            this.aimY = n.y;
+          }
+
+          const act = this.collectActions();
+          if (act.pause) { this.pause(); return; }
+
+          this.mod = this.computeMod();
+
+          if (this.activeBuff && this.activeBuff.id === 'stargaze'){
+            this.player.regen = Math.max(this.player.regen, 1.2);
+          }
+
+          const mv = this.getMoveVector();
+
+          if (act.attack) this.player.startAttack(this);
+          if (act.dodge) this.player.startDodge(this, mv.x, mv.y);
+          if (act.potion) this.player.tryPotion(this);
+          if (act.special) this.bondBurst();
+
+          this.player.update(dt, this, mv);
+          this.eric.update(dt, this);
+
+          for (const e of this.enemies){
+            e.update(dt, this);
+          }
+
+          for (let i = this.projectiles.length - 1; i >= 0; i--){
+            const p = this.projectiles[i];
+            p.life -= dt;
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+
+            p.vx *= Math.exp(-dt * 0.4);
+            p.vy *= Math.exp(-dt * 0.4);
+
+            if (p.life <= 0 || p.x < -200 || p.y < -200 || p.x > this.level.w + 200 || p.y > this.level.h + 200){
+              this.projectiles.splice(i, 1);
+              continue;
+            }
+
+            let hitWall = false;
+            const ent = { x: p.x, y: p.y, r: p.r, vx: p.vx, vy: p.vy };
+            for (const o of this.level.obstacles){
+              if (resolveCircleRect(ent, o)){
+                hitWall = true;
+                break;
+              }
+            }
+            if (hitWall){
+              this.projectiles.splice(i, 1);
+              this.particlesBurst(p.x, p.y, 8, 'rgba(255,255,255,.35)', 200);
+              continue;
+            }
+
+            if (p.from === 'enemy' || p.from === 'boss'){
+              const dP = Math.hypot(p.x - this.player.x, p.y - this.player.y);
+              if (dP <= p.r + this.player.r){
+                this.damageTarget(this.player, p.dmg, { kind: p.from, src: null });
+                this.projectiles.splice(i, 1);
+                this.particlesBurst(p.x, p.y, 10, 'rgba(255,93,108,.6)', 220);
+                continue;
+              }
+
+              if (!this.eric.retired && !this.eric.downed){
+                const dE = Math.hypot(p.x - this.eric.x, p.y - this.eric.y);
+                if (dE <= p.r + this.eric.r){
+                  this.damageTarget(this.eric, p.dmg, { kind: p.from, src: null });
+                  this.projectiles.splice(i, 1);
+                  this.particlesBurst(p.x, p.y, 10, 'rgba(255,93,108,.6)', 220);
+                  continue;
+                }
+              }
+            }else if (p.from === 'eric'){
+              for (const e of this.enemies){
+                if (e.dead) continue;
+                const d = Math.hypot(p.x - e.x, p.y - e.y);
+                if (d <= p.r + e.r){
+                  this.damageEnemy(e, p.dmg);
+                  this.projectiles.splice(i, 1);
+                  this.particlesBurst(p.x, p.y, 10, 'rgba(142,240,255,.7)', 220);
+                  break;
+                }
+              }
+            }
+          }
+
+          for (let i = this.pickups.length - 1; i >= 0; i--){
+            const it = this.pickups[i];
+            it.life -= dt;
+            it.x += (it.vx || 0) * dt;
+            it.y += (it.vy || 0) * dt;
+            if (it.vx) it.vx *= Math.exp(-dt * 3.2);
+            if (it.vy) it.vy *= Math.exp(-dt * 3.2);
+
+            if (it.life <= 0){
+              this.pickups.splice(i, 1);
+              continue;
+            }
+
+            const d = Math.hypot(it.x - this.player.x, it.y - this.player.y);
+            if (d <= it.r + this.player.r + 2){
+              if (it.type === 'sigil'){
+                this.sigilCount++;
+                this.score += 10;
+                this.addBond(4);
+                audio.sfx('sigil');
+                this.particlesBurst(it.x, it.y, 14, 'rgba(255,211,106,.75)', 260);
+
+                if (!this.level.def.boss && this.sigilCount >= this.sigilNeeded){
+                  this.portal.active = true;
+                  this.objective = 'Reach the Portal';
+                  this.toast('The portal stabilizes. Get to it!', 'good');
+                  audio.sfx('portal');
+                }
+              }else if (it.type === 'potion'){
+                this.inventory.potions = Math.min(9, (this.inventory.potions || 0) + 1);
+                this.score += 12;
+                audio.sfx('heal');
+                this.toast('Found a potion.', 'good');
+                this.particlesBurst(it.x, it.y, 12, 'rgba(103,255,155,.75)', 220);
+              }else if (it.type === 'gift'){
+                this.inventory.gifts = this.inventory.gifts || [];
+                this.inventory.gifts.push(it.gift);
+                this.score += 14;
+                audio.sfx('ui');
+                this.toast(`Found a gift: ${it.gift.name}`, 'hot');
+                this.particlesBurst(it.x, it.y, 12, 'rgba(255,77,210,.65)', 220);
+              }else if (it.type === 'bond'){
+                this.addBond(22);
+                this.score += 10;
+                audio.sfx('bond');
+                this.toast('Bond Shard: Bond increased.', 'hot');
+                this.particlesBurst(it.x, it.y, 16, 'rgba(255,77,210,.65)', 280);
+              }
+
+              this.pickups.splice(i, 1);
+            }
+          }
+
+          const inCombat = this.enemies.some(e => !e.dead && Math.hypot(e.x - this.player.x, e.y - this.player.y) < 520);
+          if (this.isTogether() && !this.eric.downed && !this.eric.retired){
+            this.addBond(dt * (inCombat ? 4.4 : 3.2));
+          }else{
+            this.addBond(-dt * (inCombat ? 2.8 : 1.4));
+          }
+
+          for (const t of this.traps){
+            if (t.used) continue;
+
+            const show = this.mod.trapReveal || (Math.hypot(t.x - this.player.x, t.y - this.player.y) < 95);
+            t._show = show;
+
+            if (t.state === 'idle'){
+              const d = Math.hypot(t.x - this.player.x, t.y - this.player.y);
+              if (d < 22){
+                t.state = 'arming';
+                t.t = 0.75;
+                this.toast('Click—', 'warn');
+              }
+            }else if (t.state === 'arming'){
+              t.t -= dt;
+              if (t.t <= 0){
+                t.state = 'boom';
+                t.used = true;
+                const radius = 95;
+                const targets = [this.player];
+                if (!this.eric.retired && !this.eric.downed) targets.push(this.eric);
+
+                for (const tgt of targets){
+                  const d = Math.hypot(t.x - tgt.x, t.y - tgt.y);
+                  if (d <= radius + tgt.r){
+                    this.damageTarget(tgt, 18, { kind:'trap', src:null });
+                    const kn = norm(tgt.x - t.x, tgt.y - t.y);
+                    tgt.vx += kn.x * 260;
+                    tgt.vy += kn.y * 260;
+                  }
+                }
+
+                this.particlesBurst(t.x, t.y, 40, 'rgba(255,93,108,.78)', 420);
+                this.shake(0.28, 12);
+                audio.sfx('hit');
+              }
+            }
+          }
+
+          for (let i = this.chests.length - 1; i >= 0; i--){
+            const c = this.chests[i];
+            if (c.opened) continue;
+            const d = Math.hypot(c.x - this.player.x, c.y - this.player.y);
+            if (d < c.r + this.player.r + 12){
+              this._chestNear = c;
+              break;
+            }else{
+              if (this._chestNear && this._chestNear.id === c.id) this._chestNear = null;
+            }
+          }
+
+          this.updateTenderMoment(dt, inCombat);
+
+          this.updatePrompt(act);
+
+          if (act.interact){
+            if (this._promptAction) this._promptAction();
+          }
+
+          for (let i = this.enemies.length - 1; i >= 0; i--){
+            if (this.enemies[i].dead){
+              this.enemies.splice(i, 1);
+            }
+          }
+
+          for (let i=this.particles.length-1;i>=0;i--){
+            const p = this.particles[i];
+            p.life -= dt;
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.vx *= Math.exp(-dt * 2.6);
+            p.vy *= Math.exp(-dt * 2.6);
+            if (p.life <= 0) this.particles.splice(i,1);
+          }
+
+          for (let i=this.floatText.length-1;i>=0;i--){
+            const ft = this.floatText[i];
+            ft.life -= dt;
+            ft.y -= dt * 34;
+            if (ft.life <= 0) this.floatText.splice(i,1);
+          }
+
+          for (let i=0;i<this.enemies.length;i++){
+            const e = this.enemies[i];
+            if (e.dead) continue;
+            separateCircles(this.player, e, 0.35, 0.65);
+            if (!this.eric.retired && !this.eric.downed) separateCircles(this.eric, e, 0.30, 0.70);
+          }
+
+          if (!this.level.def.boss && this.sigilCount >= this.sigilNeeded){
+            this.portal.active = true;
+            this.objective = 'Reach the Portal';
+          }
+
+          if (!this.level.def.boss && this.portal.active){
+            const d = Math.hypot(this.portal.x - this.player.x, this.portal.y - this.player.y);
+            if (d < this.portal.r + this.player.r + 12){
+              this._portalNear = true;
+            }else{
+              this._portalNear = false;
+            }
+          }else{
+            this._portalNear = false;
+          }
+
+          this.camX = clamp(lerp(this.camX, this.player.x - viewW * 0.5, 1 - Math.exp(-dt * 6.5)), 0, this.level.w - viewW);
+          this.camY = clamp(lerp(this.camY, this.player.y - viewH * 0.5, 1 - Math.exp(-dt * 6.5)), 0, this.level.h - viewH);
+
+          if (this.shakeT > 0){
+            this.shakeT -= dt;
+            if (this.shakeT <= 0){
+              this.shakeT = 0;
+              this.shakePow = 0;
+            }
+          }
+
+          this.updateHud(dt);
+        }
+
+        updateTenderMoment(dt, inCombat){
+          if (inCombat){
+            this.moment.active = false;
+            this.moment.t = Math.min(this.moment.t, 14);
+            return;
+          }
+
+          if (this.eric.retired || this.eric.downed) return;
+
+          if (!this.moment.active){
+            this.moment.t -= dt;
+            if (this.moment.t <= 0){
+              this.moment.active = true;
+              const kinds = ['hand','check','joke'];
+              this.moment.kind = kinds[Math.floor((this.levelRng ? this.levelRng() : Math.random()) * kinds.length)];
+              this.toast('A quiet second. You could say something.', 'hot');
+            }
+          }
+        }
+
+        updatePrompt(actions){
+          ui.prompt.classList.add('hidden');
+          this._promptAction = null;
+
+          const lines = [];
+
+          if (!this.eric.retired && this.eric.downed){
+            const d = Math.hypot(this.eric.x - this.player.x, this.eric.y - this.player.y);
+            if (d < 74){
+              const need = this.reviveHold.need;
+              if (actions.interactHeld){
+                this.reviveHold.t = clamp(this.reviveHold.t + (1/need) * (1/60) * 60, 0, 1);
+              }else{
+                this.reviveHold.t = clamp(this.reviveHold.t - 2.0 * (1/60) * 60, 0, 1);
+              }
+
+              if (actions.interactHeld){
+                this.reviveHold.t = clamp(this.reviveHold.t + 0.9 * (1/need) * (1/60) * 60, 0, 1);
+              }
+
+              if (actions.interactHeld){
+                this.reviveHold.t = clamp(this.reviveHold.t + (1/need) * (1/60) * 60, 0, 1);
+              }
+
+              if (actions.interactHeld){
+                this.reviveHold.t = clamp(this.reviveHold.t + 0.9 * (1/need) * (1/60) * 60, 0, 1);
+              }
+
+              if (actions.interactHeld){
+                this.reviveHold.t = clamp(this.reviveHold.t + (1/need) * 0.9 * (1/60) * 60, 0, 1);
+              }
+
+              if (actions.interactHeld){
+                this.reviveHold.t = clamp(this.reviveHold.t + (1/need) * 0.8 * (1/60) * 60, 0, 1);
+              }
+
+              if (actions.interactHeld){
+                this.reviveHold.t = clamp(this.reviveHold.t + (1/need) * (1/60) * 60, 0, 1);
+              }
+
+              if (actions.interactHeld){
+                this.reviveHold.t = clamp(this.reviveHold.t + (1/need) * (1/60) * 60, 0, 1);
+              }
+
+              if (actions.interactHeld){
+                this.reviveHold.t = clamp(this.reviveHold.t + (1/need) * dt, 0, 1);
+              }else{
+                this.reviveHold.t = clamp(this.reviveHold.t - dt * 1.2, 0, 1);
+              }
+
+              if (this.reviveHold.t >= 1){
+                this.reviveHold.t = 0;
+                this.eric.revive(this);
+              }
+
+              const pct = Math.floor(this.reviveHold.t * 100);
+              lines.push(`Hold Interact to help Eric up (${pct}%).`);
+              ui.prompt.textContent = lines.join(' ');
+              ui.prompt.classList.remove('hidden');
+              return;
+            }else{
+              this.reviveHold.t = 0;
+            }
+          }
+
+          if (this.moment.active && !this.eric.retired && !this.eric.downed){
+            const d = Math.hypot(this.eric.x - this.player.x, this.eric.y - this.player.y);
+            if (d < 74){
+              const text = this.moment.kind === 'hand'
+                ? 'Share a quiet moment (Interact) — +Relationship, +Bond, small heal.'
+                : (this.moment.kind === 'check'
+                  ? 'Check in with Eric (Interact) — +Trust, +Bond.'
+                  : 'Make him laugh (Interact) — +Playful, +Bond.');
+              lines.push(text);
+              this._promptAction = () => {
+                if (!this.moment.active) return;
+                this.moment.active = false;
+                this.moment.t = 32 + (this.levelRng ? this.levelRng() : Math.random()) * 22;
+
+                if (this.moment.kind === 'hand'){
+                  this.addRelationship(+4, +2, +0, 'Tender moment');
+                  this.addBond(14);
+                  this.player.hp = Math.min(this.player.maxHp, this.player.hp + 6);
+                  audio.sfx('heal');
+                  this.toast('You breathe together. The world feels less sharp.', 'good');
+                  this.particlesBurst(this.player.x, this.player.y, 12, 'rgba(142,240,255,.75)', 260);
+                }else if (this.moment.kind === 'check'){
+                  this.addRelationship(+2, +5, +0, 'Tender moment');
+                  this.addBond(14);
+                  audio.sfx('ui');
+                  this.toast('You promise to watch each other’s blind spots.', 'good');
+                }else{
+                  this.addRelationship(+2, +0, +6, 'Tender moment');
+                  this.addBond(16);
+                  audio.sfx('ui');
+                  this.toast('A laugh—small, stubborn, real.', 'hot');
+                }
+              };
+              ui.prompt.textContent = lines.join(' ');
+              ui.prompt.classList.remove('hidden');
+              return;
+            }
+          }
+
+          if (this._chestNear && !this._chestNear.opened){
+            lines.push('Open chest (Interact).');
+            this._promptAction = () => this.openChest(this._chestNear);
+            ui.prompt.textContent = lines.join(' ');
+            ui.prompt.classList.remove('hidden');
+            return;
+          }
+
+          if (!this.level.def.boss && this.portal.active && this._portalNear){
+            lines.push('Enter the portal (Interact).');
+            this._promptAction = () => this.finishChapter();
+            ui.prompt.textContent = lines.join(' ');
+            ui.prompt.classList.remove('hidden');
+            return;
+          }
+
+          if (this.level.def.boss){
+            ui.prompt.classList.add('hidden');
+          }
+        }
+
+        openChest(chest){
+          if (!chest || chest.opened) return;
+          chest.opened = true;
+          this.stats.chests++;
+          this.score += 25;
+          audio.sfx('chest');
+          this.particlesBurst(chest.x, chest.y, 22, 'rgba(255,211,106,.75)', 320);
+          this.shake(0.18, 8);
+
+          const rng = this.levelRng || Math.random;
+          const r = (typeof rng === 'function') ? rng() : Math.random();
+
+          if (r < 0.44){
+            this.inventory.potions = Math.min(9, (this.inventory.potions || 0) + 1);
+            this.toast('Chest: Potion +1', 'good');
+          }else if (r < 0.84){
+            const g = GIFT_DEFS[Math.floor(((typeof rng === 'function') ? rng() : Math.random()) * GIFT_DEFS.length)];
+            this.pickups.push({ id: ++ID, type:'gift', x: chest.x + 14, y: chest.y - 10, r: 10, vx: (Math.random()*2-1)*40, vy:(Math.random()*2-1)*40, life: 10, gift: { name:g.name, delta:{ rel:g.delta.rel, trust:g.delta.trust, play:g.delta.play }, sfx:g.sfx } });
+            this.toast('Chest: A small keepsake.', 'hot');
+          }else{
+            this.pickups.push({ id: ++ID, type:'bond', x: chest.x + 12, y: chest.y + 12, r: 10, vx: (Math.random()*2-1)*40, vy:(Math.random()*2-1)*40, life: 10 });
+            this.toast('Chest: Bond Shard', 'hot');
+          }
+
+          this.saveCheckpoint();
+        }
+
+        finishChapter(){
+          audio.sfx('portal');
+          this.toast('You step through together.', 'good');
+          this.particlesBurst(this.player.x, this.player.y, 32, 'rgba(142,240,255,.65)', 420);
+          this.shake(0.28, 12);
+
+          if (this.levelIndex < LEVEL_DEFS.length - 1){
+            this.startDateBetweenChapters();
+          }else{
+            this.onVictory();
+          }
+        }
+
+        updateHud(dt){
+          ui.hpText.textContent = `${Math.round(this.player.hp)}/${this.player.maxHp}`;
+          ui.stamText.textContent = `${Math.round(this.player.stamina)}/${this.player.maxStamina}`;
+          ui.bondText.textContent = `${Math.round(this.bond)}/100`;
+
+          ui.hpFill.style.width = `${clamp(this.player.hp / this.player.maxHp, 0, 1) * 100}%`;
+          ui.stamFill.style.width = `${clamp(this.player.stamina / this.player.maxStamina, 0, 1) * 100}%`;
+          ui.bondFill.style.width = `${clamp(this.bond / 100, 0, 1) * 100}%`;
+
+          ui.chapterText.textContent = String(this.levelIndex + 1);
+          ui.objectiveText.textContent = this.objective;
+
+          if (this.level.def.boss){
+            ui.sigilText.textContent = '—';
+          }else{
+            ui.sigilText.textContent = `${this.sigilCount}/${this.sigilNeeded}`;
+          }
+
+          ui.potionText.textContent = String(this.inventory.potions || 0);
+          ui.scoreText.textContent = String(Math.floor(this.score));
+          ui.timeText.textContent = formatTime(this.time);
+
+          ui.relText.textContent = String(Math.floor(this.relationship));
+          const filled = Math.floor(clamp(this.relationship, 0, 100) / 10);
+          const pips = ui.relPips.children;
+          for (let i=0;i<pips.length;i++){
+            pips[i].classList.toggle('on', i < filled);
+          }
+
+          const s = this.mod.synergy;
+          const tier = s >= 0.85 ? { name:'Unbreakable', desc:'Eric shields and heals more often. Auto-revive is possible at high relationship.' }
+            : s >= 0.65 ? { name:'Steady', desc:'Good teamwork. Traps reveal earlier. Bond builds quickly when close.' }
+            : s >= 0.45 ? { name:'Searching', desc:'Your bond is growing—stay close and choose carefully.' }
+            : { name:'Frayed', desc:'Support is weaker. Stay near Eric and rebuild trust.' };
+
+          ui.synergyHint.innerHTML = `<span class="small"><strong style="color:var(--text)">Synergy: ${tier.name}</strong><br>${tier.desc}</span>`;
+
+          ui.ericText.textContent = this.eric.retired ? 'Gone' : (this.eric.downed ? 'DOWN' : 'OK');
+          ui.buffText.textContent = this.mod.buffLabel || '—';
+
+          const ready = this.bond >= 100;
+          ui.btnSpecial.classList.toggle('ready', ready);
+
+          this.minimapAcc += dt;
+          if (this.minimapAcc >= 0.18){
+            this.minimapAcc = 0;
+            this.renderMinimap();
+          }
+        }
+
+        renderMinimap(){
+          const m = ui.minimap;
+          const c = m.getContext('2d');
+          const w = m.width, h = m.height;
+          c.clearRect(0,0,w,h);
+
+          c.fillStyle = 'rgba(0,0,0,.25)';
+          c.fillRect(0,0,w,h);
+
+          const sx = w / this.level.w;
+          const sy = h / this.level.h;
+
+          c.fillStyle = 'rgba(255,255,255,.06)';
+          for (const o of this.level.obstacles){
+            c.fillRect(o.x * sx, o.y * sy, o.w * sx, o.h * sy);
+          }
+
+          if (!this.level.def.boss && this.portal.active){
+            c.strokeStyle = 'rgba(142,240,255,.6)';
+            c.lineWidth = 2;
+            c.beginPath();
+            c.arc(this.portal.x * sx, this.portal.y * sy, 6, 0, Math.PI*2);
+            c.stroke();
+          }
+
+          c.fillStyle = 'rgba(255,211,106,.7)';
+          for (const it of this.pickups){
+            if (it.type !== 'sigil') continue;
+            c.fillRect(it.x * sx - 1, it.y * sy - 1, 2, 2);
+          }
+
+          c.fillStyle = 'rgba(255,255,255,.08)';
+          for (const ch of this.chests){
+            if (ch.opened) continue;
+            c.fillRect(ch.x * sx - 2, ch.y * sy - 2, 4, 4);
+          }
+
+          c.fillStyle = 'rgba(255,93,108,.55)';
+          for (const e of this.enemies){
+            if (e.dead) continue;
+            c.fillRect(e.x * sx - 2, e.y * sy - 2, 4, 4);
+          }
+
+          c.fillStyle = 'rgba(142,240,255,.95)';
+          c.beginPath();
+          c.arc(this.player.x * sx, this.player.y * sy, 3.5, 0, Math.PI*2);
+          c.fill();
+
+          if (!this.eric.retired){
+            c.fillStyle = this.eric.downed ? 'rgba(255,93,108,.85)' : 'rgba(142,240,255,.7)';
+            c.beginPath();
+            c.arc(this.eric.x * sx, this.eric.y * sy, 3, 0, Math.PI*2);
+            c.fill();
+          }
+
+          c.strokeStyle = 'rgba(255,255,255,.10)';
+          c.strokeRect(0.5,0.5,w-1,h-1);
+        }
+
+        render(){
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+          ctx.clearRect(0,0,viewW,viewH);
+
+          const bg = ctx.createLinearGradient(0,0,0,viewH);
+          bg.addColorStop(0, 'rgba(8,10,18,1)');
+          bg.addColorStop(1, 'rgba(4,5,11,1)');
+          ctx.fillStyle = bg;
+          ctx.fillRect(0,0,viewW,viewH);
+
+          starfield.render(ctx);
+
+          if (this.state === 'play' && this.level){
+            const ox = 0, oy = 0;
+            let shakeX = 0, shakeY = 0;
+            if (this.shakeT > 0){
+              const k = (this.shakeT);
+              const p = this.shakePow * (0.6 + 0.4 * Math.random());
+              shakeX = (Math.random()*2-1) * p;
+              shakeY = (Math.random()*2-1) * p;
+            }
+
+            ctx.save();
+            ctx.translate(-this.camX + shakeX, -this.camY + shakeY);
+
+            ctx.fillStyle = this.level.pattern;
+            ctx.fillRect(0,0,this.level.w,this.level.h);
+
+            ctx.fillStyle = 'rgba(255,255,255,.03)';
+            for (let i=0;i<7;i++){
+              const rx = (i * 320 + 80) % this.level.w;
+              ctx.fillRect(rx, 0, 2, this.level.h);
+            }
+
+            for (const o of this.level.obstacles){
+              const isTall = o.h > o.w;
+              const grad = ctx.createLinearGradient(o.x, o.y, o.x + o.w, o.y + o.h);
+              grad.addColorStop(0, 'rgba(255,255,255,.05)');
+              grad.addColorStop(1, 'rgba(0,0,0,.22)');
+              ctx.fillStyle = grad;
+              ctx.fillRect(o.x, o.y, o.w, o.h);
+
+              ctx.strokeStyle = 'rgba(255,255,255,.08)';
+              ctx.lineWidth = 2;
+              ctx.strokeRect(o.x + 0.5, o.y + 0.5, o.w - 1, o.h - 1);
+
+              if (isTall){
+                ctx.fillStyle = 'rgba(142,240,255,.03)';
+                ctx.fillRect(o.x + 4, o.y + 4, Math.max(2, o.w*0.12), o.h - 8);
+              }
+            }
+
+            for (const t of this.level.traps){
+              if (t.used) continue;
+              if (!t._show) continue;
+              ctx.save();
+              const pulse = 0.55 + 0.45*Math.sin((this.time*5) + t.id*0.02);
+              ctx.globalAlpha = 0.30 + 0.25*pulse;
+              ctx.fillStyle = 'rgba(255,93,108,.9)';
+              ctx.beginPath();
+              ctx.arc(t.x, t.y, 10 + 2*pulse, 0, Math.PI*2);
+              ctx.fill();
+              ctx.globalAlpha = 0.12;
+              ctx.beginPath();
+              ctx.arc(t.x, t.y, 34, 0, Math.PI*2);
+              ctx.fill();
+              ctx.restore();
+            }
+
+            for (const c of this.chests){
+              if (c.opened) continue;
+              ctx.save();
+              ctx.translate(c.x, c.y);
+              ctx.fillStyle = 'rgba(255,211,106,.22)';
+              ctx.fillRect(-16,-12,32,24);
+              ctx.strokeStyle = 'rgba(255,255,255,.10)';
+              ctx.lineWidth = 2;
+              ctx.strokeRect(-16.5,-12.5,33,25);
+              ctx.fillStyle = 'rgba(255,211,106,.35)';
+              ctx.fillRect(-5,-12,10,24);
+              ctx.restore();
+            }
+
+            if (!this.level.def.boss && this.portal.active){
+              this.portal.t += 0.016;
+              const pulse = 0.55 + 0.45*Math.sin(this.time*4.4);
+              ctx.save();
+              ctx.translate(this.portal.x, this.portal.y);
+              ctx.globalAlpha = 0.18 + 0.12*pulse;
+              ctx.fillStyle = 'rgba(142,240,255,.9)';
+              ctx.beginPath();
+              ctx.arc(0,0,this.portal.r + 18,0,Math.PI*2);
+              ctx.fill();
+              ctx.globalAlpha = 0.85;
+              ctx.strokeStyle = 'rgba(142,240,255,.9)';
+              ctx.lineWidth = 3;
+              ctx.beginPath();
+              ctx.arc(0,0,this.portal.r + 6*pulse,0,Math.PI*2);
+              ctx.stroke();
+              ctx.restore();
+            }
+
+            for (const it of this.pickups){
+              ctx.save();
+              ctx.translate(it.x, it.y);
+              if (it.type === 'sigil'){
+                ctx.globalAlpha = 0.9;
+                ctx.fillStyle = 'rgba(255,211,106,.85)';
+                ctx.beginPath();
+                ctx.moveTo(0,-10); ctx.lineTo(10,0); ctx.lineTo(0,10); ctx.lineTo(-10,0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.globalAlpha = 0.22;
+                ctx.fillStyle = 'rgba(255,211,106,.9)';
+                ctx.beginPath();
+                ctx.arc(0,0,22,0,Math.PI*2);
+                ctx.fill();
+              }else if (it.type === 'potion'){
+                ctx.fillStyle = 'rgba(103,255,155,.25)';
+                ctx.fillRect(-8,-10,16,20);
+                ctx.strokeStyle = 'rgba(255,255,255,.12)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-8.5,-10.5,17,21);
+                ctx.fillStyle = 'rgba(103,255,155,.65)';
+                ctx.fillRect(-4,-6,8,12);
+              }else if (it.type === 'gift'){
+                ctx.fillStyle = 'rgba(255,77,210,.22)';
+                ctx.beginPath();
+                ctx.arc(0,0,10,0,Math.PI*2);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,.12)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0,0,10,0,Math.PI*2);
+                ctx.stroke();
+              }else if (it.type === 'bond'){
+                ctx.fillStyle = 'rgba(142,240,255,.20)';
+                ctx.beginPath();
+                ctx.arc(0,0,12,0,Math.PI*2);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,.12)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0,0,12,0,Math.PI*2);
+                ctx.stroke();
+              }
+              ctx.restore();
+            }
+
+            for (const p of this.projectiles){
+              ctx.save();
+              ctx.globalAlpha = 0.9;
+              ctx.fillStyle = p.color;
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+              ctx.fill();
+              ctx.globalAlpha = 0.12;
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, p.r*5.2, 0, Math.PI*2);
+              ctx.fill();
+              ctx.restore();
+            }
+
+            for (const e of this.enemies){
+              e.render(ctx, this);
+            }
+
+            this.eric.render(ctx, this);
+            this.player.render(ctx, this);
+
+            for (const par of this.particles){
+              const t = clamp(par.life / par.max, 0, 1);
+              ctx.globalAlpha = t;
+              ctx.fillStyle = par.color;
+              ctx.beginPath();
+              ctx.arc(par.x, par.y, par.r, 0, Math.PI*2);
+              ctx.fill();
+            }
+
+            for (const ft of this.floatText){
+              const t = clamp(ft.life / ft.max, 0, 1);
+              ctx.globalAlpha = t;
+              ctx.font = 'bold 14px ' + getComputedStyle(document.body).fontFamily;
+              ctx.fillStyle = ft.color;
+              ctx.textAlign = 'center';
+              ctx.fillText(ft.text, ft.x, ft.y);
+            }
+
+            ctx.restore();
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(0,0,0,.55)';
+            ctx.fillRect(0,0,viewW,viewH);
+
+            ctx.globalCompositeOperation = 'destination-out';
+            const lights = [
+              { x: (this.player.x - this.camX), y: (this.player.y - this.camY), r: 210 + 40*this.mod.synergy, a: 1.0 },
+            ];
+            if (!this.eric.retired){
+              lights.push({ x: (this.eric.x - this.camX), y: (this.eric.y - this.camY), r: 140 + 30*this.mod.synergy, a: this.eric.downed ? 0.25 : 0.65 });
+            }
+
+            for (const L of lights){
+              const g = ctx.createRadialGradient(L.x, L.y, 10, L.x, L.y, L.r);
+              g.addColorStop(0, `rgba(0,0,0,${0.95 * L.a})`);
+              g.addColorStop(1, 'rgba(0,0,0,0)');
+              ctx.fillStyle = g;
+              ctx.beginPath();
+              ctx.arc(L.x, L.y, L.r, 0, Math.PI*2);
+              ctx.fill();
+            }
+
+            ctx.globalCompositeOperation = 'source-over';
+            const vign = ctx.createRadialGradient(viewW/2, viewH/2, Math.min(viewW,viewH)*0.25, viewW/2, viewH/2, Math.max(viewW,viewH)*0.65);
+            vign.addColorStop(0, 'rgba(0,0,0,0)');
+            vign.addColorStop(1, 'rgba(0,0,0,.42)');
+            ctx.fillStyle = vign;
+            ctx.fillRect(0,0,viewW,viewH);
+
+            ctx.restore();
+          }
+        }
+      }
+
+      const game = new Game();
+
+      function tick(t){
+        const now = t || performance.now();
+        if (!tick.last) tick.last = now;
+        const dt = Math.min(0.033, Math.max(0.001, (now - tick.last) / 1000));
+        tick.last = now;
+
+        game.update(dt);
+        game.render();
+
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+
+      if (lsHas('save')){
+        game.updateMenuUI();
+      }else{
+        game.updateMenuUI();
+      }
+
+      game.updateTouchVisibility();
+    })();
+  </script>
+</body>
+</html>
