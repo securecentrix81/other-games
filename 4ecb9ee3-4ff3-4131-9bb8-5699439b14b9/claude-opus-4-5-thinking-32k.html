@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calvin with Eric</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #1a0a2e 0%, #2d1b4e 50%, #1a0a2e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Georgia', serif;
+            overflow: hidden;
+        }
+        #gameContainer {
+            position: relative;
+            width: 900px;
+            height: 650px;
+            background: #0a0a15;
+            border-radius: 10px;
+            box-shadow: 0 0 50px rgba(147, 51, 234, 0.3);
+            overflow: hidden;
+        }
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .ui-overlay {
+            position: absolute;
+            pointer-events: none;
+        }
+        #hud {
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            z-index: 10;
+        }
+        .stat-bar {
+            width: 200px;
+            height: 25px;
+            background: rgba(0,0,0,0.7);
+            border-radius: 15px;
+            overflow: hidden;
+            border: 2px solid #444;
+            margin: 5px 0;
+        }
+        .stat-fill {
+            height: 100%;
+            transition: width 0.3s;
+        }
+        #healthBar .stat-fill { background: linear-gradient(90deg, #dc2626, #ef4444); }
+        #loveBar .stat-fill { background: linear-gradient(90deg, #ec4899, #f472b6); }
+        .stat-label {
+            color: white;
+            font-size: 12px;
+            text-shadow: 1px 1px 2px black;
+            margin-bottom: 2px;
+        }
+        #levelIndicator {
+            color: #fbbf24;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px black;
+        }
+        #dialogueBox {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 850px;
+            background: linear-gradient(180deg, rgba(30,20,50,0.95) 0%, rgba(20,10,40,0.98) 100%);
+            border: 3px solid #8b5cf6;
+            border-radius: 15px;
+            padding: 20px;
+            display: none;
+            z-index: 20;
+            pointer-events: auto;
+        }
+        #speakerName {
+            color: #c084fc;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        #dialogueText {
+            color: #e2e8f0;
+            font-size: 16px;
+            line-height: 1.6;
+            min-height: 60px;
+        }
+        #dialogueChoices {
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .choice-btn {
+            background: linear-gradient(90deg, #4c1d95, #6d28d9);
+            border: 2px solid #8b5cf6;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            text-align: left;
+            pointer-events: auto;
+        }
+        .choice-btn:hover {
+            background: linear-gradient(90deg, #6d28d9, #7c3aed);
+            transform: translateX(5px);
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+        }
+        #continueHint {
+            color: #a78bfa;
+            font-size: 12px;
+            margin-top: 10px;
+            text-align: right;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        #menuScreen, #combatScreen, #dateScreen, #gameOverScreen, #victoryScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            pointer-events: auto;
+        }
+        #menuScreen {
+            background: linear-gradient(180deg, #1a0a2e 0%, #2d1b4e 50%, #4c1d95 100%);
+        }
+        #gameTitle {
+            font-size: 52px;
+            color: #f472b6;
+            text-shadow: 0 0 30px rgba(236, 72, 153, 0.7), 3px 3px 0 #7c3aed;
+            margin-bottom: 10px;
+            letter-spacing: 3px;
+        }
+        #gameSubtitle {
+            font-size: 20px;
+            color: #c4b5fd;
+            margin-bottom: 40px;
+            font-style: italic;
+        }
+        .menu-btn {
+            background: linear-gradient(90deg, #be185d, #ec4899);
+            border: 3px solid #f472b6;
+            color: white;
+            padding: 15px 50px;
+            font-size: 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s;
+            font-family: 'Georgia', serif;
+        }
+        .menu-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(236, 72, 153, 0.6);
+        }
+        .hearts-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .floating-heart {
+            position: absolute;
+            font-size: 30px;
+            animation: floatUp 8s infinite linear;
+            opacity: 0.3;
+        }
+        @keyframes floatUp {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.3; }
+            90% { opacity: 0.3; }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+        #combatScreen {
+            background: rgba(0,0,0,0.9);
+            display: none;
+        }
+        #combatArena {
+            width: 800px;
+            height: 400px;
+            background: linear-gradient(180deg, #1e1b4b 0%, #312e81 100%);
+            border: 4px solid #6366f1;
+            border-radius: 20px;
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .combatant {
+            position: absolute;
+            text-align: center;
+        }
+        #playerCombat {
+            bottom: 30px;
+            left: 80px;
+        }
+        #ericCombat {
+            bottom: 30px;
+            left: 220px;
+        }
+        #enemyCombat {
+            top: 50px;
+            right: 100px;
+        }
+        .combatant-sprite {
+            font-size: 80px;
+            filter: drop-shadow(0 0 10px rgba(255,255,255,0.3));
+        }
+        .combatant-name {
+            color: white;
+            font-size: 16px;
+            margin-top: 5px;
+        }
+        .combatant-hp {
+            width: 120px;
+            height: 12px;
+            background: #333;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        .combatant-hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #22c55e, #4ade80);
+            transition: width 0.3s;
+        }
+        .enemy .combatant-hp-fill {
+            background: linear-gradient(90deg, #dc2626, #ef4444);
+        }
+        #combatActions {
+            display: flex;
+            gap: 15px;
+        }
+        .combat-btn {
+            background: linear-gradient(180deg, #4338ca, #3730a3);
+            border: 2px solid #6366f1;
+            color: white;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .combat-btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(99, 102, 241, 0.5);
+        }
+        .combat-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        #combatLog {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fbbf24;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px black;
+        }
+        #dateScreen {
+            background: linear-gradient(180deg, #831843 0%, #be185d 50%, #ec4899 100%);
+            display: none;
+        }
+        #dateScene {
+            background: rgba(0,0,0,0.3);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 700px;
+        }
+        #dateLocation {
+            font-size: 28px;
+            color: #fdf2f8;
+            margin-bottom: 20px;
+        }
+        #dateQuestion {
+            font-size: 20px;
+            color: white;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .date-choice {
+            background: linear-gradient(90deg, #9d174d, #be185d);
+            border: 2px solid #f472b6;
+            color: white;
+            padding: 15px 25px;
+            font-size: 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 8px;
+            transition: all 0.2s;
+            width: 80%;
+        }
+        .date-choice:hover {
+            background: linear-gradient(90deg, #be185d, #db2777);
+            transform: scale(1.02);
+        }
+        #dateCharacters {
+            font-size: 100px;
+            margin-bottom: 20px;
+        }
+        #gameOverScreen, #victoryScreen {
+            background: rgba(0,0,0,0.95);
+            display: none;
+        }
+        #gameOverScreen h1 { color: #ef4444; font-size: 48px; margin-bottom: 20px; }
+        #victoryScreen h1 { color: #f472b6; font-size: 48px; margin-bottom: 20px; }
+        .end-stats {
+            color: #e2e8f0;
+            font-size: 18px;
+            margin: 20px 0;
+            line-height: 2;
+        }
+        #transitionOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            z-index: 200;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 24px;
+        }
+        .love-boost {
+            position: absolute;
+            color: #f472b6;
+            font-size: 24px;
+            font-weight: bold;
+            animation: loveFloat 1s forwards;
+            pointer-events: none;
+            z-index: 50;
+        }
+        @keyframes loveFloat {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-50px); }
+        }
+        .damage-number {
+            position: absolute;
+            color: #ef4444;
+            font-size: 28px;
+            font-weight: bold;
+            animation: damageFloat 0.8s forwards;
+            pointer-events: none;
+        }
+        @keyframes damageFloat {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            50% { transform: translateY(-30px) scale(1.2); }
+            100% { opacity: 0; transform: translateY(-50px) scale(0.8); }
+        }
+        #minimap {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 150px;
+            height: 150px;
+            background: rgba(0,0,0,0.7);
+            border: 2px solid #6366f1;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="900" height="650"></canvas>
+        
+        <div id="hud" class="ui-overlay">
+            <div>
+                <div class="stat-label">❤️ Health</div>
+                <div id="healthBar" class="stat-bar"><div class="stat-fill" style="width: 100%"></div></div>
+                <div class="stat-label">💕 Love Bond</div>
+                <div id="loveBar" class="stat-bar"><div class="stat-fill" style="width: 50%"></div></div>
+            </div>
+            <div id="levelIndicator">Chapter 1: The Meeting</div>
+        </div>
+        
+        <canvas id="minimap"></canvas>
+        
+        <div id="dialogueBox">
+            <div id="speakerName">Calvin</div>
+            <div id="dialogueText">Hello world!</div>
+            <div id="dialogueChoices"></div>
+            <div id="continueHint">Press SPACE to continue...</div>
+        </div>
+        
+        <div id="menuScreen">
+            <div class="hearts-bg" id="heartsBg"></div>
+            <h1 id="gameTitle">Calvin with Eric</h1>
+            <p id="gameSubtitle">A Romance-Action Adventure</p>
+            <button class="menu-btn" onclick="startGame()">💕 Begin Story 💕</button>
+            <button class="menu-btn" onclick="showControls()">⚔️ Controls ⚔️</button>
+        </div>
+        
+        <div id="combatScreen">
+            <div id="combatArena">
+                <div id="playerCombat" class="combatant">
+                    <div class="combatant-sprite">🧑</div>
+                    <div class="combatant-name">Calvin</div>
+                    <div class="combatant-hp"><div class="combatant-hp-fill" style="width: 100%"></div></div>
+                </div>
+                <div id="ericCombat" class="combatant">
+                    <div class="combatant-sprite">👨</div>
+                    <div class="combatant-name">Eric</div>
+                    <div class="combatant-hp"><div class="combatant-hp-fill" style="width: 100%"></div></div>
+                </div>
+                <div id="enemyCombat" class="combatant enemy">
+                    <div class="combatant-sprite" id="enemySprite">👹</div>
+                    <div class="combatant-name" id="enemyName">Monster</div>
+                    <div class="combatant-hp"><div class="combatant-hp-fill" id="enemyHpFill" style="width: 100%"></div></div>
+                </div>
+                <div id="combatLog">Battle Start!</div>
+            </div>
+            <div id="combatActions">
+                <button class="combat-btn" onclick="combatAction('attack')">⚔️ Attack</button>
+                <button class="combat-btn" onclick="combatAction('combo')">💕 Combo Attack</button>
+                <button class="combat-btn" onclick="combatAction('defend')">🛡️ Defend</button>
+                <button class="combat-btn" onclick="combatAction('heal')">💖 Heal (Love)</button>
+            </div>
+        </div>
+        
+        <div id="dateScreen">
+            <div id="dateScene">
+                <div id="dateCharacters">🧑💕👨</div>
+                <h2 id="dateLocation">Moonlit Garden</h2>
+                <p id="dateQuestion">Loading question...</p>
+                <div id="dateChoices"></div>
+            </div>
+        </div>
+        
+        <div id="gameOverScreen">
+            <h1>💔 Game Over 💔</h1>
+            <div class="end-stats" id="gameOverStats"></div>
+            <button class="menu-btn" onclick="location.reload()">Try Again</button>
+        </div>
+        
+        <div id="victoryScreen">
+            <h1>💕 Love Conquers All 💕</h1>
+            <div class="end-stats" id="victoryStats"></div>
+            <button class="menu-btn" onclick="location.reload()">Play Again</button>
+        </div>
+        
+        <div id="transitionOverlay"></div>
+    </div>
+
+<script>
+const STORAGE_PREFIX = location.pathname + '_calvineric_';
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const minimapCanvas = document.getElementById('minimap');
+const minimapCtx = minimapCanvas.getContext('2d');
+minimapCanvas.width = 150;
+minimapCanvas.height = 150;
+
+// Game State
+const GameState = {
+    MENU: 'menu',
+    EXPLORING: 'exploring',
+    DIALOGUE: 'dialogue',
+    COMBAT: 'combat',
+    DATE: 'date',
+    GAME_OVER: 'gameover',
+    VICTORY: 'victory'
+};
+
+let currentState = GameState.MENU;
+let gameData = {
+    chapter: 1,
+    health: 100,
+    maxHealth: 100,
+    love: 50,
+    maxLove: 100,
+    monstersDefeated: 0,
+    datesCompleted: 0,
+    choices: []
+};
+
+// Characters
+const calvin = {
+    x: 450,
+    y: 400,
+    width: 40,
+    height: 50,
+    speed: 4,
+    sprite: '🧑',
+    hp: 100,
+    maxHp: 100
+};
+
+const eric = {
+    x: 480,
+    y: 400,
+    following: true,
+    sprite: '👨',
+    hp: 80,
+    maxHp: 80
+};
+
+// World
+const TILE_SIZE = 50;
+let currentMap = 0;
+
+const maps = [
+    { // Chapter 1: Enchanted Forest
+        name: "Enchanted Forest",
+        width: 18,
+        height: 13,
+        tiles: [],
+        monsters: [
+            { x: 600, y: 200, type: 'slime', sprite: '🟢', hp: 40, maxHp: 40, damage: 8, name: 'Forest Slime' },
+            { x: 300, y: 150, type: 'wolf', sprite: '🐺', hp: 60, maxHp: 60, damage: 12, name: 'Shadow Wolf' }
+        ],
+        npcs: [],
+        dateSpot: { x: 750, y: 300, active: true },
+        exit: { x: 850, y: 550 },
+        bg: '#1a3a1a'
+    },
+    { // Chapter 2: Crystal Caves
+        name: "Crystal Caves",
+        width: 18,
+        height: 13,
+        tiles: [],
+        monsters: [
+            { x: 200, y: 300, type: 'bat', sprite: '🦇', hp: 35, maxHp: 35, damage: 10, name: 'Cave Bat' },
+            { x: 500, y: 200, type: 'golem', sprite: '🗿', hp: 80, maxHp: 80, damage: 15, name: 'Crystal Golem' },
+            { x: 700, y: 400, type: 'spider', sprite: '🕷️', hp: 50, maxHp: 50, damage: 12, name: 'Giant Spider' }
+        ],
+        npcs: [],
+        dateSpot: { x: 400, y: 500, active: true },
+        exit: { x: 850, y: 100 },
+        bg: '#1a1a3a'
+    },
+    { // Chapter 3: Demon's Lair
+        name: "Demon's Lair",
+        width: 18,
+        height: 13,
+        tiles: [],
+        monsters: [
+            { x: 300, y: 200, type: 'demon', sprite: '👿', hp: 70, maxHp: 70, damage: 18, name: 'Lesser Demon' },
+            { x: 600, y: 300, type: 'wraith', sprite: '👻', hp: 55, maxHp: 55, damage: 14, name: 'Dark Wraith' }
+        ],
+        npcs: [],
+        dateSpot: { x: 200, y: 450, active: true },
+        exit: { x: 450, y: 50 },
+        boss: { x: 450, y: 200, sprite: '🐉', hp: 200, maxHp: 200, damage: 25, name: 'Shadow Dragon', isBoss: true },
+        bg: '#2a0a0a'
+    }
+];
+
+// Generate map tiles
+function generateMapTiles(mapIndex) {
+    const map = maps[mapIndex];
+    map.tiles = [];
+    for (let y = 0; y < map.height; y++) {
+        map.tiles[y] = [];
+        for (let x = 0; x < map.width; x++) {
+            if (x === 0 || x === map.width-1 || y === 0 || y === map.height-1) {
+                map.tiles[y][x] = 1; // Wall
+            } else if (Math.random() < 0.1) {
+                map.tiles[y][x] = 2; // Decoration
+            } else {
+                map.tiles[y][x] = 0; // Floor
+            }
+        }
+    }
+    // Clear spawn area
+    for (let y = 7; y < 10; y++) {
+        for (let x = 8; x < 11; x++) {
+            if (map.tiles[y]) map.tiles[y][x] = 0;
+        }
+    }
+    // Clear exit
+    const exitTileX = Math.floor(map.exit.x / TILE_SIZE);
+    const exitTileY = Math.floor(map.exit.y / TILE_SIZE);
+    if (map.tiles[exitTileY]) map.tiles[exitTileY][exitTileX] = 0;
+}
+
+maps.forEach((_, i) => generateMapTiles(i));
+
+// Input handling
+const keys = {};
+document.addEventListener('keydown', (e) => {
+    keys[e.code] = true;
+    if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+        e.preventDefault();
+    }
+    if (e.code === 'Space' && currentState === GameState.DIALOGUE) {
+        advanceDialogue();
+    }
+});
+document.addEventListener('keyup', (e) => {
+    keys[e.code] = false;
+});
+
+// Dialogue System
+let dialogueQueue = [];
+let currentDialogue = null;
+let dialogueCallback = null;
+
+const dialogues = {
+    intro: [
+        { speaker: 'Calvin', text: 'This forest... it feels different today. Darker.' },
+        { speaker: 'Eric', text: 'Stay close to me, Calvin. I\'ve heard rumors of monsters appearing in these woods.' },
+        { speaker: 'Calvin', text: 'With you by my side, I\'m not afraid of anything.', effect: 'love+5' },
+        { speaker: 'Eric', text: '*smiles warmly* Let\'s find out what\'s causing this darkness... together.' }
+    ],
+    firstMonster: [
+        { speaker: 'Calvin', text: 'There! A monster! It looks hostile!' },
+        { speaker: 'Eric', text: 'Get ready, Calvin! I\'ll fight alongside you!' },
+        { speaker: 'Eric', text: 'Remember, our bond makes us stronger. Trust in us!' }
+    ],
+    afterFirstBattle: [
+        { speaker: 'Eric', text: 'We did it! That was amazing teamwork!' },
+        { speaker: 'Calvin', text: 'I couldn\'t have done it without you, Eric.' },
+        { 
+            speaker: 'Eric', 
+            text: 'Hey... after all this danger, maybe we should take a moment?',
+            choices: [
+                { text: '💕 "I\'d love that. Let\'s find somewhere peaceful."', effect: 'love+10' },
+                { text: '⚔️ "We should keep moving. There might be more monsters."', effect: 'love-5' },
+                { text: '🤔 "What did you have in mind?"', effect: 'love+5' }
+            ]
+        }
+    ],
+    dateTrigger: [
+        { speaker: 'Eric', text: 'Look, Calvin... this spot is beautiful. Despite everything.' },
+        { speaker: 'Calvin', text: 'It really is. The crystal flowers are glowing...' },
+        { speaker: 'Eric', text: 'Let\'s stay here for a moment. Just us.', effect: 'startDate' }
+    ],
+    chapter2Intro: [
+        { speaker: 'Calvin', text: 'These caves... they\'re full of crystals!' },
+        { speaker: 'Eric', text: 'Beautiful, but dangerous. Stay alert, my love.' },
+        { speaker: 'Calvin', text: '*blushes* Your love..?', effect: 'love+10' },
+        { speaker: 'Eric', text: 'Was I too forward? I... I mean what I said.' }
+    ],
+    chapter3Intro: [
+        { speaker: 'Calvin', text: 'I can feel it. The source of the darkness is here.' },
+        { speaker: 'Eric', text: 'Whatever we face, we face it together. Our love has brought us this far.' },
+        { speaker: 'Calvin', text: 'Eric... no matter what happens...' },
+        { speaker: 'Eric', text: 'I know. I feel the same way. Now let\'s end this!' }
+    ],
+    bossIntro: [
+        { speaker: '???', text: 'FOOLISH MORTALS. YOU DARE CHALLENGE THE SHADOW DRAGON?' },
+        { speaker: 'Calvin', text: 'Your darkness ends here, beast!' },
+        { speaker: 'Eric', text: 'The power of our bond will defeat you!' },
+        { speaker: 'Shadow Dragon', text: 'LOVE? HA! LOVE IS WEAKNESS. I WILL SHOW YOU TRUE POWER!' }
+    ],
+    victory: [
+        { speaker: 'Calvin', text: 'We... we did it! The darkness is fading!' },
+        { speaker: 'Eric', text: 'Calvin... come here.' },
+        { speaker: 'Eric', text: '*holds Calvin close* We saved everyone. Together.' },
+        { speaker: 'Calvin', text: 'I love you, Eric. I always have.' },
+        { speaker: 'Eric', text: 'And I love you, Calvin. Now and forever.', effect: 'victory' }
+    ]
+};
+
+const dateQuestions = [
+    {
+        question: "Eric looks into your eyes. \"Calvin... what do you love most about our adventures together?\"",
+        answers: [
+            { text: "💕 The way you always protect me", love: 15, response: "Eric blushes deeply. \"I'll always protect you. Always.\"" },
+            { text: "⚔️ The thrill of fighting side by side", love: 10, response: "\"There's no one else I'd rather have watching my back,\" Eric says with a grin." },
+            { text: "🌟 These quiet moments between the chaos", love: 20, response: "Eric takes your hand gently. \"These moments... they mean everything to me too.\"" }
+        ]
+    },
+    {
+        question: "\"If we defeat all the monsters,\" Eric asks softly, \"what would you want to do... with us?\"",
+        answers: [
+            { text: "💕 Build a home together, somewhere peaceful", love: 20, response: "Eric's eyes light up. \"I've dreamed of that too. A little cottage by the lake...\"" },
+            { text: "🌍 Travel the world, having new adventures", love: 15, response: "\"An eternal adventure together? I love that idea,\" Eric laughs warmly." },
+            { text: "🤔 I haven't thought that far ahead...", love: 5, response: "Eric nods understandingly. \"That's okay. We have time to figure it out.\"" }
+        ]
+    },
+    {
+        question: "Eric moves closer. \"What made you first notice me... really notice me?\"",
+        answers: [
+            { text: "💕 Your kindness. The way you care for everyone.", love: 15, response: "\"You see the real me,\" Eric whispers. \"That means more than you know.\"" },
+            { text: "⚡ Your strength and courage in battle", love: 10, response: "Eric flexes playfully. \"I do try to look cool,\" he laughs." },
+            { text: "👀 Those beautiful eyes of yours", love: 18, response: "Eric leans in closer. \"And I could get lost in yours forever...\"" }
+        ]
+    },
+    {
+        question: "\"When we're fighting monsters,\" Eric confesses, \"I worry about you constantly. Is that... too much?\"",
+        answers: [
+            { text: "💕 No, I feel the same about you", love: 20, response: "\"Then we'll protect each other,\" Eric promises, intertwining his fingers with yours." },
+            { text: "🛡️ I can handle myself, but... I appreciate it", love: 10, response: "\"I know you're strong. But caring about someone isn't about doubting them.\"" },
+            { text: "😊 It's sweet. I like that you care.", love: 15, response: "Eric smiles softly. \"I care more than I can express.\"" }
+        ]
+    },
+    {
+        question: "The moonlight catches Eric's face as he leans in. \"Calvin... may I kiss you?\"",
+        answers: [
+            { text: "💕 *leans in* Yes... please...", love: 25, response: "The kiss is gentle, perfect. Time seems to stop just for you two. 💕" },
+            { text: "😳 *blushes intensely* I... I want that too...", love: 20, response: "Eric cups your face gently and kisses you softly. Your heart soars." },
+            { text: "🥺 I've been waiting for you to ask...", love: 22, response: "\"Then I won't make you wait any longer,\" he whispers, and kisses you tenderly." }
+        ]
+    }
+];
+
+let currentDateQuestion = 0;
+
+function showDialogue(dialogueKey, callback = null) {
+    const dialogue = typeof dialogueKey === 'string' ? dialogues[dialogueKey] : dialogueKey;
+    if (!dialogue) return;
+    
+    dialogueQueue = [...dialogue];
+    dialogueCallback = callback;
+    currentState = GameState.DIALOGUE;
+    showNextDialogue();
+}
+
+function showNextDialogue() {
+    if (dialogueQueue.length === 0) {
+        document.getElementById('dialogueBox').style.display = 'none';
+        currentState = GameState.EXPLORING;
+        if (dialogueCallback) {
+            dialogueCallback();
+            dialogueCallback = null;
+        }
+        return;
+    }
+    
+    currentDialogue = dialogueQueue.shift();
+    const box = document.getElementById('dialogueBox');
+    box.style.display = 'block';
+    
+    document.getElementById('speakerName').textContent = currentDialogue.speaker;
+    document.getElementById('dialogueText').textContent = currentDialogue.text;
+    
+    const choicesDiv = document.getElementById('dialogueChoices');
+    choicesDiv.innerHTML = '';
+    document.getElementById('continueHint').style.display = currentDialogue.choices ? 'none' : 'block';
+    
+    if (currentDialogue.choices) {
+        currentDialogue.choices.forEach((choice, i) => {
+            const btn = document.createElement('button');
+            btn.className = 'choice-btn';
+            btn.textContent = choice.text;
+            btn.onclick = () => selectChoice(choice);
+            choicesDiv.appendChild(btn);
+        });
+    }
+    
+    if (currentDialogue.effect && !currentDialogue.choices) {
+        processEffect(currentDialogue.effect);
+    }
+}
+
+function selectChoice(choice) {
+    if (choice.effect) {
+        processEffect(choice.effect);
+    }
+    gameData.choices.push(choice.text);
+    showNextDialogue();
+}
+
+function processEffect(effect) {
+    if (effect.startsWith('love')) {
+        const amount = parseInt(effect.replace('love', ''));
+        gameData.love = Math.max(0, Math.min(gameData.maxLove, gameData.love + amount));
+        updateHUD();
+        if (amount > 0) showLoveBoost('+' + amount + ' 💕');
+    } else if (effect === 'startDate') {
+        startDate();
+    } else if (effect === 'victory') {
+        showVictory();
+    }
+}
+
+function advanceDialogue() {
+    if (!currentDialogue?.choices) {
+        showNextDialogue();
+    }
+}
+
+// Combat System
+let currentEnemy = null;
+let combatTurn = 'player';
+let isDefending = false;
+
+function startCombat(monster) {
+    currentEnemy = { ...monster };
+    currentState = GameState.COMBAT;
+    document.getElementById('combatScreen').style.display = 'flex';
+    document.getElementById('enemySprite').textContent = monster.sprite;
+    document.getElementById('enemyName').textContent = monster.name;
+    document.getElementById('enemyHpFill').style.width = '100%';
+    document.getElementById('combatLog').textContent = `A wild ${monster.name} appears!`;
+    combatTurn = 'player';
+    isDefending = false;
+    updateCombatUI();
+    enableCombatButtons(true);
+}
+
+function updateCombatUI() {
+    document.querySelector('#playerCombat .combatant-hp-fill').style.width = 
+        (calvin.hp / calvin.maxHp * 100) + '%';
+    document.querySelector('#ericCombat .combatant-hp-fill').style.width = 
+        (eric.hp / eric.maxHp * 100) + '%';
+    document.getElementById('enemyHpFill').style.width = 
+        (currentEnemy.hp / currentEnemy.maxHp * 100) + '%';
+}
+
+function enableCombatButtons(enabled) {
+    document.querySelectorAll('.combat-btn').forEach(btn => {
+        btn.disabled = !enabled;
+    });
+}
+
+function combatAction(action) {
+    if (combatTurn !== 'player') return;
+    enableCombatButtons(false);
+    
+    let log = '';
+    const loveBonus = Math.floor(gameData.love / 20); // 0-5 bonus based on love
+    
+    switch(action) {
+        case 'attack':
+            const damage = 15 + Math.floor(Math.random() * 10) + loveBonus;
+            currentEnemy.hp -= damage;
+            log = `Calvin attacks for ${damage} damage!`;
+            showDamageNumber(damage, document.getElementById('enemyCombat'));
+            break;
+            
+        case 'combo':
+            if (gameData.love >= 30) {
+                const comboDamage = 25 + Math.floor(Math.random() * 15) + loveBonus * 2;
+                currentEnemy.hp -= comboDamage;
+                log = `💕 Calvin & Eric COMBO ATTACK for ${comboDamage} damage! 💕`;
+                showDamageNumber(comboDamage, document.getElementById('enemyCombat'));
+                gameData.love -= 10;
+            } else {
+                log = 'Not enough love power for combo attack!';
+                enableCombatButtons(true);
+                document.getElementById('combatLog').textContent = log;
+                return;
+            }
+            break;
+            
+        case 'defend':
+            isDefending = true;
+            log = 'Calvin & Eric take a defensive stance!';
+            break;
+            
+        case 'heal':
+            if (gameData.love >= 20) {
+                const healAmount = 25 + loveBonus * 5;
+                calvin.hp = Math.min(calvin.maxHp, calvin.hp + healAmount);
+                eric.hp = Math.min(eric.maxHp, eric.hp + healAmount);
+                log = `💖 Love heals both for ${healAmount} HP!`;
+                gameData.love -= 15;
+            } else {
+                log = 'Not enough love power to heal!';
+                enableCombatButtons(true);
+                document.getElementById('combatLog').textContent = log;
+                return;
+            }
+            break;
+    }
+    
+    document.getElementById('combatLog').textContent = log;
+    updateCombatUI();
+    updateHUD();
+    
+    if (currentEnemy.hp <= 0) {
+        setTimeout(() => endCombat(true), 1000);
+        return;
+    }
+    
+    // Eric's turn
+    setTimeout(() => {
+        const ericDamage = 10 + Math.floor(Math.random() * 8) + loveBonus;
+        currentEnemy.hp -= ericDamage;
+        document.getElementById('combatLog').textContent = `Eric attacks for ${ericDamage} damage!`;
+        showDamageNumber(ericDamage, document.getElementById('enemyCombat'));
+        updateCombatUI();
+        
+        if (currentEnemy.hp <= 0) {
+            setTimeout(() => endCombat(true), 1000);
+            return;
+        }
+        
+        // Enemy turn
+        setTimeout(() => enemyTurn(), 1000);
+    }, 1000);
+}
+
+function enemyTurn() {
+    let damage = currentEnemy.damage + Math.floor(Math.random() * 5);
+    if (isDefending) damage = Math.floor(damage * 0.4);
+    isDefending = false;
+    
+    // Randomly target Calvin or Eric
+    const target = Math.random() > 0.5 ? calvin : eric;
+    const targetName = target === calvin ? 'Calvin' : 'Eric';
+    target.hp -= damage;
+    
+    document.getElementById('combatLog').textContent = 
+        `${currentEnemy.name} attacks ${targetName} for ${damage} damage!`;
+    
+    showDamageNumber(damage, document.getElementById(target === calvin ? 'playerCombat' : 'ericCombat'));
+    updateCombatUI();
+    
+    if (calvin.hp <= 0 || eric.hp <= 0) {
+        setTimeout(() => endCombat(false), 1000);
+        return;
+    }
+    
+    combatTurn = 'player';
+    setTimeout(() => enableCombatButtons(true), 500);
+}
+
+function endCombat(victory) {
+    document.getElementById('combatScreen').style.display = 'none';
+    
+    if (victory) {
+        gameData.monstersDefeated++;
+        gameData.love = Math.min(gameData.maxLove, gameData.love + 5);
+        gameData.health = Math.max(calvin.hp, eric.hp);
+        
+        // Remove defeated monster
+        const map = maps[currentMap];
+        const idx = map.monsters.findIndex(m => 
+            m.x === currentEnemy.x && m.y === currentEnemy.y
+        );
+        if (idx >= 0) map.monsters.splice(idx, 1);
+        
+        // Check boss
+        if (currentEnemy.isBoss) {
+            showDialogue('victory');
+            return;
+        }
+        
+        currentState = GameState.EXPLORING;
+        
+        if (gameData.monstersDefeated === 1) {
+            showDialogue('afterFirstBattle');
+        }
+    } else {
+        showGameOver();
+    }
+    
+    updateHUD();
+}
+
+function showDamageNumber(amount, element) {
+    const rect = element.getBoundingClientRect();
+    const containerRect = document.getElementById('gameContainer').getBoundingClientRect();
+    const num = document.createElement('div');
+    num.className = 'damage-number';
+    num.textContent = '-' + amount;
+    num.style.left = (rect.left - containerRect.left + 50) + 'px';
+    num.style.top = (rect.top - containerRect.top) + 'px';
+    document.getElementById('gameContainer').appendChild(num);
+    setTimeout(() => num.remove(), 800);
+}
+
+// Date System
+function startDate() {
+    document.getElementById('dialogueBox').style.display = 'none';
+    currentState = GameState.DATE;
+    document.getElementById('dateScreen').style.display = 'flex';
+    currentDateQuestion = Math.floor(Math.random() * dateQuestions.length);
+    showDateQuestion();
+}
+
+function showDateQuestion() {
+    const q = dateQuestions[currentDateQuestion];
+    document.getElementById('dateQuestion').textContent = q.question;
+    
+    const locations = ['Moonlit Garden 🌙', 'Crystal Waterfall 💎', 'Starlight Meadow ⭐', 'Hidden Grove 🌿'];
+    document.getElementById('dateLocation').textContent = locations[Math.floor(Math.random() * locations.length)];
+    
+    const choicesDiv = document.getElementById('dateChoices');
+    choicesDiv.innerHTML = '';
+    
+    q.answers.forEach((answer, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'date-choice';
+        btn.textContent = answer.text;
+        btn.onclick = () => selectDateAnswer(answer);
+        choicesDiv.appendChild(btn);
+    });
+}
+
+function selectDateAnswer(answer) {
+    gameData.love = Math.min(gameData.maxLove, gameData.love + answer.love);
+    showLoveBoost('+' + answer.love + ' 💕');
+    updateHUD();
+    
+    document.getElementById('dateQuestion').textContent = answer.response;
+    document.getElementById('dateChoices').innerHTML = 
+        '<button class="date-choice" onclick="endDate()">💕 Continue Adventure 💕</button>';
+}
+
+function endDate() {
+    document.getElementById('dateScreen').style.display = 'none';
+    gameData.datesCompleted++;
+    
+    // Mark date spot as used
+    maps[currentMap].dateSpot.active = false;
+    
+    currentState = GameState.EXPLORING;
+}
+
+function showLoveBoost(text) {
+    const boost = document.createElement('div');
+    boost.className = 'love-boost';
+    boost.textContent = text;
+    boost.style.left = '50%';
+    boost.style.top = '50%';
+    document.getElementById('gameContainer').appendChild(boost);
+    setTimeout(() => boost.remove(), 1000);
+}
+
+// Game Flow
+function startGame() {
+    document.getElementById('menuScreen').style.display = 'none';
+    currentState = GameState.EXPLORING;
+    
+    calvin.x = 450;
+    calvin.y = 400;
+    calvin.hp = calvin.maxHp;
+    eric.hp = eric.maxHp;
+    
+    updateHUD();
+    showDialogue('intro', () => {
+        // Game starts after intro
+    });
+    
+    gameLoop();
+}
+
+function showControls() {
+    alert('CONTROLS:\n\nWASD / Arrow Keys - Move\nSPACE - Interact / Continue Dialogue\n\nExplore the world with Eric!\nFight monsters together!\nFind date spots (💕) for romantic moments!\nReach the exit (🚪) to progress!\n\nYour Love Bond affects combat strength and story!');
+}
+
+function showGameOver() {
+    currentState = GameState.GAME_OVER;
+    document.getElementById('gameOverScreen').style.display = 'flex';
+    document.getElementById('gameOverStats').innerHTML = `
+        Chapters Completed: ${currentMap}<br>
+        Monsters Defeated: ${gameData.monstersDefeated}<br>
+        Dates Shared: ${gameData.datesCompleted}<br>
+        Final Love Bond: ${gameData.love}%
+    `;
+}
+
+function showVictory() {
+    currentState = GameState.VICTORY;
+    document.getElementById('victoryScreen').style.display = 'flex';
+    
+    let ending = '';
+    if (gameData.love >= 90) {
+        ending = '💕 PERFECT ENDING: True Love Eternal 💕<br>Calvin and Eric\'s love shines brighter than any darkness.';
+    } else if (gameData.love >= 60) {
+        ending = '💖 GOOD ENDING: Love Prevails 💖<br>Together, they begin a new chapter of their lives.';
+    } else {
+        ending = '💙 ENDING: Companions Forever 💙<br>Their bond is strong, with room to grow.';
+    }
+    
+    document.getElementById('victoryStats').innerHTML = `
+        ${ending}<br><br>
+        Monsters Defeated: ${gameData.monstersDefeated}<br>
+        Romantic Dates: ${gameData.datesCompleted}<br>
+        Final Love Bond: ${gameData.love}%
+    `;
+    
+    // Save completion
+    localStorage.setItem(STORAGE_PREFIX + 'completed', 'true');
+    localStorage.setItem(STORAGE_PREFIX + 'bestLove', Math.max(
+        gameData.love,
+        parseInt(localStorage.getItem(STORAGE_PREFIX + 'bestLove') || 0)
+    ));
+}
+
+function updateHUD() {
+    document.querySelector('#healthBar .stat-fill').style.width = 
+        (Math.max(calvin.hp, 0) / calvin.maxHp * 100) + '%';
+    document.querySelector('#loveBar .stat-fill').style.width = 
+        (gameData.love / gameData.maxLove * 100) + '%';
+    
+    const chapters = ['The Meeting', 'Crystal Depths', 'Final Stand'];
+    document.getElementById('levelIndicator').textContent = 
+        `Chapter ${currentMap + 1}: ${chapters[currentMap] || 'Unknown'}`;
+}
+
+// Exploration & Rendering
+function update() {
+    if (currentState !== GameState.EXPLORING) return;
+    
+    const map = maps[currentMap];
+    let dx = 0, dy = 0;
+    
+    if (keys['KeyW'] || keys['ArrowUp']) dy = -calvin.speed;
+    if (keys['KeyS'] || keys['ArrowDown']) dy = calvin.speed;
+    if (keys['KeyA'] || keys['ArrowLeft']) dx = -calvin.speed;
+    if (keys['KeyD'] || keys['ArrowRight']) dx = calvin.speed;
+    
+    // Collision check
+    const newX = calvin.x + dx;
+    const newY = calvin.y + dy;
+    
+    const tileX = Math.floor(newX / TILE_SIZE);
+    const tileY = Math.floor(newY / TILE_SIZE);
+    
+    if (tileX >= 0 && tileX < map.width && tileY >= 0 && tileY < map.height) {
+        if (map.tiles[tileY] && map.tiles[tileY][tileX] !== 1) {
+            calvin.x = newX;
+            calvin.y = newY;
+        }
+    }
+    
+    // Eric follows
+    const distToCalvin = Math.sqrt(
+        Math.pow(eric.x - calvin.x, 2) + Math.pow(eric.y - calvin.y, 2)
+    );
+    if (distToCalvin > 60) {
+        eric.x += (calvin.x - eric.x) * 0.05;
+        eric.y += (calvin.y - eric.y) * 0.05;
+    }
+    
+    // Monster collision
+    map.monsters.forEach(monster => {
+        const dist = Math.sqrt(
+            Math.pow(monster.x - calvin.x, 2) + Math.pow(monster.y - calvin.y, 2)
+        );
+        if (dist < 50) {
+            if (gameData.monstersDefeated === 0) {
+                showDialogue('firstMonster', () => startCombat(monster));
+            } else {
+                startCombat(monster);
+            }
+        }
+    });
+    
+    // Boss collision
+    if (map.boss) {
+        const dist = Math.sqrt(
+            Math.pow(map.boss.x - calvin.x, 2) + Math.pow(map.boss.y - calvin.y, 2)
+        );
+        if (dist < 60) {
+            showDialogue('bossIntro', () => startCombat(map.boss));
+            map.boss = null;
+        }
+    }
+    
+    // Date spot
+    if (map.dateSpot && map.dateSpot.active) {
+        const dist = Math.sqrt(
+            Math.pow(map.dateSpot.x - calvin.x, 2) + Math.pow(map.dateSpot.y - calvin.y, 2)
+        );
+        if (dist < 40) {
+            showDialogue('dateTrigger');
+        }
+    }
+    
+    // Exit check
+    const exitDist = Math.sqrt(
+        Math.pow(map.exit.x - calvin.x, 2) + Math.pow(map.exit.y - calvin.y, 2)
+    );
+    if (exitDist < 40 && map.monsters.length === 0 && (!map.boss)) {
+        nextChapter();
+    }
+}
+
+function nextChapter() {
+    currentMap++;
+    if (currentMap >= maps.length) {
+        showVictory();
+        return;
+    }
+    
+    // Transition
+    const overlay = document.getElementById('transitionOverlay');
+    overlay.style.display = 'flex';
+    overlay.textContent = `Chapter ${currentMap + 1}...`;
+    
+    setTimeout(() => {
+        calvin.x = 450;
+        calvin.y = 400;
+        eric.x = 480;
+        eric.y = 400;
+        
+        // Reset monster HPs
+        maps[currentMap].monsters.forEach(m => m.hp = m.maxHp);
+        
+        overlay.style.display = 'none';
+        updateHUD();
+        
+        const intros = ['intro', 'chapter2Intro', 'chapter3Intro'];
+        if (intros[currentMap]) {
+            showDialogue(intros[currentMap]);
+        }
+    }, 1500);
+}
+
+function render() {
+    const map = maps[currentMap];
+    ctx.fillStyle = map.bg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw tiles
+    for (let y = 0; y < map.height; y++) {
+        for (let x = 0; x < map.width; x++) {
+            const tile = map.tiles[y]?.[x];
+            const px = x * TILE_SIZE;
+            const py = y * TILE_SIZE;
+            
+            if (tile === 1) {
+                ctx.fillStyle = '#2d2d4a';
+                ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                ctx.strokeStyle = '#3d3d5a';
+                ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+            } else if (tile === 2) {
+                ctx.font = '30px Arial';
+                const decorations = ['🌸', '🌿', '💎', '✨'];
+                ctx.fillText(decorations[(x + y) % decorations.length], px + 10, py + 35);
+            }
+        }
+    }
+    
+    // Draw date spot
+    if (map.dateSpot && map.dateSpot.active) {
+        ctx.font = '40px Arial';
+        ctx.fillText('💕', map.dateSpot.x - 15, map.dateSpot.y + 10);
+        
+        // Glow effect
+        ctx.beginPath();
+        ctx.arc(map.dateSpot.x, map.dateSpot.y, 30 + Math.sin(Date.now() / 300) * 5, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(236, 72, 153, 0.2)';
+        ctx.fill();
+    }
+    
+    // Draw exit
+    if (map.monsters.length === 0 && !map.boss) {
+        ctx.font = '40px Arial';
+        ctx.fillText('🚪', map.exit.x - 15, map.exit.y + 10);
+        ctx.fillStyle = 'rgba(34, 197, 94, 0.3)';
+        ctx.beginPath();
+        ctx.arc(map.exit.x, map.exit.y, 25, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    // Draw monsters
+    map.monsters.forEach(monster => {
+        ctx.font = '50px Arial';
+        ctx.fillText(monster.sprite, monster.x - 20, monster.y + 15);
+        
+        // HP bar
+        ctx.fillStyle = '#333';
+        ctx.fillRect(monster.x - 25, monster.y - 35, 50, 8);
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(monster.x - 25, monster.y - 35, 50 * (monster.hp / monster.maxHp), 8);
+    });
+    
+    // Draw boss
+    if (map.boss) {
+        ctx.font = '80px Arial';
+        ctx.fillText(map.boss.sprite, map.boss.x - 35, map.boss.y + 25);
+        
+        // Boss HP bar
+        ctx.fillStyle = '#333';
+        ctx.fillRect(map.boss.x - 40, map.boss.y - 50, 80, 10);
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(map.boss.x - 40, map.boss.y - 50, 80 * (map.boss.hp / map.boss.maxHp), 10);
+    }
+    
+    // Draw Eric
+    ctx.font = '45px Arial';
+    ctx.fillText(eric.sprite, eric.x - 18, eric.y + 12);
+    
+    // Draw Calvin
+    ctx.fillText(calvin.sprite, calvin.x - 18, calvin.y + 12);
+    
+    // Draw love connection line when close
+    const dist = Math.sqrt(Math.pow(eric.x - calvin.x, 2) + Math.pow(eric.y - calvin.y, 2));
+    if (dist < 100) {
+        ctx.strokeStyle = `rgba(236, 72, 153, ${0.5 * (1 - dist/100)})`;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(calvin.x, calvin.y);
+        ctx.lineTo(eric.x, eric.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+    
+    // Draw minimap
+    minimapCtx.fillStyle = 'rgba(0,0,0,0.8)';
+    minimapCtx.fillRect(0, 0, 150, 150);
+    
+    const scale = 150 / (map.width * TILE_SIZE);
+    
+    // Draw walls on minimap
+    minimapCtx.fillStyle = '#4a4a6a';
+    for (let y = 0; y < map.height; y++) {
+        for (let x = 0; x < map.width; x++) {
+            if (map.tiles[y]?.[x] === 1) {
+                minimapCtx.fillRect(x * TILE_SIZE * scale, y * TILE_SIZE * scale, 
+                    TILE_SIZE * scale, TILE_SIZE * scale);
+            }
+        }
+    }
+    
+    // Draw player on minimap
+    minimapCtx.fillStyle = '#22c55e';
+    minimapCtx.beginPath();
+    minimapCtx.arc(calvin.x * scale, calvin.y * scale, 4, 0, Math.PI * 2);
+    minimapCtx.fill();
+    
+    // Draw Eric on minimap
+    minimapCtx.fillStyle = '#3b82f6';
+    minimapCtx.beginPath();
+    minimapCtx.arc(eric.x * scale, eric.y * scale, 3, 0, Math.PI * 2);
+    minimapCtx.fill();
+    
+    // Draw monsters on minimap
+    minimapCtx.fillStyle = '#ef4444';
+    map.monsters.forEach(m => {
+        minimapCtx.beginPath();
+        minimapCtx.arc(m.x * scale, m.y * scale, 3, 0, Math.PI * 2);
+        minimapCtx.fill();
+    });
+    
+    // Draw exit on minimap
+    if (map.monsters.length === 0) {
+        minimapCtx.fillStyle = '#fbbf24';
+        minimapCtx.beginPath();
+        minimapCtx.arc(map.exit.x * scale, map.exit.y * scale, 4, 0, Math.PI * 2);
+        minimapCtx.fill();
+    }
+}
+
+function gameLoop() {
+    update();
+    render();
+    requestAnimationFrame(gameLoop);
+}
+
+// Create floating hearts on menu
+function createFloatingHearts() {
+    const container = document.getElementById('heartsBg');
+    for (let i = 0; i < 15; i++) {
+        const heart = document.createElement('div');
+        heart.className = 'floating-heart';
+        heart.textContent = ['💕', '💖', '💗', '❤️'][Math.floor(Math.random() * 4)];
+        heart.style.left = Math.random() * 100 + '%';
+        heart.style.animationDelay = Math.random() * 8 + 's';
+        heart.style.fontSize = (20 + Math.random() * 20) + 'px';
+        container.appendChild(heart);
+    }
+}
+
+createFloatingHearts();
+</script>
+</body>
+</html>
