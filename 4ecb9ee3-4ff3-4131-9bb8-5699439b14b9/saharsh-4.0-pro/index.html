@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Calvin with Eric - A romance-action adventure game">
+  <title>Calvin with Eric</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Load Phaser 3 from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+  <!-- Load Howler for audio -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+</head>
+<body>
+  <div id="game-container">
+    <!-- Game canvas will be inserted here by Phaser -->
+  </div>
+  
+  <!-- Preload assets to avoid flickering -->
+  <div class="hidden">
+    <img src="assets/characters/calvin_idle.png" alt="Calvin idle">
+    <img src="assets/characters/eric_idle.png" alt="Eric idle">
+    <img src="assets/monsters/slime.png" alt="Slime monster">
+  </div>
+  
+  <!-- UI elements that need to be accessible via DOM -->
+  <div id="relationship-meter" class="ui-element">
+    <div class="meter-background">
+      <div id="relationship-fill" class="meter-fill"></div>
+    </div>
+    <div id="relationship-label">Growing</div>
+  </div>
+  
+  <div id="health-container" class="ui-element">
+    <div class="heart-icon">❤</div>
+    <div id="health-bar" class="health-fill"></div>
+  </div>
+
+  <!-- Script imports in dependency order -->
+  <script src="config.js"></script>
+  <script src="stateManager.js"></script>
+  <script src="utils/RelationshipManager.js"></script>
+  <script src="utils/DialogueSystem.js"></script>
+  <script src="utils/MiniGameManager.js"></script>
+  <script src="utils/InputHandler.js"></script>
+  <script src="entities/Calvin.js"></script>
+  <script src="entities/Eric.js"></script>
+  <script src="entities/Monster.js"></script>
+  <script src="entities/Projectile.js"></script>
+  <script src="scenes/BootScene.js"></script>
+  <script src="scenes/TitleScene.js"></script>
+  <script src="scenes/WorldScene.js"></script>
+  <script src="scenes/CombatScene.js"></script>
+  <script src="scenes/DateScene.js"></script>
+  <script src="scenes/MiniGameScene.js"></script>
+  <script src="scenes/GameOverScene.js"></script>
+  <script src="scenes/WinScene.js"></script>
+  <script src="content/levels.js"></script>
+  <script src="content/dialogueTrees.js"></script>
+  <script src="content/miniGames.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
