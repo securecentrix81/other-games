@@ -842,7 +842,11 @@ export class Renderer {
      * Get playfield rectangle for input calculations
      */
     getPlayfieldRect() {
-        return { ...this.playfieldRect };
+        return { 
+            ...this.playfieldRect,
+            scaleX: this.scaleX,
+            scaleY: this.scaleY
+        };
     }
     
     /**
