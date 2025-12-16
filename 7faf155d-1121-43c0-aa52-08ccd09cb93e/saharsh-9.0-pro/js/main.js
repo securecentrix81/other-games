@@ -127,6 +127,12 @@ window.onload = function() {
     }
 
     function initEventListeners() {
+        // Global Custom Cursor Movement (Always active)
+        const cursor = document.getElementById('custom-cursor');
+        document.addEventListener('mousemove', e => {
+            cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
+        });
+        
         // Enter to play
         document.addEventListener('keydown', e => {
             if (e.key === 'Enter' && !window.Game.isPlaying && !document.getElementById('song-select-screen').classList.contains('hidden')) {
@@ -146,7 +152,13 @@ window.onload = function() {
         // Buttons
         document.getElementById('back-btn').onclick = backToMenu;
         document.getElementById('fail-back-btn').onclick = backToMenu;
-        document.getElementById('retry-btn').onclick = () => startSelectedMap();
+        
+        document.getElementById('retry-btn').onclick = () => {
+             // Ensure we are fully reset before restarting
+             // Game.start handles state reset, but we need to ensure the startSelectedMap call works
+             startSelectedMap();
+        };
+        
         document.getElementById('skip-btn').onclick = () => {
             // Trigger skip
             const e = new KeyboardEvent('keydown', { code: 'Space' });
