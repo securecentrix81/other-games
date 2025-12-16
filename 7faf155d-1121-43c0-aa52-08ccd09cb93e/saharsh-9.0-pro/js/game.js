@@ -104,9 +104,30 @@ window.Game = (function() {
         const rawX = (e.clientX - params.offsetX) / params.scale;
         const rawY = (e.clientY - params.offsetY) / params.scale;
         
-        // Handle HR Flip for input mapping
+        // STANDARD MAPPING: Map absolute screen position to osu! coordinates.
+        // We DO NOT flip input for HardRock. The objects are flipped visually, 
+        // so the player must naturally aim at the bottom of the screen.
         STATE.cursor.x = rawX;
-        STATE.cursor.y = isHR ? (384 - rawY) : rawY;
+        // If HR is on, the map is drawn flipped (0->384, 384->0).
+        // But the input mapping (Screen -> Osu) should be consistent with the visual mapping.
+        // If I click top-left of screen, that corresponds to 0,0 visually (or 0,384 in HR).
+        // Let's rely on renderer mapping.
+        // If renderer maps (x,y) -> (screenX, screenY), we need (screenX, screenY) -> (x,y).
+        
+        // If HR: visualY = 384 - logicalY.
+        // screenY = offY + visualY * scale.
+        // screenY = offY + (384 - logicalY) * scale.
+        // (screenY - offY)/scale = 384 - logicalY.
+        // logicalY = 384 - (screenY - offY)/scale.
+        
+        // If No HR:
+        // logicalY = (screenY - offY)/scale.
+        
+        if (isHR) {
+            STATE.cursor.y = 384 - rawY;
+        } else {
+            STATE.cursor.y = rawY;
+        }
     }
 
     // --- Game Control ---
@@ -124,7 +145,15 @@ window.Game = (function() {
         STATE.hits = { 300: 0, 100: 0, 50: 0, miss: 0 };
         STATE.nextObjIndex = 0;
         STATE.cursorTrail = [];
-        STATE.time = -2000; 
+        STATE.time = -2000;
+        
+        // Reset Inputs
+        STATE.keys.z = false;
+        STATE.keys.x = false;
+        
+        // Hide Failed Screen if active
+        document.getElementById('failed-screen').classList.add('hidden');
+        document.getElementById('results-screen').classList.add('hidden');
 
         // Setup Background
         const bgLayer = document.getElementById('background-layer');
@@ -144,10 +173,10 @@ window.Game = (function() {
 
         // Calculate Difficulty Stats
         const baseStats = {
-            ar: beatmap.Difficulty.ApproachRate,
-            cs: beatmap.Difficulty.CircleSize,
-            od: beatmap.Difficulty.OverallDifficulty,
-            hp: beatmap.Difficulty.HPDrainRate
+            ar: parseFloat(beatmap.Difficulty.ApproachRate),
+            cs: parseFloat(beatmap.Difficulty.CircleSize),
+            od: parseFloat(beatmap.Difficulty.OverallDifficulty),
+            hp: parseFloat(beatmap.Difficulty.HPDrainRate)
         };
         STATE.stats = mods.applyToStats(baseStats);
         
@@ -168,6 +197,9 @@ window.Game = (function() {
         
         document.getElementById('loading-screen').classList.add('hidden');
         document.getElementById('game-hud').classList.remove('hidden');
+        
+        // Hide DOM Cursor (Gameplay uses Canvas cursor)
+        document.getElementById('custom-cursor').style.display = 'none';
 
         // Prepare first frame
         updateUI();
@@ -175,13 +207,11 @@ window.Game = (function() {
         // Start Audio with Delay
         audioManager.setRate(mods.getSpeedMultiplier());
         
-        const firstObjTime = beatmap.HitObjects[0].time;
-        
-        // Calculate Intro
-        // If first object is far, we start at -2000
-        // If first object is close (e.g. 500ms), we still need time? 
-        // Actually osu starts audio immediately but objects appear when needed.
-        // We'll standardise start at -2000ms visual time.
+        // Smart Start Time: If first object is very late, allow skipping
+        // If first object is at 10000ms
+        // We start visual time at -2000. 
+        // We want Audio to start at 0 when Visual Time hits 0.
+        // So we wait 2000ms real time.
         
         STATE.time = -2000;
         STATE.startTime = performance.now() + 2000; 
@@ -496,20 +526,32 @@ window.Game = (function() {
         // 2. Click Logic (Auto & Relax)
         if (isAuto || isRelax) {
             // Check for hits
-            const hitWindow = 10; // Perfect hits for Auto
+            const hitWindow = isRelax ? STATE.stats.odMs300 : 15; // Relax uses real window, Auto uses tight window
+            
+            // Find earliest hittable object
+            // Note: visibleObjects is sorted by time
             const obj = STATE.visibleObjects.find(o => 
                 !o.hit && !o.missed && Math.abs(o.time - STATE.time) <= hitWindow
             );
             
             if (obj) {
-                // Auto Hit
+                // For Relax, we must ensure the user is aiming correctly!
+                if (isRelax) {
+                     const csRadius = (54.4 - 4.48 * STATE.stats.cs); // OSU pixels
+                     const dist = window.Utils.dist(STATE.cursor, obj);
+                     if (dist > csRadius) return; // Aiming too far
+                }
+                
+                // Hit
                 registerHit(obj, 300);
                 
                 // Visual key press
                 const key = STATE.hits[300] % 2 === 0 ? 'k1' : 'k2';
                 const el = document.getElementById(key);
-                el.classList.add('key-pressed');
-                setTimeout(() => el.classList.remove('key-pressed'), 100);
+                if (el) {
+                    el.classList.add('key-pressed');
+                    setTimeout(() => el.classList.remove('key-pressed'), 100);
+                }
             }
         }
     }
