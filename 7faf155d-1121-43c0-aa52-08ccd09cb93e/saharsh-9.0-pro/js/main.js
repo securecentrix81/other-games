@@ -183,14 +183,21 @@ window.onload = function() {
             
             // 2. Fetch Audio (Assume standard filename from General section or fallback)
             let audioFile = beatmap.General.AudioFilename || "audio.mp3";
-            // Hardcoded fix for this specific mapset if needed, but parser should get it.
-            // Construct URL
             const audioUrl = REPO_BASE + encodeURIComponent(audioFile);
             
-            document.getElementById('loading-text').innerText = "Loading Audio...";
+            // 3. Fetch Background (from Events)
+            let bgUrl = null;
+            if (beatmap.Events) {
+                const bgEvent = beatmap.Events.find(e => e.type === 'background');
+                if (bgEvent && bgEvent.filename) {
+                    bgUrl = REPO_BASE + encodeURIComponent(bgEvent.filename);
+                }
+            }
+
+            document.getElementById('loading-text').innerText = "Loading Assets...";
             
-            // 3. Start Game
-            window.Game.start(beatmap, audioUrl);
+            // 4. Start Game
+            window.Game.start(beatmap, audioUrl, bgUrl);
             
         } catch (e) {
             console.error(e);
