@@ -233,28 +233,37 @@ window.Renderer = (function() {
     function drawCursor(cursor, trail) {
         if (!cursor) return;
 
+        const isHR = window.ModSystem.isActive('HardRock');
+        // Need to recalculate map params to map cursor correctly from Osu -> Screen
+        const mapParams = window.Utils.mapToCanvas(0, 0, width, height, isHR);
+
+        // Helper to map a point
+        const toScreen = (p) => mapPos(p, mapParams, isHR);
+
+        const screenCursor = toScreen(cursor);
+
         // Draw Trail
         if (trail && trail.length > 1) {
             ctx.beginPath();
-            ctx.moveTo(trail[0].x, trail[0].y);
+            const start = toScreen(trail[0]);
+            ctx.moveTo(start.x, start.y);
+            
             for (let i = 1; i < trail.length; i++) {
-                // Quadratic bezier for smoothness
-                // ctx.lineTo(trail[i].x, trail[i].y);
-                const p0 = trail[i-1];
-                const p1 = trail[i];
+                const p0 = toScreen(trail[i-1]);
+                const p1 = toScreen(trail[i]);
                 const mid = { x: (p0.x + p1.x)/2, y: (p0.y + p1.y)/2 };
                 ctx.quadraticCurveTo(p0.x, p0.y, mid.x, mid.y);
             }
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
-            ctx.lineWidth = 4; // Trail width
+            ctx.lineWidth = 4 * mapParams.scale; // Trail width scaled
             ctx.strokeStyle = 'rgba(255, 105, 180, 0.4)'; // Pink trail
             ctx.stroke();
         }
 
         // Draw Cursor Head
         ctx.beginPath();
-        ctx.arc(cursor.x, cursor.y, 14, 0, Math.PI * 2);
+        ctx.arc(screenCursor.x, screenCursor.y, 14 * mapParams.scale, 0, Math.PI * 2);
         ctx.fillStyle = '#ff69b4'; // Hot pink
         ctx.fill();
         ctx.lineWidth = 2;
