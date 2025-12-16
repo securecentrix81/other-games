@@ -110,7 +110,7 @@ window.Game = (function() {
     }
 
     // --- Game Control ---
-    async function start(beatmap, audioFile) {
+    async function start(beatmap, audioFile, bgUrl) {
         if (STATE.isPlaying) stop();
 
         STATE.map = beatmap;
@@ -124,7 +124,23 @@ window.Game = (function() {
         STATE.hits = { 300: 0, 100: 0, 50: 0, miss: 0 };
         STATE.nextObjIndex = 0;
         STATE.cursorTrail = [];
-        STATE.time = -2000; // 2 sec intro
+        STATE.time = -2000; 
+
+        // Setup Background
+        const bgLayer = document.getElementById('background-layer');
+        if (bgUrl) {
+            bgLayer.style.backgroundImage = `url('${bgUrl}')`;
+            bgLayer.style.opacity = '0'; // Start hidden, fade in on load
+            const img = new Image();
+            img.src = bgUrl;
+            img.onload = () => { bgLayer.style.opacity = '0.3'; };
+            img.onerror = () => { 
+                bgLayer.style.backgroundImage = 'none'; 
+                bgLayer.style.opacity = '0.3'; // Revert to black
+            };
+        } else {
+            bgLayer.style.backgroundImage = 'none';
+        }
 
         // Calculate Difficulty Stats
         const baseStats = {
@@ -136,11 +152,9 @@ window.Game = (function() {
         STATE.stats = mods.applyToStats(baseStats);
         
         // Calculate MS windows
-        // AR: <5 = 1200 + 120*(5-AR), >5 = 1200 - 150*(AR-5)
         if (STATE.stats.ar < 5) STATE.stats.arMs = 1200 + 120 * (5 - STATE.stats.ar);
         else STATE.stats.arMs = 1200 - 150 * (STATE.stats.ar - 5);
 
-        // OD: 300 = 80-6*OD, 100 = 140-8*OD, 50 = 200-10*OD (approx)
         STATE.stats.odMs300 = 80 - 6 * STATE.stats.od;
         STATE.stats.odMs100 = 140 - 8 * STATE.stats.od;
         STATE.stats.odMs50 = 200 - 10 * STATE.stats.od;
@@ -149,12 +163,8 @@ window.Game = (function() {
         document.getElementById('loading-screen').classList.remove('hidden');
         document.getElementById('song-select-screen').classList.add('hidden');
         
-        const loaded = await audioManager.load(audioFile);
-        if (!loaded) {
-            alert("Failed to load audio!");
-            stop();
-            return;
-        }
+        // Attempt load, continue regardless of success
+        await audioManager.load(audioFile);
         
         document.getElementById('loading-screen').classList.add('hidden');
         document.getElementById('game-hud').classList.remove('hidden');
@@ -165,20 +175,17 @@ window.Game = (function() {
         // Start Audio with Delay
         audioManager.setRate(mods.getSpeedMultiplier());
         
-        // Calculate Intro Time
-        // Ensure at least 2 seconds before first object
         const firstObjTime = beatmap.HitObjects[0].time;
-        const leadIn = Math.max(2000, firstObjTime > 5000 ? 2000 : firstObjTime); // Cap intro for very long empty starts unless we skip
         
-        // Set State
-        STATE.startTime = performance.now() + 2000; 
+        // Calculate Intro
+        // If first object is far, we start at -2000
+        // If first object is close (e.g. 500ms), we still need time? 
+        // Actually osu starts audio immediately but objects appear when needed.
+        // We'll standardise start at -2000ms visual time.
+        
         STATE.time = -2000;
+        STATE.startTime = performance.now() + 2000; 
         STATE.audioStarted = false;
-        
-        // Check if map starts way later, allow Skip
-        if (firstObjTime > 5000) {
-             // Logic handled in updateLogic for button visibility
-        }
 
         rafId = requestAnimationFrame(loop);
     }
