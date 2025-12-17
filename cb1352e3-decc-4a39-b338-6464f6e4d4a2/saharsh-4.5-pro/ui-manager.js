@@ -111,7 +111,6 @@ class UIManager {
         // Control elements
         this.ui.saveBtn = document.getElementById('save-btn');
         this.ui.loadBtn = document.getElementById('load-btn');
-        this.ui.settingsBtns = document.getElementById('settings-btns');
         
         // Settings controls
         this.ui.masterVolume = document.getElementById('master-volume');
@@ -202,10 +201,13 @@ class UIManager {
      * Setup tooltip system
      */
     setupTooltips() {
-        // Tooltip elements can be added dynamically
-        document.addEventListener('mouseenter', (e) => this.showTooltip(e), true);
-        document.addEventListener('mouseleave', (e) => this.hideTooltip(e), true);
-        document.addEventListener('mousemove', (e) => this.updateTooltipPosition(e), true);
+        // Tooltip elements can be added dynamically - use mouseover with element check
+        document.addEventListener('mouseover', (e) => {
+            if (e.target && e.target.nodeType === 1 && typeof e.target.getAttribute === 'function') {
+                this.showTooltip(e);
+            }
+        }, true);
+        document.addEventListener('mouseout', (e) => this.hideTooltip(e), true);
     }
 
     /**
@@ -257,7 +259,6 @@ class UIManager {
         }
         
         shortcut.callback();
-        this.engine.audio?.onUIInteraction('button_click');
     }
 
     /**
@@ -302,8 +303,8 @@ class UIManager {
         // Update UI layout for responsive design
         this.updateResponsiveLayout();
         
-        // Update tooltips
-        this.updateTooltipPosition();
+        // Hide tooltips on resize
+        this.hideTooltip();
         
         // Trigger resize events for components
         this.engine.onResize?.();
@@ -491,7 +492,6 @@ class UIManager {
         this.uiState.currentPanel = 'map';
         this.ui.schoolMap.classList.add('map-visible');
         this.engine.school?.updateMapDisplay();
-        this.engine.audio?.onUIInteraction('menu_open');
     }
 
     /**
@@ -500,7 +500,6 @@ class UIManager {
     hideMap() {
         this.uiState.currentPanel = null;
         this.ui.schoolMap.classList.remove('map-visible');
-        this.engine.audio?.onUIInteraction('menu_close');
     }
 
     /**
@@ -524,7 +523,6 @@ class UIManager {
         this.uiState.currentPanel = 'inventory';
         this.ui.inventoryPanel.classList.add('visible');
         this.engine.inventory?.updateDisplay();
-        this.engine.audio?.onUIInteraction('menu_open');
     }
 
     /**
@@ -533,7 +531,6 @@ class UIManager {
     hideInventory() {
         this.uiState.currentPanel = null;
         this.ui.inventoryPanel.classList.remove('visible');
-        this.engine.audio?.onUIInteraction('menu_close');
     }
 
     /**
@@ -544,7 +541,6 @@ class UIManager {
         this.uiState.currentPanel = panelType;
         panel.classList.remove('panel-hidden');
         this.animatePanel(panel, 'slide_in');
-        this.engine.audio?.onUIInteraction('menu_open');
     }
 
     /**
@@ -555,7 +551,6 @@ class UIManager {
             panel.classList.add('panel-hidden');
             this.uiState.currentPanel = null;
         });
-        this.engine.audio?.onUIInteraction('menu_close');
     }
 
     /**
@@ -652,7 +647,6 @@ class UIManager {
         if (this.engine.state !== 'battle') return;
         
         this.engine.handleBattleAction(action);
-        this.engine.audio?.onUIInteraction('button_click');
         
         // Disable buttons temporarily
         this.setBattleButtonsEnabled(false);
@@ -682,7 +676,6 @@ class UIManager {
     updateVolume(type, value) {
         const volume = value / 100;
         this.engine.updateVolume(type, volume);
-        this.engine.audio?.onUIInteraction('button_click');
     }
 
     /**
@@ -815,6 +808,12 @@ class UIManager {
      */
     showTooltip(e) {
         const element = e.target;
+        
+        // Safety check - ensure element exists and has getAttribute method
+        if (!element || typeof element.getAttribute !== 'function') {
+            return;
+        }
+        
         const tooltipText = element.getAttribute('data-tooltip');
         
         if (tooltipText) {
@@ -833,11 +832,11 @@ class UIManager {
     }
 
     /**
-     * Update tooltip position
+     * UpdateTooltipPosition
      */
-    updateTooltipPosition(e) {
+    updateTooltipPosition(e = null) {
         const tooltip = document.getElementById('ui-tooltip');
-        if (tooltip && e) {
+        if (tooltip && e && e.pageX !== undefined && e.pageY !== undefined) {
             tooltip.style.left = (e.pageX + 10) + 'px';
             tooltip.style.top = (e.pageY - 10) + 'px';
         }
@@ -925,128 +924,6 @@ class UIManager {
     handleInventoryDrop(e) {
         // Implementation for inventory drag and drop
         console.log('Inventory item dropped');
-    }
-
-    /**
-     * Update UI state
-     */
-    updateUIState() {
-        this.uiState.lastInteraction = Date.now();
-    }
-
-    /**
-     * Get current UI state
-     */
-    getUIState() {
-        return { ...this.uiState };
-    }
-
-    /**
-     * Update all UI elements
-     */
-    updateAllUI() {
-        this.updateHUD();
-        this.updateBattleUI();
-        this.updateInventoryUI();
-        this.updateMapUI();
-    }
-
-    /**
-     * Update HUD elements
-     */
-    updateHUD() {
-        const player = this.engine.character?.data;
-        if (!player) return;
-        
-        // Update health bar
-        const healthPercent = (player.health / player.maxHealth) * 100;
-        if (this.ui.healthFill) {
-            this.ui.healthFill.style.width = `${healthPercent}%`;
-        }
-        if (this.ui.healthText) {
-            this.ui.healthText.textContent = `${player.health}/${player.maxHealth}`;
-        }
-        
-        // Update stress bar
-        const stressPercent = (player.stress / player.maxStress) * 100;
-        if (this.ui.stressFill) {
-            this.ui.stressFill.style.width = `${stressPercent}%`;
-        }
-        if (this.ui.stressText) {
-            this.ui.stressText.textContent = `${player.stress}/${player.maxStress}`;
-        }
-        
-        // Update other stats
-        if (this.ui.knowledgeText) {
-            this.ui.knowledgeText.textContent = player.knowledge;
-        }
-        if (this.ui.levelText) {
-            this.ui.levelText.textContent = player.level;
-        }
-        if (this.ui.expText) {
-            this.ui.expText.textContent = `${player.exp}/${player.expToNext}`;
-        }
-        
-        // Update week indicator
-        if (this.ui.weekIndicator) {
-            this.ui.weekIndicator.textContent = this.engine.gameData?.week || 1;
-        }
-    }
-
-    /**
-     * Update battle UI
-     */
-    updateBattleUI() {
-        if (this.engine.state !== 'battle') return;
-        
-        const battleState = this.engine.combat?.getBattleState();
-        if (!battleState || !battleState.enemy) return;
-        
-        // Update enemy info
-        if (this.ui.enemyName) {
-            this.ui.enemyName.textContent = battleState.enemy.name;
-        }
-        
-        const enemy = battleState.enemy;
-        const enemyHealthPercent = (enemy.health / enemy.maxHealth) * 100;
-        if (this.ui.enemyHealthFill) {
-            this.ui.enemyHealthFill.style.width = `${enemyHealthPercent}%`;
-        }
-        if (this.ui.enemyHealthText) {
-            this.ui.enemyHealthText.textContent = `${Math.max(0, enemy.health)}/${enemy.maxHealth}`;
-        }
-        
-        // Update player info
-        const player = this.engine.character.data;
-        const playerHealthPercent = (player.health / player.maxHealth) * 100;
-        if (this.ui.playerHealthFill) {
-            this.ui.playerHealthFill.style.width = `${playerHealthPercent}%`;
-        }
-        if (this.ui.playerHealthText) {
-            this.ui.playerHealthText.textContent = `${Math.max(0, player.health)}/${player.maxHealth}`;
-        }
-        
-        // Enable/disable buttons based on turn
-        const enableButtons = battleState.playerTurn && battleState.active;
-        this.setBattleButtonsEnabled(enableButtons);
-    }
-
-    /**
-     * Update inventory UI
-     */
-    updateInventoryUI() {
-        if (this.uiState.currentPanel === 'inventory') {
-            this.engine.inventory?.updateDisplay();
-        }
-    }
-
-    /**
-     * Update map UI
-     */
-    updateMapUI() {
-        if (this.uiState.currentPanel === 'map') {
-            this.engine.school?.updateMapDisplay();
-        }
     }
 
     /**
@@ -1151,60 +1028,6 @@ class UIManager {
      */
     updateTooltips(deltaTime) {
         // Tooltip logic handled by event listeners
-    }
-
-    /**
-     * Get UI status
-     */
-    getUIStatus() {
-        return {
-            currentPanel: this.uiState.currentPanel,
-            isModalOpen: this.uiState.isModalOpen,
-            notificationCount: this.notifications.length,
-            activeAnimations: this.uiAnimations.size,
-            isMobile: this.isMobile,
-            lastInteraction: this.uiState.lastInteraction
-        };
-    }
-
-    /**
-     * Save UI state
-     */
-    save() {
-        const storageKey = location.pathname + "ui_manager_data";
-        try {
-            const uiData = {
-                uiState: this.uiState,
-                notifications: this.notifications.map(n => ({
-                    message: n.textContent,
-                    type: n.className
-                })),
-                keyboardShortcuts: Array.from(this.keyboardShortcuts.keys()),
-                isMobile: this.isMobile
-            };
-            localStorage.setItem(storageKey, JSON.stringify(uiData));
-        } catch (error) {
-            console.error('Failed to save UI manager data:', error);
-        }
-    }
-
-    /**
-     * Load UI state
-     */
-    load() {
-        const storageKey = location.pathname + "ui_manager_data";
-        try {
-            const saved = localStorage.getItem(storageKey);
-            if (saved) {
-                const uiData = JSON.parse(saved);
-                this.uiState = { ...this.uiState, ...uiData.uiState };
-                this.isMobile = uiData.isMobile || this.isMobile;
-                return true;
-            }
-        } catch (error) {
-            console.error('Failed to load UI manager data:', error);
-        }
-        return false;
     }
 }
 
