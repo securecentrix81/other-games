@@ -603,3 +603,6 @@ class CharacterSystem {
         return false;
     }
 }
+
+// Export for use by other systems
+window.CharacterSystem = CharacterSystem;
