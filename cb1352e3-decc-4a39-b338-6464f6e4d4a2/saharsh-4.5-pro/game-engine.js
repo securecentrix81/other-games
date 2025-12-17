@@ -356,6 +356,11 @@ class GameEngine {
         if (this.ui.loadingScreen) {
             this.ui.loadingScreen.style.display = 'none';
         }
+        // Ensure game canvas container is visible
+        const canvasContainer = document.getElementById('game-canvas-container');
+        if (canvasContainer) {
+            canvasContainer.style.display = 'block';
+        }
     }
 
     showMainMenu() {
@@ -363,6 +368,7 @@ class GameEngine {
         this.state = 'menu';
         if (this.ui.mainMenu) {
             this.ui.mainMenu.classList.add('menu-visible');
+            this.ui.mainMenu.style.display = 'flex';
         }
     }
 
@@ -370,6 +376,7 @@ class GameEngine {
         console.log('Hiding main menu');
         if (this.ui.mainMenu) {
             this.ui.mainMenu.classList.remove('menu-visible');
+            this.ui.mainMenu.style.display = 'none';
         }
     }
 
@@ -392,14 +399,16 @@ class GameEngine {
             this.character.updateStats();
         }
         
-        // Show opening dialogue
-        if (this.dialogue) {
-            this.dialogue.startDialogue('Narrator', 
-                'Welcome to your worst nightmare... school. You are Eric M., and you are failing. The school has become a monster-filled dungeon, and your only way out is to survive and pass the final exam.',
-                [{ text: 'Begin my journey...', action: () => this.endDialogue() }]
-            );
-            this.state = 'dialogue';
+        // Show the player HUD
+        if (this.ui.playerHUD) {
+            this.ui.playerHUD.style.display = 'block';
         }
+        
+        // Show opening dialogue directly
+        this.startDialogue('Narrator', 
+            'Welcome to your worst nightmare... school. You are Eric M., and you are failing. The school has become a monster-filled dungeon, and your only way out is to survive and pass the final exam.',
+            [{ text: 'Begin my journey...', action: () => this.endDialogue() }]
+        );
         
         this.updateUI();
         console.log('New game started, state:', this.state);
@@ -427,18 +436,21 @@ class GameEngine {
         console.log('Showing help panel');
         if (this.ui.helpPanel) {
             this.ui.helpPanel.classList.remove('panel-hidden');
-            this.ui.helpPanel.style.display = 'block';
-            this.ui.helpPanel.style.position = 'fixed';
-            this.ui.helpPanel.style.top = '50%';
-            this.ui.helpPanel.style.left = '50%';
-            this.ui.helpPanel.style.transform = 'translate(-50%, -50%)';
-            this.ui.helpPanel.style.zIndex = '2000';
-            this.ui.helpPanel.style.background = 'rgba(44, 62, 80, 0.98)';
-            this.ui.helpPanel.style.padding = '20px';
-            this.ui.helpPanel.style.borderRadius = '10px';
-            this.ui.helpPanel.style.maxWidth = '500px';
-            this.ui.helpPanel.style.maxHeight = '80vh';
-            this.ui.helpPanel.style.overflow = 'auto';
+            this.ui.helpPanel.style.cssText = `
+                display: block !important;
+                position: fixed !important;
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                z-index: 2000 !important;
+                background: rgba(44, 62, 80, 0.98) !important;
+                padding: 0 !important;
+                border-radius: 10px !important;
+                max-width: 500px !important;
+                max-height: 80vh !important;
+                overflow: auto !important;
+                border: 2px solid #3498db !important;
+            `;
         }
     }
 
@@ -446,26 +458,31 @@ class GameEngine {
         console.log('Hiding help panel');
         if (this.ui.helpPanel) {
             this.ui.helpPanel.classList.add('panel-hidden');
-            this.ui.helpPanel.style.display = 'none';
+            this.ui.helpPanel.style.cssText = 'display: none !important;';
         }
     }
 
     showSettings() {
         if (this.ui.settingsPanel) {
             this.ui.settingsPanel.classList.remove('panel-hidden');
-            this.ui.settingsPanel.style.display = 'block';
-            this.ui.settingsPanel.style.position = 'fixed';
-            this.ui.settingsPanel.style.top = '50%';
-            this.ui.settingsPanel.style.left = '50%';
-            this.ui.settingsPanel.style.transform = 'translate(-50%, -50%)';
-            this.ui.settingsPanel.style.zIndex = '2000';
+            this.ui.settingsPanel.style.cssText = `
+                display: block !important;
+                position: fixed !important;
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                z-index: 2000 !important;
+                background: rgba(44, 62, 80, 0.98) !important;
+                border: 2px solid #3498db !important;
+                border-radius: 10px !important;
+            `;
         }
     }
 
     hideSettings() {
         if (this.ui.settingsPanel) {
             this.ui.settingsPanel.classList.add('panel-hidden');
-            this.ui.settingsPanel.style.display = 'none';
+            this.ui.settingsPanel.style.cssText = 'display: none !important;';
         }
     }
 
@@ -562,6 +579,29 @@ class GameEngine {
         this.state = 'dialogue';
         if (this.ui.dialogueContainer) {
             this.ui.dialogueContainer.classList.add('dialogue-visible');
+            this.ui.dialogueContainer.style.display = 'block';
+        }
+        if (this.ui.dialogueName) {
+            this.ui.dialogueName.textContent = character;
+        }
+        if (this.ui.dialogueText) {
+            this.ui.dialogueText.textContent = text;
+        }
+        if (this.ui.dialogueChoices) {
+            this.ui.dialogueChoices.innerHTML = '';
+            choices.forEach((choice, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'dialogue-choice';
+                btn.textContent = choice.text;
+                btn.addEventListener('click', () => {
+                    if (choice.action) {
+                        choice.action();
+                    } else {
+                        this.endDialogue();
+                    }
+                });
+                this.ui.dialogueChoices.appendChild(btn);
+            });
         }
         if (this.dialogue) {
             this.dialogue.start(character, text, choices);
@@ -572,6 +612,7 @@ class GameEngine {
         this.state = 'playing';
         if (this.ui.dialogueContainer) {
             this.ui.dialogueContainer.classList.remove('dialogue-visible');
+            this.ui.dialogueContainer.style.display = 'none';
         }
     }
 
