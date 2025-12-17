@@ -183,7 +183,7 @@
         </div>
 
         <!-- Main Menu -->
-        <div id="main-menu" class="menu-visible">
+        <div id="main-menu" class="menu-visible" style="display: flex !important;">
             <div class="menu-content">
                 <h1 class="main-title">Eric m failing class</h1>
                 <p class="subtitle">A Story-Driven RPG Adventure</p>
@@ -269,10 +269,8 @@
         </div>
     </div>
 
-    <!-- Core Game Engine -->
-    <script src="game-engine.js"></script>
-    
     <!-- Game Systems (Order matters for dependencies) -->
+    <script src="game-data.js"></script>
     <script src="character-system.js"></script>
     <script src="inventory-system.js"></script>
     <script src="school-areas.js"></script>
@@ -282,12 +280,22 @@
     <script src="teacher-ai.js"></script>
     <script src="save-system.js"></script>
     <script src="audio-system.js"></script>
-    
-    <!-- UI and Effects -->
     <script src="visual-effects.js"></script>
     <script src="ui-manager.js"></script>
-    <script src="game-data.js"></script>
     
-    <!-- Game initialization is handled by game-engine.js -->
+    <!-- Core Game Engine (Must be loaded last) -->
+    <script src="game-engine.js"></script>
+    
+    <!-- Backup initialization in case DOMContentLoaded already fired -->
+    <script>
+        // Ensure game initializes
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            if (!window.gameEngine) {
+                console.log('Backup initialization triggered');
+                window.gameEngine = new GameEngine();
+                window.gameEngine.init();
+            }
+        }
+    </script>
 </body>
 </html>
