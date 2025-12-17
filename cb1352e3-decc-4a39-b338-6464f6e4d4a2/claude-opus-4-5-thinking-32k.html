@@ -1,0 +1,1885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eric M Failing Class</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a0f;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        #gameContainer {
+            position: relative;
+            width: 1000px;
+            height: 700px;
+        }
+        #gameCanvas {
+            background: #1a1a2e;
+            border: 3px solid #4a4a6a;
+            border-radius: 8px;
+            image-rendering: pixelated;
+        }
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #fff;
+            font-size: 14px;
+            text-shadow: 2px 2px 4px #000;
+            pointer-events: none;
+        }
+        .stat-bar {
+            width: 200px;
+            height: 20px;
+            background: #333;
+            border: 2px solid #555;
+            border-radius: 4px;
+            margin: 5px 0;
+            overflow: hidden;
+        }
+        .stat-fill {
+            height: 100%;
+            transition: width 0.3s;
+        }
+        .hp-fill { background: linear-gradient(to right, #ff4444, #ff6666); }
+        .mp-fill { background: linear-gradient(to right, #4444ff, #6666ff); }
+        .xp-fill { background: linear-gradient(to right, #44ff44, #66ff66); }
+        #dialogBox {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 900px;
+            background: rgba(0,0,0,0.9);
+            border: 3px solid #666;
+            border-radius: 10px;
+            padding: 20px;
+            color: #fff;
+            display: none;
+        }
+        #dialogText {
+            font-size: 18px;
+            line-height: 1.5;
+            min-height: 60px;
+        }
+        #dialogContinue {
+            color: #aaa;
+            font-size: 14px;
+            margin-top: 10px;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0.5; }
+        }
+        #battleUI {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+        }
+        #battleScene {
+            flex: 1;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 40px;
+        }
+        .battle-char {
+            text-align: center;
+        }
+        .battle-sprite {
+            width: 150px;
+            height: 150px;
+            background: #333;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+        }
+        .enemy-sprite img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+        #battleMenu {
+            background: rgba(0,0,0,0.95);
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .battle-btn {
+            padding: 15px 30px;
+            font-size: 18px;
+            background: linear-gradient(to bottom, #4a4a6a, #2a2a4a);
+            border: 2px solid #6a6a8a;
+            color: #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .battle-btn:hover {
+            background: linear-gradient(to bottom, #6a6a8a, #4a4a6a);
+            transform: scale(1.05);
+        }
+        .battle-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        #battleLog {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 300px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #ccc;
+        }
+        #menuScreen, #gameOverScreen, #victoryScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+        }
+        #menuScreen h1 {
+            font-size: 48px;
+            color: #ff4444;
+            text-shadow: 0 0 20px #ff0000;
+            margin-bottom: 10px;
+        }
+        #menuScreen h2 {
+            font-size: 24px;
+            color: #888;
+            margin-bottom: 40px;
+        }
+        .menu-btn {
+            padding: 20px 60px;
+            font-size: 24px;
+            background: linear-gradient(to bottom, #4a2a2a, #2a1a1a);
+            border: 3px solid #6a3a3a;
+            color: #fff;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 10px;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+        .menu-btn:hover {
+            background: linear-gradient(to bottom, #6a3a3a, #4a2a2a);
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(255,0,0,0.5);
+        }
+        #comboDisplay {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            font-size: 36px;
+            color: #ffcc00;
+            text-shadow: 0 0 10px #ff8800;
+            display: none;
+            animation: comboGrow 0.3s;
+        }
+        @keyframes comboGrow {
+            0% { transform: translateY(-50%) scale(1.5); }
+            100% { transform: translateY(-50%) scale(1); }
+        }
+        #streakBonus {
+            position: absolute;
+            top: 60%;
+            right: 20px;
+            font-size: 14px;
+            color: #ff8800;
+            display: none;
+        }
+        .critical-hit {
+            animation: criticalPulse 0.5s;
+        }
+        @keyframes criticalPulse {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(2) hue-rotate(30deg); }
+        }
+        #bossHealthBar {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 400px;
+            display: none;
+        }
+        #bossHealthBar .stat-bar {
+            width: 100%;
+            height: 30px;
+        }
+        #bossName {
+            text-align: center;
+            color: #ff4444;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        #inventory {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 8px;
+            border: 2px solid #555;
+            color: #fff;
+            font-size: 12px;
+            max-width: 200px;
+        }
+        .item-slot {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background: #333;
+            border: 1px solid #555;
+            margin: 2px;
+            text-align: center;
+            line-height: 40px;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        .item-slot:hover { background: #444; }
+        #minimap {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            width: 150px;
+            height: 150px;
+            background: rgba(0,0,0,0.7);
+            border: 2px solid #555;
+            border-radius: 8px;
+        }
+        #locationLabel {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 5px 20px;
+            border-radius: 20px;
+            color: #fff;
+            font-size: 16px;
+            border: 2px solid #666;
+        }
+        #skillMenu {
+            display: none;
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.95);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #4444ff;
+        }
+        .skill-btn {
+            display: block;
+            width: 250px;
+            padding: 10px;
+            margin: 5px 0;
+            background: #224;
+            border: 1px solid #448;
+            color: #fff;
+            cursor: pointer;
+            border-radius: 5px;
+            font-family: inherit;
+            text-align: left;
+        }
+        .skill-btn:hover { background: #336; }
+        .skill-btn:disabled { opacity: 0.4; }
+        #itemMenu {
+            display: none;
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.95);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #44ff44;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .damage-popup {
+            position: absolute;
+            font-size: 24px;
+            font-weight: bold;
+            pointer-events: none;
+            animation: floatUp 1s forwards;
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-50px); }
+        }
+        .shake {
+            animation: shake 0.3s;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        #detentionOverlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: #ff4444;
+        }
+        #storyText {
+            max-width: 600px;
+            text-align: center;
+            line-height: 1.8;
+            font-size: 16px;
+            color: #ccc;
+        }
+        #tutorialOverlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: #fff;
+        }
+        .tutorial-box {
+            background: #1a1a2e;
+            border: 3px solid #4a4a6a;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 600px;
+            text-align: center;
+        }
+        .tutorial-box h2 {
+            color: #ffcc00;
+            margin-bottom: 20px;
+        }
+        .tutorial-box p {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+        .key-hint {
+            display: inline-block;
+            background: #333;
+            border: 2px solid #555;
+            border-radius: 5px;
+            padding: 5px 12px;
+            margin: 3px;
+            font-weight: bold;
+        }
+        #speedrunTimer {
+            position: absolute;
+            top: 120px;
+            left: 10px;
+            color: #888;
+            font-size: 12px;
+        }
+        .level-up-effect {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: #ffcc00;
+            text-shadow: 0 0 30px #ffcc00;
+            animation: levelUpAnim 1.5s forwards;
+            z-index: 100;
+            pointer-events: none;
+        }
+        @keyframes levelUpAnim {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -60%) scale(1); }
+        }
+        .particles {
+            position: absolute;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="1000" height="700"></canvas>
+        
+        <div id="ui">
+            <div>Level: <span id="levelDisplay">1</span> | XP: <span id="xpDisplay">0</span>/<span id="xpNeeded">100</span></div>
+            <div class="stat-bar"><div class="stat-fill hp-fill" id="hpBar" style="width:100%"></div></div>
+            <div style="margin-top:-18px;text-align:center;color:#fff;font-size:12px">HP: <span id="hpText">100/100</span></div>
+            <div class="stat-bar"><div class="stat-fill mp-fill" id="mpBar" style="width:100%"></div></div>
+            <div style="margin-top:-18px;text-align:center;color:#fff;font-size:12px">MP: <span id="mpText">50/50</span></div>
+            <div style="margin-top:10px">💰 <span id="goldDisplay">0</span></div>
+        </div>
+        
+        <div id="locationLabel">Hallway</div>
+        
+        <div id="inventory">
+            <div style="font-weight:bold;margin-bottom:5px">📦 Inventory</div>
+            <div id="inventorySlots"></div>
+        </div>
+        
+        <canvas id="minimap" width="150" height="150"></canvas>
+        
+        <div id="dialogBox">
+            <div id="dialogSpeaker" style="font-weight:bold;color:#ffcc00;margin-bottom:10px"></div>
+            <div id="dialogText"></div>
+            <div id="dialogContinue">[Press SPACE to continue]</div>
+        </div>
+        
+        <div id="battleUI">
+            <div id="bossHealthBar">
+                <div id="bossName"></div>
+                <div class="stat-bar"><div class="stat-fill hp-fill" id="bossHP" style="width:100%"></div></div>
+            </div>
+            <div id="comboDisplay">COMBO x1</div>
+            <div id="streakBonus">+0% damage</div>
+            <div id="battleScene">
+                <div class="battle-char" id="playerBattle">
+                    <div class="battle-sprite" id="playerSprite">🎒</div>
+                    <div style="color:#fff">Eric M.</div>
+                    <div class="stat-bar" style="width:150px"><div class="stat-fill hp-fill" id="playerBattleHP" style="width:100%"></div></div>
+                </div>
+                <div class="battle-char" id="enemyBattle">
+                    <div class="battle-sprite enemy-sprite" id="enemySprite">👹</div>
+                    <div style="color:#fff" id="enemyName">Monster</div>
+                    <div class="stat-bar" style="width:150px"><div class="stat-fill hp-fill" id="enemyBattleHP" style="width:100%"></div></div>
+                </div>
+            </div>
+            <div id="battleLog"></div>
+            <div id="skillMenu"></div>
+            <div id="itemMenu"></div>
+            <div id="battleMenu">
+                <button class="battle-btn" onclick="battleAction('attack')">⚔️ Attack</button>
+                <button class="battle-btn" onclick="showSkillMenu()">✨ Skills</button>
+                <button class="battle-btn" onclick="showItemMenu()">🎒 Items</button>
+                <button class="battle-btn" onclick="battleAction('defend')">🛡️ Defend</button>
+                <button class="battle-btn" onclick="battleAction('run')">🏃 Run</button>
+            </div>
+        </div>
+        
+        <div id="menuScreen">
+            <h1>📚 ERIC M FAILING CLASS 📚</h1>
+            <h2>A School Survival RPG</h2>
+            <div id="storyText">
+                The school has become a nightmare. Stress has manifested into monsters, 
+                homework has become deadly, and the teacher is hunting you down.<br><br>
+                Survive the school. Defeat your rivals. Pass the class. Escape the nightmare.
+            </div>
+            <br>
+            <button class="menu-btn" onclick="startGame()">📖 New Game</button>
+            <button class="menu-btn" onclick="loadGame()">💾 Continue</button>
+        </div>
+        
+        <div id="gameOverScreen" style="display:none">
+            <h1 style="font-size:60px;color:#ff0000">📋 DETENTION 📋</h1>
+            <h2 style="color:#888;margin:20px">The teacher caught you. You've been sent to detention.</h2>
+            <div id="gameOverStats" style="margin:20px;color:#aaa"></div>
+            <button class="menu-btn" onclick="restartFromCheckpoint()">🔄 Try Again</button>
+            <button class="menu-btn" onclick="location.reload()">🏠 Main Menu</button>
+        </div>
+        
+        <div id="victoryScreen" style="display:none">
+            <h1 style="font-size:48px;color:#44ff44">🎓 GRADUATION 🎓</h1>
+            <h2 id="endingTitle" style="color:#ffcc00;margin:20px"></h2>
+            <div id="endingText" style="max-width:600px;text-align:center;color:#ccc;line-height:1.8"></div>
+            <div id="finalStats" style="margin:30px;color:#aaa"></div>
+            <button class="menu-btn" onclick="location.reload()">🎮 Play Again</button>
+        </div>
+        
+        <div id="detentionOverlay">
+            <h1 style="font-size:48px">⏰ DETENTION ⏰</h1>
+            <p style="margin:20px;color:#ccc">Serving time... <span id="detentionTimer">5</span></p>
+        </div>
+        
+        <div id="tutorialOverlay">
+            <div class="tutorial-box">
+                <h2>📚 HOW TO PLAY 📚</h2>
+                <p><span class="key-hint">W</span><span class="key-hint">A</span><span class="key-hint">S</span><span class="key-hint">D</span> or <span class="key-hint">↑</span><span class="key-hint">←</span><span class="key-hint">↓</span><span class="key-hint">→</span> - Move</p>
+                <p><span class="key-hint">SPACE</span> - Continue dialogue / Interact</p>
+                <br>
+                <p>🎯 <strong>GOAL:</strong> Defeat all 3 rivals, then face the Teacher!</p>
+                <p>📍 <strong>Library</strong> is a safe zone - heal and save there!</p>
+                <p>⚠️ Avoid the Teacher or get sent to detention!</p>
+                <p>💀 3 detentions = Game Over!</p>
+                <br>
+                <button class="menu-btn" onclick="closeTutorial()" style="padding:10px 30px;font-size:18px">Got it!</button>
+            </div>
+        </div>
+        
+        <div id="speedrunTimer">⏱️ 00:00</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const minimapCanvas = document.getElementById('minimap');
+        const minimapCtx = minimapCanvas.getContext('2d');
+        
+        const STORAGE_PREFIX = location.pathname;
+        
+        // Game State
+        let gameState = 'menu';
+        let player = {
+            x: 500, y: 400,
+            width: 32, height: 32,
+            speed: 4,
+            hp: 100, maxHp: 100,
+            mp: 50, maxMp: 50,
+            xp: 0, level: 1,
+            attack: 15, defense: 5, speed_stat: 10,
+            gold: 0,
+            inventory: [],
+            skills: ['Homework Strike'],
+            unlockedSkills: { 'Homework Strike': true },
+            currentRoom: 'hallway',
+            questProgress: 0,
+            defeatedBosses: [],
+            choices: [],
+            detentionCount: 0
+        };
+        
+        const skills = {
+            'Homework Strike': { damage: 25, mp: 10, desc: 'Throw sharp homework at enemy' },
+            'Study Shield': { defense: 20, mp: 15, desc: 'Boost defense for this turn', unlockLevel: 3 },
+            'Speed Dash': { damage: 35, mp: 20, desc: 'Quick attack with bonus damage', unlockLevel: 5 },
+            'Excuse Escape': { special: 'escape', mp: 25, desc: 'Guaranteed escape from battle', unlockLevel: 7 },
+            'Cram Session': { heal: 50, mp: 30, desc: 'Restore HP through intense studying', unlockLevel: 10 }
+        };
+        
+        const items = {
+            'Notebook': { type: 'heal', value: 30, desc: 'Restores 30 HP', emoji: '📓' },
+            'Energy Drink': { type: 'heal', value: 50, desc: 'Restores 50 HP', emoji: '🥤' },
+            'Pencil': { type: 'attack', value: 10, desc: '+10 Attack this battle', emoji: '✏️' },
+            'Hall Pass': { type: 'escape', desc: 'Escape any battle', emoji: '🎫' },
+            'Study Guide': { type: 'mp', value: 30, desc: 'Restores 30 MP', emoji: '📖' },
+            'Eraser': { type: 'cleanse', desc: 'Remove debuffs', emoji: '🧽' }
+        };
+        
+        // Room definitions
+        const rooms = {
+            hallway: {
+                name: 'Main Hallway',
+                color: '#2a2a4a',
+                enemies: ['Stress Blob', 'Anxiety Spirit'],
+                connections: { north: 'classroom1', south: 'cafeteria', east: 'library', west: 'gym' },
+                items: ['Notebook', 'Pencil']
+            },
+            classroom1: {
+                name: 'Classroom 101',
+                color: '#3a2a2a',
+                enemies: ['Pop Quiz Monster', 'Deadline Demon'],
+                connections: { south: 'hallway', east: 'classroom2' },
+                items: ['Study Guide'],
+                boss: 'Anbu'
+            },
+            classroom2: {
+                name: 'Classroom 102',
+                color: '#3a2a3a',
+                enemies: ['Homework Golem', 'Test Specter'],
+                connections: { west: 'classroom1', north: 'bossRoom' },
+                items: ['Energy Drink'],
+                boss: 'Calvin'
+            },
+            library: {
+                name: 'Library (Safe Zone)',
+                color: '#1a3a2a',
+                enemies: [],
+                connections: { west: 'hallway' },
+                items: ['Study Guide', 'Notebook'],
+                safe: true,
+                npc: 'Librarian'
+            },
+            cafeteria: {
+                name: 'Cafeteria',
+                color: '#4a3a2a',
+                enemies: ['Cafeteria Crawler', 'Mystery Meat Monster', 'Expired Milk Slime'],
+                connections: { north: 'hallway', east: 'gym' },
+                items: ['Energy Drink', 'Energy Drink']
+            },
+            gym: {
+                name: 'Gymnasium',
+                color: '#2a3a4a',
+                enemies: ['Dodgeball Demon', 'Rope Climb Horror'],
+                connections: { east: 'hallway', west: 'cafeteria' },
+                items: ['Hall Pass'],
+                boss: 'Saharsh'
+            },
+            bossRoom: {
+                name: 'Principal\'s Office',
+                color: '#4a1a1a',
+                enemies: [],
+                connections: { south: 'classroom2' },
+                items: [],
+                finalBoss: true
+            }
+        };
+        
+        const enemies = {
+            'Stress Blob': { hp: 40, attack: 8, defense: 2, xp: 20, gold: 10, emoji: '😰' },
+            'Anxiety Spirit': { hp: 35, attack: 12, defense: 1, xp: 25, gold: 15, emoji: '😱' },
+            'Pop Quiz Monster': { hp: 50, attack: 15, defense: 3, xp: 35, gold: 20, emoji: '📝' },
+            'Deadline Demon': { hp: 60, attack: 18, defense: 4, xp: 40, gold: 25, emoji: '⏰' },
+            'Homework Golem': { hp: 80, attack: 12, defense: 8, xp: 50, gold: 30, emoji: '📚' },
+            'Test Specter': { hp: 45, attack: 20, defense: 2, xp: 45, gold: 25, emoji: '👻' },
+            'Cafeteria Crawler': { hp: 55, attack: 14, defense: 5, xp: 30, gold: 20, emoji: '🦀' },
+            'Mystery Meat Monster': { hp: 70, attack: 16, defense: 6, xp: 40, gold: 25, emoji: '🍖' },
+            'Expired Milk Slime': { hp: 40, attack: 10, defense: 3, xp: 25, gold: 15, emoji: '🥛' },
+            'Dodgeball Demon': { hp: 65, attack: 22, defense: 4, xp: 45, gold: 30, emoji: '🏐' },
+            'Rope Climb Horror': { hp: 75, attack: 18, defense: 7, xp: 50, gold: 35, emoji: '🪢' },
+            'Anbu': { hp: 150, attack: 25, defense: 10, xp: 200, gold: 100, emoji: '😎', boss: true, 
+                dialogue: "You think you can pass? I'm the top student here!" },
+            'Saharsh': { hp: 180, attack: 28, defense: 12, xp: 250, gold: 150, emoji: 'img', boss: true,
+                imgSrc: 'https://asset-cdn.schoology.com/system/files/imagecache/profile_big/pictures/picture-c0b09cdead19788fb0f8be0d53b5c572_68c34cd700b90.jpg',
+                dialogue: "The gym is MY territory! Prepare for PE class from HELL!" },
+            'Calvin': { hp: 160, attack: 30, defense: 8, xp: 220, gold: 120, emoji: '🧢', boss: true,
+                dialogue: "Hah! Another failing student. Let me put you out of your misery!" },
+            'The Teacher': { hp: 500, attack: 40, defense: 20, xp: 1000, gold: 500, emoji: '👨‍🏫', boss: true, final: true,
+                dialogue: "ERIC M! You're FAILING! Time for your FINAL EXAM!" }
+        };
+        
+        // Current battle state
+        let battle = {
+            active: false,
+            enemy: null,
+            enemyHp: 0,
+            enemyMaxHp: 0,
+            turn: 'player',
+            defending: false,
+            tempAttack: 0,
+            tempDefense: 0,
+            log: [],
+            combo: 0,
+            perfectHits: 0
+        };
+        
+        // Teacher chase
+        let teacher = {
+            x: 0, y: 0,
+            active: false,
+            speed: 2,
+            chaseTimer: 0,
+            room: 'classroom1',
+            spawnCooldown: 0  // Cooldown before teacher can spawn again
+        };
+        
+        // NPC interaction cooldowns
+        let npcCooldowns = {};
+        const NPC_COOLDOWN_TIME = 300; // 5 seconds at 60fps
+        
+        // Room entities
+        let roomEntities = [];
+        let roomItems = [];
+        let particles = [];
+        let dialogQueue = [];
+        let currentDialog = null;
+        
+        // Keys
+        const keys = {};
+        
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(e.key.toLowerCase())) {
+                e.preventDefault();
+            }
+            if (e.key === ' ' && currentDialog) {
+                advanceDialog();
+            }
+            if (e.key === 'i' && gameState === 'explore') {
+                // Toggle inventory display
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+        
+        function startGame() {
+            document.getElementById('menuScreen').style.display = 'none';
+            gameState = 'explore';
+            initRoom(player.currentRoom);
+            showDialog('System', 'Welcome to your nightmare, Eric. The school has changed. Survive, defeat your rivals, and pass the final exam to escape!');
+            showDialog('System', 'Use WASD or Arrow Keys to move. Watch out for monsters and the teacher!');
+            gameLoop();
+        }
+        
+        function loadGame() {
+            const saved = localStorage.getItem(STORAGE_PREFIX + 'saveData');
+            if (saved) {
+                const data = JSON.parse(saved);
+                Object.assign(player, data);
+                document.getElementById('menuScreen').style.display = 'none';
+                gameState = 'explore';
+                initRoom(player.currentRoom);
+                gameLoop();
+            } else {
+                showDialog('System', 'No save data found!');
+            }
+        }
+        
+        function saveGame() {
+            localStorage.setItem(STORAGE_PREFIX + 'saveData', JSON.stringify(player));
+        }
+        
+        function initRoom(roomId) {
+            const room = rooms[roomId];
+            player.currentRoom = roomId;
+            document.getElementById('locationLabel').textContent = room.name;
+            
+            roomEntities = [];
+            roomItems = [];
+            
+            // Spawn enemies
+            if (!room.safe && room.enemies.length > 0) {
+                const numEnemies = Math.floor(Math.random() * 3) + 1;
+                for (let i = 0; i < numEnemies; i++) {
+                    const enemyType = room.enemies[Math.floor(Math.random() * room.enemies.length)];
+                    roomEntities.push({
+                        type: 'enemy',
+                        name: enemyType,
+                        x: 100 + Math.random() * 800,
+                        y: 100 + Math.random() * 500,
+                        width: 40,
+                        height: 40
+                    });
+                }
+            }
+            
+            // Spawn boss if not defeated
+            if (room.boss && !player.defeatedBosses.includes(room.boss)) {
+                roomEntities.push({
+                    type: 'boss',
+                    name: room.boss,
+                    x: 500,
+                    y: 200,
+                    width: 60,
+                    height: 60
+                });
+            }
+            
+            // Final boss
+            if (room.finalBoss && player.defeatedBosses.length >= 3) {
+                roomEntities.push({
+                    type: 'boss',
+                    name: 'The Teacher',
+                    x: 500,
+                    y: 200,
+                    width: 80,
+                    height: 80
+                });
+            }
+            
+            // Spawn items
+            if (room.items) {
+                room.items.forEach((item, i) => {
+                    if (Math.random() > 0.3) {
+                        roomItems.push({
+                            name: item,
+                            x: 150 + (i * 200) + Math.random() * 100,
+                            y: 300 + Math.random() * 200,
+                            width: 24,
+                            height: 24
+                        });
+                    }
+                });
+            }
+            
+            // NPC
+            if (room.npc) {
+                roomEntities.push({
+                    type: 'npc',
+                    name: room.npc,
+                    x: 500,
+                    y: 300,
+                    width: 40,
+                    height: 40
+                });
+            }
+            
+            // Teacher spawn - only if cooldown is 0 and random chance (reduced from 0.3 to 0.15)
+            if (!room.safe && teacher.spawnCooldown <= 0 && Math.random() > 0.85 && player.level > 2) {
+                teacher.active = true;
+                teacher.x = Math.random() > 0.5 ? 50 : 950;
+                teacher.y = Math.random() * 500 + 100;
+                // Cap teacher speed to 75% of player speed so player can always escape
+                const maxTeacherSpeed = player.speed * 0.75;
+                teacher.speed = Math.min(1.5 + (player.level * 0.1), maxTeacherSpeed);
+            }
+        }
+        
+        function update() {
+            if (gameState !== 'explore') return;
+            
+            const prevX = player.x;
+            const prevY = player.y;
+            
+            // Movement
+            if (keys['w'] || keys['arrowup']) player.y -= player.speed;
+            if (keys['s'] || keys['arrowdown']) player.y += player.speed;
+            if (keys['a'] || keys['arrowleft']) player.x -= player.speed;
+            if (keys['d'] || keys['arrowright']) player.x += player.speed;
+            
+            // Bounds - allow player to reach edges for door transitions
+            player.x = Math.max(5, Math.min(canvas.width - 40, player.x));
+            player.y = Math.max(5, Math.min(canvas.height - 40, player.y));
+            
+            // Room transitions - expanded zones for better door detection
+            const room = rooms[player.currentRoom];
+            const playerCenterX = player.x + player.width / 2;
+            const playerCenterY = player.y + player.height / 2;
+            
+            // North door (top of screen)
+            if (player.y < 40 && room.connections.north) {
+                player.y = canvas.height - 80;
+                initRoom(room.connections.north);
+            } 
+            // South door (bottom of screen)
+            else if (player.y > canvas.height - 60 && room.connections.south) {
+                player.y = 80;
+                initRoom(room.connections.south);
+            } 
+            // East door (right side)
+            else if (player.x > canvas.width - 60 && room.connections.east) {
+                player.x = 80;
+                initRoom(room.connections.east);
+            } 
+            // West door (left side)
+            else if (player.x < 40 && room.connections.west) {
+                player.x = canvas.width - 80;
+                initRoom(room.connections.west);
+            }
+            
+            // Entity collision
+            roomEntities.forEach((entity, i) => {
+                if (checkCollision(player, entity)) {
+                    if (entity.type === 'enemy' || entity.type === 'boss') {
+                        startBattle(entity.name);
+                        roomEntities.splice(i, 1);
+                    } else if (entity.type === 'npc') {
+                        handleNPC(entity.name);
+                        player.x = prevX;
+                        player.y = prevY;
+                    }
+                }
+            });
+            
+            // Item pickup
+            roomItems.forEach((item, i) => {
+                if (checkCollision(player, item)) {
+                    if (player.inventory.length < 10) {
+                        player.inventory.push(item.name);
+                        createParticles(item.x, item.y, '#ffff00', 10);
+                        showDialog('System', `Found ${items[item.name].emoji} ${item.name}!`);
+                        roomItems.splice(i, 1);
+                    }
+                }
+            });
+            
+            // Teacher chase
+            if (teacher.active) {
+                const dx = player.x - teacher.x;
+                const dy = player.y - teacher.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist > 0) {
+                    teacher.x += (dx / dist) * teacher.speed;
+                    teacher.y += (dy / dist) * teacher.speed;
+                }
+                
+                if (dist < 40) {
+                    caughtByTeacher();
+                }
+                
+                teacher.chaseTimer++;
+                if (teacher.chaseTimer > 600) {
+                    teacher.active = false;
+                    teacher.chaseTimer = 0;
+                    teacher.spawnCooldown = 900; // 15 seconds cooldown before teacher can spawn again
+                }
+            }
+            
+            // Decrease teacher spawn cooldown
+            if (teacher.spawnCooldown > 0) {
+                teacher.spawnCooldown--;
+            }
+            
+            // Decrease NPC cooldowns
+            Object.keys(npcCooldowns).forEach(npc => {
+                if (npcCooldowns[npc] > 0) {
+                    npcCooldowns[npc]--;
+                }
+            });
+            
+            // Update particles
+            particles = particles.filter(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                return p.life > 0;
+            });
+            
+            updateUI();
+        }
+        
+        function render() {
+            const room = rooms[player.currentRoom];
+            
+            // Reset canvas state at start of each frame
+            ctx.globalAlpha = 1.0;
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            
+            // Background
+            ctx.fillStyle = room.color;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Grid pattern
+            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            for (let x = 0; x < canvas.width; x += 50) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += 50) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            
+            // Room decorations
+            drawRoomDecorations(room);
+            
+            // Draw exit indicators - full edge doors for easy transition
+            ctx.font = '16px Arial';
+            const pulse = 0.3 + Math.sin(Date.now() / 300) * 0.15;
+            
+            if (room.connections.north) {
+                // Full top edge is a door
+                ctx.fillStyle = `rgba(100,255,100,${pulse})`;
+                ctx.fillRect(0, 0, canvas.width, 40);
+                ctx.fillStyle = '#8f8';
+                ctx.font = 'bold 18px Arial';
+                ctx.fillText('↑ ' + rooms[room.connections.north].name, canvas.width/2 - 80, 28);
+            }
+            if (room.connections.south) {
+                // Full bottom edge is a door
+                ctx.fillStyle = `rgba(100,255,100,${pulse})`;
+                ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
+                ctx.fillStyle = '#8f8';
+                ctx.font = 'bold 18px Arial';
+                ctx.fillText('↓ ' + rooms[room.connections.south].name, canvas.width/2 - 80, canvas.height - 15);
+            }
+            if (room.connections.east) {
+                // Full right edge is a door
+                ctx.fillStyle = `rgba(100,255,100,${pulse})`;
+                ctx.fillRect(canvas.width - 50, 0, 50, canvas.height);
+                ctx.save();
+                ctx.translate(canvas.width - 25, canvas.height/2);
+                ctx.rotate(Math.PI/2);
+                ctx.fillStyle = '#8f8';
+                ctx.font = 'bold 16px Arial';
+                ctx.fillText('→ ' + rooms[room.connections.east].name, -60, 5);
+                ctx.restore();
+            }
+            if (room.connections.west) {
+                // Full left edge is a door
+                ctx.fillStyle = `rgba(100,255,100,${pulse})`;
+                ctx.fillRect(0, 0, 50, canvas.height);
+                ctx.save();
+                ctx.translate(25, canvas.height/2);
+                ctx.rotate(-Math.PI/2);
+                ctx.fillStyle = '#8f8';
+                ctx.font = 'bold 16px Arial';
+                ctx.fillText('← ' + rooms[room.connections.west].name, -60, 5);
+                ctx.restore();
+            }
+            
+            // Items
+            roomItems.forEach(item => {
+                ctx.font = '24px Arial';
+                ctx.fillText(items[item.name].emoji, item.x, item.y + 20);
+                // Glow effect
+                ctx.beginPath();
+                ctx.arc(item.x + 12, item.y + 8, 20, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255,255,0,0.1)';
+                ctx.fill();
+            });
+            
+            // Entities
+            roomEntities.forEach(entity => {
+                if (entity.type === 'enemy') {
+                    ctx.font = '40px Arial';
+                    ctx.fillText(enemies[entity.name].emoji, entity.x, entity.y + 35);
+                    // Danger aura
+                    ctx.beginPath();
+                    ctx.arc(entity.x + 20, entity.y + 20, 30 + Math.sin(Date.now() / 200) * 5, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255,0,0,0.1)';
+                    ctx.fill();
+                } else if (entity.type === 'boss') {
+                    const enemy = enemies[entity.name];
+                    if (enemy.emoji === 'img' && enemy.imgSrc) {
+                        // For Saharsh, draw placeholder until image loads
+                        ctx.font = '60px Arial';
+                        ctx.fillText('👤', entity.x, entity.y + 50);
+                    } else {
+                        ctx.font = '60px Arial';
+                        ctx.fillText(enemy.emoji, entity.x, entity.y + 50);
+                    }
+                    // Boss aura
+                    ctx.beginPath();
+                    ctx.arc(entity.x + 30, entity.y + 30, 50 + Math.sin(Date.now() / 150) * 10, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(255,0,0,0.5)';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                    // Name
+                    ctx.fillStyle = '#ff4444';
+                    ctx.font = 'bold 16px Arial';
+                    ctx.fillText(entity.name, entity.x - 10, entity.y - 10);
+                } else if (entity.type === 'npc') {
+                    ctx.font = '40px Arial';
+                    ctx.fillText('👩‍🏫', entity.x, entity.y + 35);
+                    ctx.fillStyle = '#44ff44';
+                    ctx.font = '14px Arial';
+                    ctx.fillText(entity.name, entity.x - 10, entity.y - 5);
+                }
+            });
+            
+            // Teacher
+            if (teacher.active) {
+                ctx.font = '50px Arial';
+                ctx.fillText('👨‍🏫', teacher.x, teacher.y + 40);
+                // Warning effect
+                ctx.fillStyle = `rgba(255,0,0,${0.3 + Math.sin(Date.now() / 100) * 0.2})`;
+                ctx.beginPath();
+                ctx.arc(teacher.x + 25, teacher.y + 25, 60, 0, Math.PI * 2);
+                ctx.fill();
+                // "DANGER" text
+                ctx.fillStyle = '#ff0000';
+                ctx.font = 'bold 14px Arial';
+                ctx.fillText('TEACHER!', teacher.x - 5, teacher.y - 10);
+            }
+            
+            // Particles (draw before player so player is always on top)
+            particles.forEach(p => {
+                ctx.globalAlpha = p.life / p.maxLife;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.fill();
+            });
+            // Always reset alpha after particles
+            ctx.globalAlpha = 1.0;
+            
+            // Player - ensure full opacity
+            ctx.save();
+            ctx.globalAlpha = 1.0;
+            ctx.font = '32px Arial';
+            ctx.fillText('🎒', player.x, player.y + 28);
+            ctx.restore();
+            
+            // Minimap
+            renderMinimap();
+        }
+        
+        function drawRoomDecorations(room) {
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            
+            if (room.name.includes('Classroom')) {
+                // Desks
+                for (let i = 0; i < 4; i++) {
+                    for (let j = 0; j < 3; j++) {
+                        ctx.fillRect(150 + i * 180, 150 + j * 150, 80, 50);
+                    }
+                }
+            } else if (room.name.includes('Library')) {
+                // Bookshelves
+                ctx.fillStyle = '#3a2a1a';
+                for (let i = 0; i < 5; i++) {
+                    ctx.fillRect(100 + i * 170, 100, 30, 400);
+                }
+            } else if (room.name.includes('Cafeteria')) {
+                // Tables
+                ctx.fillStyle = '#4a3a2a';
+                for (let i = 0; i < 3; i++) {
+                    for (let j = 0; j < 2; j++) {
+                        ctx.fillRect(150 + i * 250, 200 + j * 200, 150, 80);
+                    }
+                }
+            } else if (room.name.includes('Gym')) {
+                // Court lines
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(100, 100, 800, 500);
+                ctx.beginPath();
+                ctx.arc(500, 350, 100, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+        
+        function renderMinimap() {
+            minimapCtx.fillStyle = '#111';
+            minimapCtx.fillRect(0, 0, 150, 150);
+            
+            const roomPositions = {
+                hallway: { x: 75, y: 75 },
+                classroom1: { x: 75, y: 25 },
+                classroom2: { x: 125, y: 25 },
+                library: { x: 125, y: 75 },
+                cafeteria: { x: 75, y: 125 },
+                gym: { x: 25, y: 75 },
+                bossRoom: { x: 125, y: 0 }
+            };
+            
+            // Draw rooms
+            Object.entries(roomPositions).forEach(([id, pos]) => {
+                const isCurrentRoom = player.currentRoom === id;
+                minimapCtx.fillStyle = isCurrentRoom ? '#4a4' : (rooms[id].safe ? '#2a4a2a' : '#444');
+                minimapCtx.fillRect(pos.x - 15, pos.y - 10, 30, 20);
+                
+                // Draw connections
+                minimapCtx.strokeStyle = '#333';
+                minimapCtx.lineWidth = 2;
+                const room = rooms[id];
+                if (room.connections.north && roomPositions[room.connections.north]) {
+                    const target = roomPositions[room.connections.north];
+                    minimapCtx.beginPath();
+                    minimapCtx.moveTo(pos.x, pos.y - 10);
+                    minimapCtx.lineTo(target.x, target.y + 10);
+                    minimapCtx.stroke();
+                }
+                if (room.connections.east && roomPositions[room.connections.east]) {
+                    const target = roomPositions[room.connections.east];
+                    minimapCtx.beginPath();
+                    minimapCtx.moveTo(pos.x + 15, pos.y);
+                    minimapCtx.lineTo(target.x - 15, target.y);
+                    minimapCtx.stroke();
+                }
+            });
+            
+            // Player dot
+            const currentPos = roomPositions[player.currentRoom];
+            minimapCtx.fillStyle = '#ff0';
+            minimapCtx.beginPath();
+            minimapCtx.arc(currentPos.x, currentPos.y, 4, 0, Math.PI * 2);
+            minimapCtx.fill();
+        }
+        
+        function checkCollision(a, b) {
+            return a.x < b.x + b.width &&
+                   a.x + a.width > b.x &&
+                   a.y < b.y + b.height &&
+                   a.y + a.height > b.y;
+        }
+        
+        function createParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x, y,
+                    vx: (Math.random() - 0.5) * 5,
+                    vy: (Math.random() - 0.5) * 5,
+                    size: Math.random() * 5 + 2,
+                    color,
+                    life: 30,
+                    maxLife: 30
+                });
+            }
+        }
+        
+        function showDialog(speaker, text) {
+            dialogQueue.push({ speaker, text });
+            if (!currentDialog) {
+                advanceDialog();
+            }
+        }
+        
+        function advanceDialog() {
+            if (dialogQueue.length > 0) {
+                currentDialog = dialogQueue.shift();
+                document.getElementById('dialogBox').style.display = 'block';
+                document.getElementById('dialogSpeaker').textContent = currentDialog.speaker;
+                document.getElementById('dialogText').textContent = currentDialog.text;
+            } else {
+                currentDialog = null;
+                document.getElementById('dialogBox').style.display = 'none';
+            }
+        }
+        
+        function handleNPC(name) {
+            // Check if NPC is on cooldown
+            if (npcCooldowns[name] && npcCooldowns[name] > 0) {
+                return; // Don't trigger dialogue if on cooldown
+            }
+            
+            if (name === 'Librarian') {
+                // Set cooldown to prevent repeated dialogue
+                npcCooldowns[name] = NPC_COOLDOWN_TIME;
+                
+                showDialog('Librarian', 'Welcome to the library, Eric. You\'re safe here.');
+                showDialog('Librarian', 'I can heal your wounds and restore your energy.');
+                player.hp = player.maxHp;
+                player.mp = player.maxMp;
+                showDialog('System', 'HP and MP fully restored!');
+                saveGame();
+                showDialog('Librarian', 'Be careful out there. The teacher is getting more aggressive...');
+                if (player.defeatedBosses.length >= 3 && !player.defeatedBosses.includes('The Teacher')) {
+                    showDialog('Librarian', 'You\'ve defeated all the rivals! The Principal\'s Office is now accessible. The Teacher awaits...');
+                }
+            }
+        }
+        
+        function startBattle(enemyName) {
+            gameState = 'battle';
+            battle.active = true;
+            battle.enemy = enemies[enemyName];
+            battle.enemyName = enemyName;
+            battle.enemyHp = battle.enemy.hp;
+            battle.enemyMaxHp = battle.enemy.hp;
+            battle.turn = 'player';
+            battle.defending = false;
+            battle.tempAttack = 0;
+            battle.tempDefense = 0;
+            battle.log = [];
+            battle.combo = 0;
+            battle.perfectHits = 0;
+            
+            document.getElementById('battleUI').style.display = 'flex';
+            document.getElementById('comboDisplay').style.display = 'none';
+            
+            // Show boss health bar for bosses
+            if (enemies[enemyName].boss) {
+                document.getElementById('bossHealthBar').style.display = 'block';
+                document.getElementById('bossName').textContent = enemyName;
+            } else {
+                document.getElementById('bossHealthBar').style.display = 'none';
+            }
+            document.getElementById('enemyName').textContent = enemyName;
+            
+            // Set enemy sprite
+            const spriteEl = document.getElementById('enemySprite');
+            if (battle.enemy.emoji === 'img' && battle.enemy.imgSrc) {
+                spriteEl.innerHTML = `<img src="${battle.enemy.imgSrc}" alt="${enemyName}">`;
+            } else {
+                spriteEl.innerHTML = battle.enemy.emoji;
+            }
+            
+            updateBattleUI();
+            
+            if (battle.enemy.boss) {
+                addBattleLog(`⚠️ BOSS BATTLE: ${enemyName}!`);
+                addBattleLog(`"${battle.enemy.dialogue}"`);
+            } else {
+                addBattleLog(`A wild ${enemyName} appears!`);
+            }
+        }
+        
+        function updateBattleUI() {
+            const playerHpPercent = (player.hp / player.maxHp) * 100;
+            const enemyHpPercent = (battle.enemyHp / battle.enemyMaxHp) * 100;
+            
+            document.getElementById('playerBattleHP').style.width = playerHpPercent + '%';
+            document.getElementById('enemyBattleHP').style.width = enemyHpPercent + '%';
+            
+            // Boss health bar
+            if (battle.enemy?.boss) {
+                document.getElementById('bossHP').style.width = enemyHpPercent + '%';
+            }
+        }
+        
+        function addBattleLog(msg) {
+            battle.log.push(msg);
+            const logEl = document.getElementById('battleLog');
+            logEl.innerHTML = battle.log.slice(-8).map(m => `<div>${m}</div>`).join('');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+        
+        function battleAction(action) {
+            if (battle.turn !== 'player') return;
+            
+            hideMenus();
+            
+            if (action === 'attack') {
+                // Combo system - consecutive hits increase damage
+                battle.combo++;
+                const comboBonus = Math.floor(battle.combo * 0.1 * player.attack);
+                
+                // Critical hit chance
+                const isCritical = Math.random() < 0.15;
+                let damage = Math.max(1, player.attack + battle.tempAttack - battle.enemy.defense + Math.floor(Math.random() * 10) + comboBonus);
+                
+                if (isCritical) {
+                    damage = Math.floor(damage * 1.5);
+                    addBattleLog(`💥 CRITICAL HIT! Eric attacks for ${damage} damage!`);
+                    document.getElementById('enemyBattle').classList.add('critical-hit');
+                    setTimeout(() => document.getElementById('enemyBattle').classList.remove('critical-hit'), 500);
+                } else {
+                    addBattleLog(`Eric attacks for ${damage} damage!`);
+                }
+                
+                battle.enemyHp -= damage;
+                createDamagePopup(isCritical ? '💥' + damage : damage, isCritical ? '#ffff00' : '#ff4444', 'enemy');
+                shakeElement('enemyBattle');
+                
+                // Update combo display
+                if (battle.combo > 1) {
+                    document.getElementById('comboDisplay').style.display = 'block';
+                    document.getElementById('comboDisplay').textContent = `COMBO x${battle.combo}`;
+                    document.getElementById('streakBonus').style.display = 'block';
+                    document.getElementById('streakBonus').textContent = `+${Math.floor(battle.combo * 10)}% damage`;
+                }
+            } else if (action === 'defend') {
+                battle.defending = true;
+                battle.tempDefense = 15;
+                addBattleLog('Eric takes a defensive stance!');
+            } else if (action === 'run') {
+                if (Math.random() > 0.3 && !battle.enemy.boss) {
+                    addBattleLog('Escaped successfully!');
+                    setTimeout(endBattle, 500);
+                    return;
+                } else {
+                    addBattleLog(battle.enemy.boss ? 'Can\'t escape from a boss!' : 'Failed to escape!');
+                }
+            }
+            
+            battle.tempAttack = 0;
+            
+            updateBattleUI();
+            
+            if (battle.enemyHp <= 0) {
+                battleVictory();
+            } else {
+                battle.turn = 'enemy';
+                setTimeout(enemyTurn, 1000);
+            }
+        }
+        
+        function useSkill(skillName) {
+            if (player.mp < skills[skillName].mp) {
+                addBattleLog('Not enough MP!');
+                return;
+            }
+            
+            hideMenus();
+            player.mp -= skills[skillName].mp;
+            const skill = skills[skillName];
+            
+            if (skill.damage) {
+                const damage = skill.damage + Math.floor(player.level * 2);
+                battle.enemyHp -= damage;
+                addBattleLog(`Eric uses ${skillName} for ${damage} damage!`);
+                createDamagePopup(damage, '#ff44ff', 'enemy');
+                shakeElement('enemyBattle');
+            } else if (skill.defense) {
+                battle.tempDefense = skill.defense;
+                battle.defending = true;
+                addBattleLog(`Eric uses ${skillName}! Defense boosted!`);
+            } else if (skill.heal) {
+                const heal = skill.heal;
+                player.hp = Math.min(player.maxHp, player.hp + heal);
+                addBattleLog(`Eric uses ${skillName}! Healed ${heal} HP!`);
+                createDamagePopup('+' + heal, '#44ff44', 'player');
+            } else if (skill.special === 'escape') {
+                addBattleLog('Eric uses Excuse Escape! Escaped successfully!');
+                setTimeout(endBattle, 500);
+                return;
+            }
+            
+            updateBattleUI();
+            updateUI();
+            
+            if (battle.enemyHp <= 0) {
+                battleVictory();
+            } else {
+                battle.turn = 'enemy';
+                setTimeout(enemyTurn, 1000);
+            }
+        }
+        
+        function useItem(itemName) {
+            const idx = player.inventory.indexOf(itemName);
+            if (idx === -1) return;
+            
+            hideMenus();
+            player.inventory.splice(idx, 1);
+            const item = items[itemName];
+            
+            if (item.type === 'heal') {
+                player.hp = Math.min(player.maxHp, player.hp + item.value);
+                addBattleLog(`Used ${itemName}! Healed ${item.value} HP!`);
+                createDamagePopup('+' + item.value, '#44ff44', 'player');
+            } else if (item.type === 'mp') {
+                player.mp = Math.min(player.maxMp, player.mp + item.value);
+                addBattleLog(`Used ${itemName}! Restored ${item.value} MP!`);
+            } else if (item.type === 'attack') {
+                battle.tempAttack = item.value;
+                addBattleLog(`Used ${itemName}! Attack boosted!`);
+            } else if (item.type === 'escape') {
+                addBattleLog(`Used ${itemName}! Escaped!`);
+                setTimeout(endBattle, 500);
+                return;
+            }
+            
+            updateBattleUI();
+            updateUI();
+            
+            battle.turn = 'enemy';
+            setTimeout(enemyTurn, 1000);
+        }
+        
+        function enemyTurn() {
+            const baseDamage = battle.enemy.attack;
+            const defense = player.defense + battle.tempDefense;
+            let damage = Math.max(1, baseDamage - defense + Math.floor(Math.random() * 8));
+            
+            if (battle.defending) {
+                damage = Math.floor(damage * 0.5);
+                battle.defending = false;
+            }
+            
+            player.hp -= damage;
+            addBattleLog(`${battle.enemyName} attacks for ${damage} damage!`);
+            createDamagePopup(damage, '#ff4444', 'player');
+            shakeElement('playerBattle');
+            
+            // Enemy hit resets combo if player took full damage
+            if (!battle.defending) {
+                battle.combo = 0;
+                document.getElementById('comboDisplay').style.display = 'none';
+                document.getElementById('streakBonus').style.display = 'none';
+            }
+            
+            battle.tempDefense = 0;
+            updateBattleUI();
+            updateUI();
+            
+            if (player.hp <= 0) {
+                player.hp = 0;
+                updateUI();
+                battleDefeat();
+            } else {
+                battle.turn = 'player';
+            }
+        }
+        
+        function battleVictory() {
+            const xpGain = battle.enemy.xp;
+            const goldGain = battle.enemy.gold;
+            
+            player.xp += xpGain;
+            player.gold += goldGain;
+            
+            addBattleLog(`Victory! Gained ${xpGain} XP and ${goldGain} gold!`);
+            
+            if (battle.enemy.boss) {
+                player.defeatedBosses.push(battle.enemyName);
+                addBattleLog(`🏆 ${battle.enemyName} has been defeated!`);
+                
+                // Unlock skill
+                if (battle.enemyName === 'Anbu') {
+                    player.unlockedSkills['Study Shield'] = true;
+                    addBattleLog('Unlocked skill: Study Shield!');
+                } else if (battle.enemyName === 'Saharsh') {
+                    player.unlockedSkills['Speed Dash'] = true;
+                    addBattleLog('Unlocked skill: Speed Dash!');
+                } else if (battle.enemyName === 'Calvin') {
+                    player.unlockedSkills['Excuse Escape'] = true;
+                    addBattleLog('Unlocked skill: Excuse Escape!');
+                } else if (battle.enemyName === 'The Teacher') {
+                    setTimeout(() => gameVictory(), 1500);
+                    return;
+                }
+            }
+            
+            checkLevelUp();
+            saveGame();
+            
+            setTimeout(endBattle, 1500);
+        }
+        
+        function battleDefeat() {
+            addBattleLog('Eric has been defeated...');
+            setTimeout(() => {
+                endBattle();
+                caughtByTeacher();
+            }, 1500);
+        }
+        
+        function endBattle() {
+            battle.active = false;
+            document.getElementById('battleUI').style.display = 'none';
+            gameState = 'explore';
+        }
+        
+        function showSkillMenu() {
+            const menu = document.getElementById('skillMenu');
+            menu.innerHTML = '';
+            menu.style.display = 'block';
+            
+            Object.entries(skills).forEach(([name, skill]) => {
+                if (player.unlockedSkills[name]) {
+                    const btn = document.createElement('button');
+                    btn.className = 'skill-btn';
+                    btn.innerHTML = `<strong>${name}</strong> (${skill.mp} MP)<br><small>${skill.desc}</small>`;
+                    btn.disabled = player.mp < skill.mp;
+                    btn.onclick = () => useSkill(name);
+                    menu.appendChild(btn);
+                }
+            });
+            
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'skill-btn';
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.onclick = hideMenus;
+            menu.appendChild(cancelBtn);
+        }
+        
+        function showItemMenu() {
+            const menu = document.getElementById('itemMenu');
+            menu.innerHTML = '';
+            menu.style.display = 'block';
+            
+            const itemCounts = {};
+            player.inventory.forEach(item => {
+                itemCounts[item] = (itemCounts[item] || 0) + 1;
+            });
+            
+            if (Object.keys(itemCounts).length === 0) {
+                menu.innerHTML = '<div style="color:#888">No items!</div>';
+            }
+            
+            Object.entries(itemCounts).forEach(([name, count]) => {
+                const item = items[name];
+                const btn = document.createElement('button');
+                btn.className = 'skill-btn';
+                btn.innerHTML = `${item.emoji} ${name} x${count}<br><small>${item.desc}</small>`;
+                btn.onclick = () => useItem(name);
+                menu.appendChild(btn);
+            });
+            
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'skill-btn';
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.onclick = hideMenus;
+            menu.appendChild(cancelBtn);
+        }
+        
+        function hideMenus() {
+            document.getElementById('skillMenu').style.display = 'none';
+            document.getElementById('itemMenu').style.display = 'none';
+        }
+        
+        function createDamagePopup(value, color, target) {
+            const popup = document.createElement('div');
+            popup.className = 'damage-popup';
+            popup.textContent = value;
+            popup.style.color = color;
+            
+            const battleScene = document.getElementById('battleScene');
+            const targetEl = document.getElementById(target === 'enemy' ? 'enemyBattle' : 'playerBattle');
+            const rect = targetEl.getBoundingClientRect();
+            const containerRect = document.getElementById('gameContainer').getBoundingClientRect();
+            
+            popup.style.left = (rect.left - containerRect.left + 50) + 'px';
+            popup.style.top = (rect.top - containerRect.top + 50) + 'px';
+            
+            document.getElementById('gameContainer').appendChild(popup);
+            setTimeout(() => popup.remove(), 1000);
+        }
+        
+        function shakeElement(id) {
+            const el = document.getElementById(id);
+            el.classList.add('shake');
+            setTimeout(() => el.classList.remove('shake'), 300);
+        }
+        
+        function checkLevelUp() {
+            const xpNeeded = player.level * 100;
+            while (player.xp >= xpNeeded) {
+                player.xp -= xpNeeded;
+                player.level++;
+                player.maxHp += 20;
+                player.maxMp += 10;
+                player.hp = player.maxHp;
+                player.mp = player.maxMp;
+                player.attack += 5;
+                player.defense += 2;
+                
+                addBattleLog(`🎉 LEVEL UP! Now level ${player.level}!`);
+                
+                // Check for skill unlocks
+                Object.entries(skills).forEach(([name, skill]) => {
+                    if (skill.unlockLevel === player.level && !player.unlockedSkills[name]) {
+                        player.unlockedSkills[name] = true;
+                        addBattleLog(`Unlocked new skill: ${name}!`);
+                    }
+                });
+            }
+        }
+        
+        function caughtByTeacher() {
+            player.detentionCount++;
+            teacher.active = false;
+            teacher.chaseTimer = 0;
+            teacher.spawnCooldown = 1200; // 20 seconds cooldown after being caught
+            
+            if (player.detentionCount >= 3) {
+                // Game over - too many detentions
+                gameOver('detention');
+                return;
+            }
+            
+            document.getElementById('detentionOverlay').style.display = 'flex';
+            let timer = 5;
+            document.getElementById('detentionTimer').textContent = timer;
+            
+            const interval = setInterval(() => {
+                timer--;
+                document.getElementById('detentionTimer').textContent = timer;
+                if (timer <= 0) {
+                    clearInterval(interval);
+                    document.getElementById('detentionOverlay').style.display = 'none';
+                    // Reset to hallway
+                    player.hp = Math.floor(player.maxHp * 0.5);
+                    player.x = 500;
+                    player.y = 400;
+                    initRoom('hallway');
+                    showDialog('System', `Detention served. ${3 - player.detentionCount} chances remaining.`);
+                    gameState = 'explore';
+                }
+            }, 1000);
+        }
+        
+        function gameOver(reason) {
+            gameState = 'gameover';
+            document.getElementById('gameOverScreen').style.display = 'flex';
+            document.getElementById('gameOverStats').innerHTML = `
+                Level Reached: ${player.level}<br>
+                Bosses Defeated: ${player.defeatedBosses.length}/4<br>
+                Detentions: ${player.detentionCount}
+            `;
+        }
+        
+        function restartFromCheckpoint() {
+            document.getElementById('gameOverScreen').style.display = 'none';
+            player.hp = player.maxHp;
+            player.mp = player.maxMp;
+            player.detentionCount = Math.max(0, player.detentionCount - 1);
+            player.x = 500;
+            player.y = 400;
+            initRoom('library');
+            gameState = 'explore';
+        }
+        
+        function gameVictory() {
+            gameState = 'victory';
+            document.getElementById('battleUI').style.display = 'none';
+            document.getElementById('victoryScreen').style.display = 'flex';
+            
+            // Determine ending
+            let ending, endingText;
+            if (player.detentionCount === 0 && player.level >= 10) {
+                ending = "Perfect Grade Ending";
+                endingText = "You've conquered the nightmare school with flying colors! Not only did you defeat every rival and the teacher, but you did it without a single detention. You graduate as valedictorian, forever remembered as the student who turned failure into legendary success.";
+            } else if (player.detentionCount <= 1) {
+                ending = "Honor Roll Ending";
+                endingText = "You've survived the nightmare and passed with honors! Despite the monsters, the stress, and the relentless teacher, you proved that perseverance pays off. The school transforms back to normal, and you walk out with your head held high.";
+            } else {
+                ending = "Barely Passing Ending";
+                endingText = "You did it... barely. The nightmare is over, but the scars remain. You managed to defeat the teacher and escape, but those detentions will haunt your transcript forever. Still, passing is passing. You survived.";
+            }
+            
+            document.getElementById('endingTitle').textContent = ending;
+            document.getElementById('endingText').textContent = endingText;
+            document.getElementById('finalStats').innerHTML = `
+                Final Level: ${player.level}<br>
+                Total XP Earned: ${player.xp + (player.level * 100)}<br>
+                Gold Collected: ${player.gold}<br>
+                Detentions Served: ${player.detentionCount}<br>
+                Bosses Defeated: ${player.defeatedBosses.join(', ')}
+            `;
+            
+            // Clear save
+            localStorage.removeItem(STORAGE_PREFIX + 'saveData');
+        }
+        
+        function updateUI() {
+            document.getElementById('levelDisplay').textContent = player.level;
+            document.getElementById('xpDisplay').textContent = player.xp;
+            document.getElementById('xpNeeded').textContent = player.level * 100;
+            document.getElementById('hpBar').style.width = (player.hp / player.maxHp * 100) + '%';
+            document.getElementById('hpText').textContent = `${Math.floor(player.hp)}/${player.maxHp}`;
+            document.getElementById('mpBar').style.width = (player.mp / player.maxMp * 100) + '%';
+            document.getElementById('mpText').textContent = `${Math.floor(player.mp)}/${player.maxMp}`;
+            document.getElementById('goldDisplay').textContent = player.gold;
+            
+            // Inventory
+            const invSlots = document.getElementById('inventorySlots');
+            invSlots.innerHTML = '';
+            player.inventory.slice(0, 10).forEach(itemName => {
+                const slot = document.createElement('div');
+                slot.className = 'item-slot';
+                slot.textContent = items[itemName]?.emoji || '?';
+                slot.title = itemName;
+                invSlots.appendChild(slot);
+            });
+        }
+        
+        function gameLoop() {
+            if (gameState === 'explore') {
+                update();
+                render();
+            }
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Random encounters while exploring
+        let encounterTimer = 0;
+        
+        function updateExplore() {
+            if (gameState !== 'explore') return;
+            
+            encounterTimer++;
+            const room = rooms[player.currentRoom];
+            
+            // Random encounter chance
+            if (!room.safe && encounterTimer > 300 && Math.random() < 0.005) {
+                encounterTimer = 0;
+                const enemyType = room.enemies[Math.floor(Math.random() * room.enemies.length)];
+                if (enemyType) {
+                    showDialog('!', 'An enemy appears!');
+                    setTimeout(() => startBattle(enemyType), 500);
+                }
+            }
+            
+            // Teacher spawn chance - only if cooldown is 0
+            if (!room.safe && !teacher.active && teacher.spawnCooldown <= 0 && player.level > 1 && Math.random() < 0.0005) {
+                teacher.active = true;
+                teacher.x = Math.random() > 0.5 ? -50 : canvas.width + 50;
+                teacher.y = player.y;
+                // Cap teacher speed to 75% of player speed so player can always escape
+                const maxTeacherSpeed = player.speed * 0.75;
+                teacher.speed = Math.min(1.5 + (player.defeatedBosses.length * 0.3), maxTeacherSpeed);
+                showDialog('⚠️', 'THE TEACHER IS COMING!');
+            }
+        }
+        
+        // Enhanced game loop with encounter checks
+        const originalUpdate = update;
+        update = function() {
+            originalUpdate();
+            updateExplore();
+        };
+        
+        // Add screen flash effect
+        function flashScreen(color) {
+            const flash = document.createElement('div');
+            flash.style.cssText = `
+                position: absolute;
+                top: 0; left: 0;
+                width: 100%; height: 100%;
+                background: ${color};
+                pointer-events: none;
+                animation: flashOut 0.3s forwards;
+            `;
+            document.getElementById('gameContainer').appendChild(flash);
+            setTimeout(() => flash.remove(), 300);
+        }
+        
+        // Add flash animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes flashOut {
+                0% { opacity: 0.5; }
+                100% { opacity: 0; }
+            }
+            @keyframes pulse {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.05); }
+            }
+            #menuScreen h1 {
+                animation: pulse 2s infinite;
+            }
+            .boss-warning {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                font-size: 48px;
+                color: #ff0000;
+                text-shadow: 0 0 20px #ff0000;
+                animation: pulse 0.5s infinite;
+                z-index: 100;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Override startBattle for boss warning
+        const originalStartBattle = startBattle;
+        startBattle = function(enemyName) {
+            if (enemies[enemyName]?.boss) {
+                flashScreen('rgba(255,0,0,0.5)');
+                const warning = document.createElement('div');
+                warning.className = 'boss-warning';
+                warning.textContent = '⚔️ BOSS BATTLE ⚔️';
+                document.getElementById('gameContainer').appendChild(warning);
+                setTimeout(() => {
+                    warning.remove();
+                    originalStartBattle(enemyName);
+                }, 1000);
+            } else {
+                originalStartBattle(enemyName);
+            }
+        };
+        
+        // Auto-save periodically
+        setInterval(() => {
+            if (gameState === 'explore') {
+                saveGame();
+            }
+        }, 30000);
+        
+        // Initialize
+        updateUI();
+    </script>
+</body>
+</html>
