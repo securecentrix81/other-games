@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eric M. Failing Class - The Nightmare School</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #111;
+            font-family: 'Press Start 2P', cursive;
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            image-rendering: pixelated;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        .ui-overlay {
+            position: absolute;
+            pointer-events: none;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .dialogue-box {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            background: rgba(0, 0, 0, 0.9);
+            border: 4px solid #fff;
+            color: #fff;
+            padding: 20px;
+            font-size: 14px;
+            line-height: 1.5;
+            display: none;
+            pointer-events: auto;
+            z-index: 50;
+        }
+
+        .battle-ui {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 30%;
+            background: rgba(20, 20, 30, 0.95);
+            border-top: 4px solid #fff;
+            display: none;
+            padding: 20px;
+            box-sizing: border-box;
+            color: white;
+            pointer-events: auto;
+            z-index: 40;
+            display: flex;
+            gap: 20px;
+        }
+        
+        .battle-ui.hidden {
+            display: none;
+        }
+
+        .battle-menu {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .battle-btn {
+            background: #333;
+            border: 2px solid #555;
+            color: white;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.1s;
+            text-align: left;
+            padding: 10px;
+        }
+
+        .battle-btn:hover, .battle-btn:focus {
+            background: #555;
+            border-color: #fff;
+            transform: scale(1.02);
+        }
+
+        .battle-log {
+            flex: 2;
+            border: 2px solid #555;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 12px;
+            background: #000;
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 20px;
+            color: white;
+            text-shadow: 2px 2px 0 #000;
+            font-size: 14px;
+        }
+
+        .bar-container {
+            width: 100px;
+            height: 10px;
+            background: #333;
+            border: 1px solid white;
+            display: inline-block;
+            margin-left: 5px;
+        }
+        
+        .bar-fill {
+            height: 100%;
+            transition: width 0.3s;
+        }
+
+        .hp-fill { background: #e11d48; }
+        .mp-fill { background: #3b82f6; }
+        .grade-fill { background: #22c55e; }
+
+        .screen-flash {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 100;
+            transition: opacity 0.1s;
+        }
+
+        #start-screen, #game-over-screen, #win-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 1000;
+            text-align: center;
+        }
+        
+        .hidden { display: none !important; }
+
+        .pixel-text {
+            color: #ef4444;
+            text-shadow: 4px 4px 0px #000;
+            margin-bottom: 2rem;
+        }
+
+        .blink {
+            animation: blinker 1s linear infinite;
+        }
+        
+        @keyframes blinker {
+            50% { opacity: 0; }
+        }
+
+        /* Scanlines for CRT effect */
+        .scanlines {
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0,0,0,0.2) 50%,
+                rgba(0,0,0,0.2)
+            );
+            background-size: 100% 4px;
+            position: absolute;
+            top: 0; right: 0; bottom: 0; left: 0;
+            z-index: 90;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div class="scanlines"></div>
+    <div class="screen-flash" id="flash"></div>
+
+    <div id="ui-layer" class="ui-overlay hidden">
+        <div class="stats-bar">
+            <div>HP <div class="bar-container"><div id="hp-bar" class="bar-fill hp-fill" style="width: 100%"></div></div></div>
+            <div>MP <div class="bar-container"><div id="mp-bar" class="bar-fill mp-fill" style="width: 100%"></div></div></div>
+            <div>GRADE <div class="bar-container"><div id="grade-bar" class="bar-fill grade-fill" style="width: 0%"></div></div> <span id="grade-text">F</span></div>
+            <div>LVL <span id="level-text">1</span></div>
+        </div>
+        <div id="objective-text" class="text-yellow-400 text-xs text-right mt-2">Current Goal: Find the Library</div>
+    </div>
+
+    <div id="dialogue-box" class="dialogue-box">
+        <p id="dialogue-text"></p>
+        <div class="text-right text-xs text-gray-400 mt-2">[SPACE] to continue</div>
+    </div>
+
+    <div id="battle-ui" class="battle-ui hidden">
+        <div class="battle-menu">
+            <button class="battle-btn" onclick="game.battleSystem.playerAction('attack')">Fight</button>
+            <button class="battle-btn" onclick="game.battleSystem.playerAction('skill')">Skill</button>
+            <button class="battle-btn" onclick="game.battleSystem.playerAction('item')">Item</button>
+            <button class="battle-btn" onclick="game.battleSystem.playerAction('run')">Run</button>
+        </div>
+        <div class="battle-log" id="battle-log">
+            Enemy appeared!
+        </div>
+    </div>
+
+    <div id="start-screen">
+        <h1 class="text-4xl pixel-text text-yellow-500">ERIC M. FAILING CLASS</h1>
+        <p class="text-gray-400 mb-8 max-w-md text-sm leading-6">
+            You are Eric. You are failing. The school is a nightmare.<br>
+            Monsters (Homework, Stress) are everywhere.<br>
+            The Teacher is hunting you.<br>
+            Rivals (Anbu, Saharsh, Calvin) stand in your way.<br>
+            Survive. Pass. Escape.
+        </p>
+        <p class="blink text-yellow-300 cursor-pointer text-xl" onclick="game.start()">PRESS START</p>
+        <p class="text-xs text-gray-500 mt-8">WASD/Arrows to Move | SPACE to Interact</p>
+    </div>
+
+    <div id="game-over-screen" class="hidden">
+        <h1 class="text-5xl pixel-text">DETENTION</h1>
+        <p class="text-red-400 mb-4">You failed the class.</p>
+        <p class="text-white text-sm mb-8" id="death-reason">The teacher caught you.</p>
+        <p class="blink text-white cursor-pointer" onclick="location.reload()">TRY AGAIN</p>
+    </div>
+
+    <div id="win-screen" class="hidden">
+        <h1 class="text-5xl pixel-text text-green-500">PASSED!</h1>
+        <p class="text-white mb-4">You survived the school year.</p>
+        <p class="text-yellow-300 mb-8" id="final-grade">Final Grade: A+</p>
+        <p class="blink text-white cursor-pointer" onclick="location.reload()">NEW GAME</p>
+    </div>
+</div>
+
+<script>
+/**
+ * Game Configuration & State
+ */
+const TILE_SIZE = 40;
+const VIEWPORT_WIDTH = 800;
+const VIEWPORT_HEIGHT = 600;
+const SAHARSH_IMG_SRC = 'https://asset-cdn.schoology.com/system/files/imagecache/profile_big/pictures/picture-c0b09cdead19788fb0f8be0d53b5c572_68c34cd700b90.jpg';
+
+// Storage Namespace
+const STORAGE_PREFIX = window.location.pathname + "_eric_";
+
+const ASSETS = {
+    saharsh: new Image()
+};
+ASSETS.saharsh.src = SAHARSH_IMG_SRC;
+
+const ROOMS = {
+    HALLWAY: 'hallway',
+    CLASSROOM: 'classroom',
+    LIBRARY: 'library',
+    GYM: 'gym',
+    CAFETERIA: 'cafeteria'
+};
+
+const ITEMS = [
+    { name: "Pencil", type: "weapon", power: 2 },
+    { name: "Energy Drink", type: "heal", power: 20 },
+    { name: "Study Guide", type: "buff", effect: "defense" },
+    { name: "Hall Pass", type: "escape", chance: 1.0 }
+];
+
+const SKILLS = [
+    { name: "Homework Strike", cost: 5, damage: 15, text: "You threw a heavy textbook!" },
+    { name: "Study Shield", cost: 8, effect: "defense", text: "You hid behind your notes!" },
+    { name: "Excuse Escape", cost: 10, effect: "escape", text: "My dog ate my homework!" },
+    { name: "Speed Dash", cost: 5, effect: "speed", text: "Run for it!" }
+];
+
+class InputHandler {
+    constructor() {
+        this.keys = {};
+        window.addEventListener('keydown', (e) => {
+            this.keys[e.code] = true;
+            if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+            
+            if (e.code === 'Space') {
+                game.handleInteraction();
+            }
+        });
+        window.addEventListener('keyup', (e) => this.keys[e.code] = false);
+    }
+}
+
+class Utils {
+    static rectIntersect(r1, r2) {
+        return !(r2.x > r1.x + r1.w || 
+                 r2.x + r2.w < r1.x || 
+                 r2.y > r1.y + r1.h || 
+                 r2.y + r2.h < r1.y);
+    }
+    
+    static dist(x1, y1, x2, y2) {
+        return Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+    }
+
+    static randomInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1) + min);
+    }
+}
+
+class Entity {
+    constructor(x, y, color, type) {
+        this.x = x;
+        this.y = y;
+        this.w = TILE_SIZE;
+        this.h = TILE_SIZE;
+        this.color = color;
+        this.type = type; // 'player', 'enemy', 'npc', 'wall', 'door'
+        this.dx = 0;
+        this.dy = 0;
+        this.speed = 3;
+        this.interactable = false;
+    }
+
+    update() {
+        // Basic movement applied by subclasses
+    }
+
+    draw(ctx, cameraX, cameraY) {
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x - cameraX, this.y - cameraY, this.w, this.h);
+        
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fillRect(this.x - cameraX + 5, this.y - cameraY + this.h - 5, this.w - 10, 5);
+    }
+}
+
+class Player extends Entity {
+    constructor(x, y) {
+        super(x, y, '#3b82f6', 'player');
+        this.maxHp = 100;
+        this.hp = 100;
+        this.maxMp = 50;
+        this.mp = 50;
+        this.grade = 0; // XP
+        this.level = 1;
+        this.inventory = [];
+        this.facing = 'down';
+    }
+
+    update(input, map) {
+        this.dx = 0;
+        this.dy = 0;
+
+        if (input.keys['ArrowUp'] || input.keys['KeyW']) { this.dy = -this.speed; this.facing = 'up'; }
+        if (input.keys['ArrowDown'] || input.keys['KeyS']) { this.dy = this.speed; this.facing = 'down'; }
+        if (input.keys['ArrowLeft'] || input.keys['KeyA']) { this.dx = -this.speed; this.facing = 'left'; }
+        if (input.keys['ArrowRight'] || input.keys['KeyD']) { this.dx = this.speed; this.facing = 'right'; }
+
+        // Normalize diagonal
+        if (this.dx !== 0 && this.dy !== 0) {
+            this.dx *= 0.707;
+            this.dy *= 0.707;
+        }
+
+        // Collision Check X
+        let nextX = this.x + this.dx;
+        if (!map.checkCollision({x: nextX, y: this.y, w: this.w, h: this.h})) {
+            this.x = nextX;
+        }
+
+        // Collision Check Y
+        let nextY = this.y + this.dy;
+        if (!map.checkCollision({x: this.x, y: nextY, w: this.w, h: this.h})) {
+            this.y = nextY;
+        }
+    }
+
+    gainExp(amount) {
+        this.grade += amount;
+        if (this.grade >= 100 * this.level) {
+            this.grade = 0;
+            this.level++;
+            this.maxHp += 20;
+            this.maxMp += 10;
+            this.hp = this.maxHp;
+            this.mp = this.maxMp;
+            
+            // Make teacher faster/stronger
+            game.chaser.speed += 0.3;
+            
+            game.ui.flash();
+            game.ui.log("LEVEL UP! Teacher is getting faster...");
+        }
+        game.ui.updateStats();
+    }
+}
+
+class MapSystem {
+    constructor() {
+        this.walls = [];
+        this.doors = [];
+        this.npcs = [];
+        this.items = [];
+        this.width = 0;
+        this.height = 0;
+        this.currentRoom = ROOMS.HALLWAY;
+    }
+
+    loadRoom(roomType) {
+        this.currentRoom = roomType;
+        this.walls = [];
+        this.doors = [];
+        this.npcs = [];
+        this.items = [];
+        
+        // Procedural-ish Generation based on room type
+        let w = 40, h = 30; // Grid size
+        if (roomType === ROOMS.HALLWAY) { w = 60; h = 60; }
+        
+        this.width = w * TILE_SIZE;
+        this.height = h * TILE_SIZE;
+
+        // Borders
+        this.addWall(0, 0, this.width, TILE_SIZE); // Top
+        this.addWall(0, this.height - TILE_SIZE, this.width, TILE_SIZE); // Bottom
+        this.addWall(0, 0, TILE_SIZE, this.height); // Left
+        this.addWall(this.width - TILE_SIZE, 0, TILE_SIZE, this.height); // Right
+
+        // Room Specifics
+        if (roomType === ROOMS.HALLWAY) {
+            // Maze-like structure
+            for(let i=0; i<20; i++) {
+                this.addWall(Utils.randomInt(2, w-2)*TILE_SIZE, Utils.randomInt(2, h-2)*TILE_SIZE, TILE_SIZE * Utils.randomInt(1,5), TILE_SIZE);
+            }
+            // Doors to other rooms
+            this.addDoor(TILE_SIZE * 5, TILE_SIZE, ROOMS.CLASSROOM, 'Classroom 101');
+            this.addDoor(this.width - TILE_SIZE * 6, this.height - TILE_SIZE * 2, ROOMS.LIBRARY, 'Library');
+            this.addDoor(TILE_SIZE * 5, this.height - TILE_SIZE * 2, ROOMS.GYM, 'Gymnasium');
+            this.addDoor(this.width - TILE_SIZE * 6, TILE_SIZE, ROOMS.CAFETERIA, 'Cafeteria');
+            
+            // Random Items
+            this.spawnRandomItems(5);
+            
+            // Teacher spawns in hallway later
+        } else if (roomType === ROOMS.CLASSROOM) {
+            // Desks
+            for(let r=0; r<5; r++) {
+                for(let c=0; c<5; c++) {
+                    this.addObstacle((4+c*3)*TILE_SIZE, (4+r*3)*TILE_SIZE, '#8B4513');
+                }
+            }
+            this.addDoor(TILE_SIZE, this.height/2, ROOMS.HALLWAY, 'Exit');
+            
+            // Rival: Anbu
+            this.addNPC(10*TILE_SIZE, 10*TILE_SIZE, 'Anbu', '#facc15', "Hey Eric, looking dumb as usual. Fight me!", "battle");
+            this.spawnRandomItems(2);
+
+        } else if (roomType === ROOMS.LIBRARY) {
+            // Bookshelves
+            for(let i=0; i<6; i++) {
+                this.addWall((4 + i*4)*TILE_SIZE, TILE_SIZE*4, TILE_SIZE, TILE_SIZE*10);
+            }
+            this.addDoor(this.width/2, this.height - TILE_SIZE*2, ROOMS.HALLWAY, 'Exit');
+            
+            // Safe zone - healer
+            this.addNPC(TILE_SIZE*2, TILE_SIZE*2, 'Librarian', '#a8a29e', "Shh! It's safe here. Rest a while.", "heal");
+            
+            // Rival: Saharsh
+            this.addNPC(this.width - TILE_SIZE*5, TILE_SIZE*5, 'Saharsh', null, "I've calculated your failure probability. It's 100%.", "battle", ASSETS.saharsh);
+
+        } else if (roomType === ROOMS.CAFETERIA) {
+            // Tables
+            for(let i=0; i<10; i++) {
+                this.addObstacle(Utils.randomInt(2, w-2)*TILE_SIZE, Utils.randomInt(2, h-2)*TILE_SIZE, '#fff');
+            }
+            this.addDoor(TILE_SIZE, TILE_SIZE*5, ROOMS.HALLWAY, 'Exit');
+            this.addNPC(this.width/2, this.height/2, 'Calvin', '#ef4444', "Give me your lunch money! Or your grades!", "battle");
+            this.spawnRandomItems(3);
+        } else if (roomType === ROOMS.GYM) {
+            this.addDoor(this.width/2, TILE_SIZE, ROOMS.HALLWAY, 'Exit');
+            // Empty big arena
+            this.addNPC(this.width/2, this.height/2, 'THE TEACHER', '#b91c1c', "ERIC! YOU CANNOT ESCAPE DETENTION!", "boss");
+        }
+    }
+
+    addWall(x, y, w, h) {
+        this.walls.push({x, y, w, h});
+    }
+
+    addObstacle(x, y, color) {
+        this.walls.push({x, y, w: TILE_SIZE, h: TILE_SIZE, color});
+    }
+
+    addDoor(x, y, targetRoom, label) {
+        this.doors.push({x, y, w: TILE_SIZE, h: TILE_SIZE, target: targetRoom, label});
+    }
+
+    addNPC(x, y, name, color, dialogue, action, image=null) {
+        this.npcs.push({x, y, w: TILE_SIZE, h: TILE_SIZE, name, color, dialogue, action, image});
+    }
+
+    spawnRandomItems(count) {
+        for(let i=0; i<count; i++) {
+            let item = ITEMS[Utils.randomInt(0, ITEMS.length-1)];
+            this.items.push({
+                x: Utils.randomInt(2, this.width/TILE_SIZE - 2) * TILE_SIZE,
+                y: Utils.randomInt(2, this.height/TILE_SIZE - 2) * TILE_SIZE,
+                w: TILE_SIZE/2, h: TILE_SIZE/2,
+                data: item
+            });
+        }
+    }
+
+    checkCollision(rect) {
+        // Walls
+        for (let wall of this.walls) {
+            if (Utils.rectIntersect(rect, wall)) return true;
+        }
+        // NPCs (solid)
+        for (let npc of this.npcs) {
+            if (Utils.rectIntersect(rect, npc)) return true;
+        }
+        return false;
+    }
+
+    checkInteraction(playerRect) {
+        // Enlarge player rect slightly to check adjacent
+        let checkRect = {
+            x: playerRect.x - 5, y: playerRect.y - 5,
+            w: playerRect.w + 10, h: playerRect.h + 10
+        };
+
+        // Doors
+        for (let door of this.doors) {
+            if (Utils.rectIntersect(checkRect, door)) return { type: 'door', data: door };
+        }
+        // NPCs
+        for (let npc of this.npcs) {
+            if (Utils.rectIntersect(checkRect, npc)) return { type: 'npc', data: npc };
+        }
+        // Items
+        for (let i = 0; i < this.items.length; i++) {
+            let item = this.items[i];
+            // Items you just walk over usually, but let's make them pickupable
+            if (Utils.rectIntersect(playerRect, item)) {
+                this.items.splice(i, 1);
+                return { type: 'item', data: item.data };
+            }
+        }
+        return null;
+    }
+
+    draw(ctx, cameraX, cameraY) {
+        // Floor
+        ctx.fillStyle = '#222';
+        ctx.fillRect(0 - cameraX, 0 - cameraY, this.width, this.height);
+        
+        // Grid lines (subtle)
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for(let x=0; x<=this.width; x+=TILE_SIZE) {
+            ctx.moveTo(x - cameraX, 0 - cameraY);
+            ctx.lineTo(x - cameraX, this.height - cameraY);
+        }
+        for(let y=0; y<=this.height; y+=TILE_SIZE) {
+            ctx.moveTo(0 - cameraX, y - cameraY);
+            ctx.lineTo(this.width - cameraX, y - cameraY);
+        }
+        ctx.stroke();
+
+        // Walls
+        ctx.fillStyle = '#555';
+        for (let wall of this.walls) {
+            if (wall.color) ctx.fillStyle = wall.color;
+            else ctx.fillStyle = '#555';
+            
+            ctx.fillRect(wall.x - cameraX, wall.y - cameraY, wall.w, wall.h);
+            
+            // 3Dish look
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(wall.x - cameraX, wall.y - cameraY + wall.h, wall.w, 10);
+        }
+
+        // Doors
+        ctx.fillStyle = '#4ade80';
+        for (let door of this.doors) {
+            ctx.fillRect(door.x - cameraX, door.y - cameraY, door.w, door.h);
+            ctx.fillStyle = 'white';
+            ctx.font = '10px Arial';
+            ctx.fillText("DOOR", door.x - cameraX + 5, door.y - cameraY + 20);
+            ctx.fillStyle = '#4ade80';
+        }
+
+        // Items
+        for (let item of this.items) {
+            ctx.fillStyle = '#fbbf24';
+            ctx.beginPath();
+            ctx.arc(item.x - cameraX + item.w, item.y - cameraY + item.h, 10, 0, Math.PI*2);
+            ctx.fill();
+            // Glow
+            ctx.shadowColor = '#fbbf24';
+            ctx.shadowBlur = 10;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+
+        // NPCs
+        for (let npc of this.npcs) {
+            if (npc.image) {
+                // Draw Saharsh or image NPC
+                try {
+                    ctx.drawImage(npc.image, npc.x - cameraX, npc.y - cameraY, npc.w, npc.h);
+                } catch(e) {
+                    ctx.fillStyle = npc.color || '#f0f';
+                    ctx.fillRect(npc.x - cameraX, npc.y - cameraY, npc.w, npc.h);
+                }
+            } else {
+                ctx.fillStyle = npc.color;
+                ctx.fillRect(npc.x - cameraX, npc.y - cameraY, npc.w, npc.h);
+            }
+            
+            // Name tag
+            ctx.fillStyle = 'white';
+            ctx.font = '10px "Press Start 2P"';
+            ctx.textAlign = 'center';
+            ctx.fillText(npc.name, npc.x - cameraX + TILE_SIZE/2, npc.y - cameraY - 5);
+        }
+    }
+}
+
+class BattleSystem {
+    constructor() {
+        this.active = false;
+        this.enemy = null;
+        this.turn = 'player'; // player, enemy
+        this.log = [];
+    }
+
+    startBattle(enemyData) {
+        this.active = true;
+        this.enemy = {
+            name: enemyData.name,
+            hp: enemyData.hp || 50,
+            maxHp: enemyData.hp || 50,
+            damage: enemyData.damage || 10,
+            type: enemyData.type || 'monster'
+        };
+        this.turn = 'player';
+        this.log = [`A wild ${this.enemy.name} appeared!`];
+        game.ui.showBattleUI(true);
+        this.updateLog();
+    }
+
+    playerAction(action) {
+        if (this.turn !== 'player') return;
+
+        let success = true;
+        let msg = "";
+
+        if (action === 'attack') {
+            let dmg = Utils.randomInt(10, 15) + (game.player.level * 2);
+            this.enemy.hp -= dmg;
+            game.spawnFloatText(dmg, VIEWPORT_WIDTH/2 + 50, VIEWPORT_HEIGHT/2 - 50, '#ff0');
+            msg = `You attacked! Dealt ${dmg} damage.`;
+            game.ui.shake();
+        } else if (action === 'skill') {
+            if (game.player.mp >= 8) {
+                game.player.mp -= 8;
+                // Random skill effect
+                const rand = Math.random();
+                if (rand < 0.6) {
+                    let dmg = Utils.randomInt(25, 40) + (game.player.level * 4);
+                    this.enemy.hp -= dmg;
+                    game.spawnFloatText("CRIT " + dmg, VIEWPORT_WIDTH/2 + 50, VIEWPORT_HEIGHT/2 - 50, '#f00');
+                    msg = `Used Homework Strike! CRITICAL! Dealt ${dmg} damage.`;
+                } else if (rand < 0.9) {
+                    game.player.hp = Math.min(game.player.hp + 20, game.player.maxHp);
+                    game.spawnFloatText("+20 HP", VIEWPORT_WIDTH/2 - 50, VIEWPORT_HEIGHT/2, '#0f0');
+                    msg = `Used Study Shield! Blocked damage and healed 20 HP.`;
+                } else {
+                    let dmg = Utils.randomInt(10, 20);
+                    this.enemy.hp -= dmg;
+                    game.spawnFloatText(dmg, VIEWPORT_WIDTH/2 + 50, VIEWPORT_HEIGHT/2 - 50, '#fff');
+                    msg = `Used Excuse Escape! Confused enemy, dealt ${dmg} damage.`;
+                }
+                game.ui.shake();
+            } else {
+                msg = "Not enough MP (Need 8)!";
+                success = false;
+            }
+        } else if (action === 'item') {
+            const potionIndex = game.player.inventory.findIndex(i => i.type === 'heal' || i.name === 'Energy Drink');
+            if (potionIndex !== -1) {
+                game.player.inventory.splice(potionIndex, 1);
+                let heal = 40;
+                game.player.hp = Math.min(game.player.hp + heal, game.player.maxHp);
+                msg = `Used Energy Drink! Recovered ${heal} HP.`;
+            } else {
+                msg = "No Energy Drinks in inventory!";
+                success = false;
+            }
+        } else if (action === 'run') {
+            if (this.enemy.type === 'boss') {
+                msg = "Can't run from a boss!";
+                success = false;
+            } else if (Math.random() > 0.3) {
+                msg = "Got away safely!";
+                this.endBattle(true);
+                return;
+            } else {
+                msg = "Failed to run!";
+            }
+        }
+
+        if (success) {
+            this.log.push(msg);
+            this.updateLog();
+            game.ui.updateStats();
+
+            if (this.enemy.hp <= 0) {
+                setTimeout(() => this.winBattle(), 500);
+            } else {
+                this.turn = 'enemy';
+                setTimeout(() => this.enemyTurn(), 1000);
+            }
+        } else {
+            this.log.push(msg);
+            this.updateLog();
+        }
+    }
+
+    enemyTurn() {
+        if (!this.active) return;
+        
+        let dmg = this.enemy.damage + Utils.randomInt(-2, 5);
+        game.player.hp -= dmg;
+        game.spawnFloatText("-" + dmg, VIEWPORT_WIDTH/2 - 50, VIEWPORT_HEIGHT/2, '#f00');
+        this.log.push(`${this.enemy.name} attacks! You took ${dmg} damage.`);
+        this.updateLog();
+        game.ui.shake();
+        game.ui.updateStats();
+
+        if (game.player.hp <= 0) {
+            game.gameOver("Defeated in battle.");
+        } else {
+            this.turn = 'player';
+        }
+    }
+
+    winBattle() {
+        this.active = false;
+        game.ui.showBattleUI(false);
+        game.player.gainExp(25);
+        
+        // Remove NPC if it was a one-time fight (boss/rival)
+        if (this.enemy.type === 'boss') {
+            game.winGame();
+        } else if (this.enemy.type === 'rival') {
+            game.ui.log(`Defeated ${this.enemy.name}!`);
+        }
+        
+        // Return to map
+        game.state = 'EXPLORE';
+    }
+
+    endBattle(ranAway) {
+        this.active = false;
+        game.ui.showBattleUI(false);
+        game.state = 'EXPLORE';
+    }
+
+    updateLog() {
+        const logEl = document.getElementById('battle-log');
+        logEl.innerHTML = this.log.join('<br>');
+        logEl.scrollTop = logEl.scrollHeight;
+    }
+}
+
+class UIManager {
+    constructor() {
+        this.hpBar = document.getElementById('hp-bar');
+        this.mpBar = document.getElementById('mp-bar');
+        this.gradeBar = document.getElementById('grade-bar');
+        this.gradeText = document.getElementById('grade-text');
+        this.levelText = document.getElementById('level-text');
+        this.dialogueBox = document.getElementById('dialogue-box');
+        this.dialogueText = document.getElementById('dialogue-text');
+        this.objectiveText = document.getElementById('objective-text');
+    }
+
+    updateStats() {
+        const p = game.player;
+        this.hpBar.style.width = `${(p.hp / p.maxHp) * 100}%`;
+        this.mpBar.style.width = `${(p.mp / p.maxMp) * 100}%`;
+        this.gradeBar.style.width = `${(p.grade / (p.level * 100)) * 100}%`;
+        this.levelText.innerText = p.level;
+        
+        // Calculate Grade Letter
+        const grades = ['F', 'D', 'C', 'B', 'A', 'S'];
+        let gIndex = Math.min(p.level - 1, 5);
+        this.gradeText.innerText = grades[gIndex];
+    }
+
+    showBattleUI(show) {
+        const ui = document.getElementById('battle-ui');
+        if (show) ui.classList.remove('hidden');
+        else ui.classList.add('hidden');
+    }
+
+    showDialogue(text, show) {
+        if (show) {
+            this.dialogueBox.style.display = 'block';
+            this.dialogueText.innerText = text;
+        } else {
+            this.dialogueBox.style.display = 'none';
+        }
+    }
+
+    log(msg) {
+        // Simple overlay log could be added, for now just console or alert
+        // We'll use the objective text for important transient messages
+        this.objectiveText.innerText = msg;
+        setTimeout(() => {
+             this.objectiveText.innerText = "Current Goal: Survive and Pass";
+        }, 3000);
+    }
+    
+    shake() {
+        const canvas = document.getElementById('gameCanvas');
+        canvas.style.transform = `translate(${Math.random()*10-5}px, ${Math.random()*10-5}px)`;
+        setTimeout(() => canvas.style.transform = 'none', 200);
+    }
+
+    flash() {
+        const f = document.getElementById('flash');
+        f.style.opacity = 1;
+        setTimeout(() => f.style.opacity = 0, 100);
+    }
+}
+
+class Game {
+    constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.input = new InputHandler();
+        this.mapSystem = new MapSystem();
+        this.player = new Player(100, 100);
+        this.battleSystem = new BattleSystem();
+        this.ui = new UIManager();
+        
+        this.state = 'START'; // START, EXPLORE, DIALOGUE, BATTLE, GAMEOVER
+        this.camera = {x: 0, y: 0};
+        
+        this.chaser = { x: -1000, y: -1000, active: false, speed: 1.8 }; // Teacher
+        this.lastTime = 0;
+        
+        this.monsterSpawnTimer = 0;
+        this.floatingTexts = [];
+    }
+
+    spawnFloatText(text, x, y, color) {
+        this.floatingTexts.push({
+            text, x, y, color, life: 60, dy: -1
+        });
+    }
+
+    updateFloatTexts() {
+        for(let i=this.floatingTexts.length-1; i>=0; i--) {
+            let ft = this.floatingTexts[i];
+            ft.y += ft.dy;
+            ft.life--;
+            if(ft.life <= 0) this.floatingTexts.splice(i, 1);
+        }
+    }
+
+    drawFloatTexts() {
+        this.ctx.font = '12px "Press Start 2P"';
+        this.ctx.textAlign = 'center';
+        for(let ft of this.floatingTexts) {
+            this.ctx.fillStyle = 'black';
+            this.ctx.fillText(ft.text, ft.x - this.camera.x + 2, ft.y - this.camera.y + 2);
+            this.ctx.fillStyle = ft.color;
+            this.ctx.fillText(ft.text, ft.x - this.camera.x, ft.y - this.camera.y);
+        }
+    }
+
+    start() {
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('ui-layer').classList.remove('hidden');
+        this.state = 'EXPLORE';
+        this.mapSystem.loadRoom(ROOMS.HALLWAY);
+        this.player.x = 200;
+        this.player.y = 200;
+        
+        // Initialize Teacher Chaser in Hallway
+        this.chaser.active = true;
+        this.chaser.x = 40;
+        this.chaser.y = 40;
+        
+        requestAnimationFrame((t) => this.loop(t));
+    }
+
+    gameOver(reason) {
+        this.state = 'GAMEOVER';
+        document.getElementById('death-reason').innerText = reason;
+        document.getElementById('game-over-screen').classList.remove('hidden');
+        document.getElementById('ui-layer').classList.add('hidden');
+    }
+
+    winGame() {
+        this.state = 'WIN';
+        document.getElementById('win-screen').classList.remove('hidden');
+        document.getElementById('ui-layer').classList.add('hidden');
+        
+        const grades = ['F', 'D', 'C', 'B', 'A', 'S'];
+        let gIndex = Math.min(this.player.level, 5);
+        document.getElementById('final-grade').innerText = "Final Grade: " + grades[gIndex];
+    }
+
+    loop(timestamp) {
+        const dt = timestamp - this.lastTime;
+        this.lastTime = timestamp;
+
+        if (this.state === 'EXPLORE') {
+            this.updateExplore(dt);
+        }
+
+        this.draw();
+        
+        if (this.state !== 'GAMEOVER' && this.state !== 'WIN') {
+            requestAnimationFrame((t) => this.loop(t));
+        }
+    }
+
+    updateExplore(dt) {
+        this.player.update(this.input, this.mapSystem);
+        this.updateFloatTexts();
+
+        // Chaser Logic (Teacher) - Only in Hallway for maximum stress
+        if (this.mapSystem.currentRoom === ROOMS.HALLWAY && this.chaser.active) {
+            let angle = Math.atan2(this.player.y - this.chaser.y, this.player.x - this.chaser.x);
+            this.chaser.x += Math.cos(angle) * this.chaser.speed;
+            this.chaser.y += Math.sin(angle) * this.chaser.speed;
+            
+            // Catch check
+            if (Utils.dist(this.player.x, this.player.y, this.chaser.x, this.chaser.y) < 30) {
+                this.gameOver("The teacher caught you running in the halls.");
+            }
+        } else if (this.chaser.active && this.mapSystem.currentRoom !== ROOMS.HALLWAY) {
+             // Reset Chaser if you leave the hallway, so he's not camping the door
+             if (Math.random() < 0.05) {
+                 this.chaser.x = -1000;
+                 this.chaser.y = -1000;
+             }
+        }
+        
+        // Random Encounters (Stress Monsters) - only in dangerous areas
+        if (this.mapSystem.currentRoom !== ROOMS.LIBRARY && this.mapSystem.currentRoom !== ROOMS.GYM) {
+             if (Math.random() < 0.002) { // Low chance per frame
+                 this.state = 'BATTLE';
+                 this.battleSystem.startBattle({name: 'Stress Monster', hp: 30, damage: 5, type: 'monster'});
+             }
+        }
+        
+        // Check interaction (auto-pickup items)
+        let interact = this.mapSystem.checkInteraction({x: this.player.x, y: this.player.y, w: this.player.w, h: this.player.h});
+        if (interact && interact.type === 'item') {
+            this.player.inventory.push(interact.data);
+            this.ui.log(`Picked up ${interact.data.name}`);
+            game.ui.flash();
+        }
+
+        // Camera follow
+        this.camera.x = this.player.x - VIEWPORT_WIDTH / 2;
+        this.camera.y = this.player.y - VIEWPORT_HEIGHT / 2;
+        
+        // Clamp camera
+        this.camera.x = Math.max(0, Math.min(this.camera.x, this.mapSystem.width - VIEWPORT_WIDTH));
+        this.camera.y = Math.max(0, Math.min(this.camera.y, this.mapSystem.height - VIEWPORT_HEIGHT));
+    }
+
+    handleInteraction() {
+        if (this.state === 'DIALOGUE') {
+            this.state = 'EXPLORE';
+            this.ui.showDialogue('', false);
+            // If there was a pending action from the dialogue
+            if (this.pendingAction) {
+                if (this.pendingAction.type === 'battle') {
+                    this.state = 'BATTLE';
+                    this.battleSystem.startBattle({
+                        name: this.pendingAction.name, 
+                        hp: 100, 
+                        damage: 15,
+                        type: this.pendingAction.name === 'THE TEACHER' ? 'boss' : 'rival'
+                    });
+                } else if (this.pendingAction.type === 'heal') {
+                    this.player.hp = this.player.maxHp;
+                    this.player.mp = this.player.maxMp;
+                    this.ui.log("Restored to full health!");
+                    this.ui.updateStats();
+                }
+                this.pendingAction = null;
+            }
+            return;
+        }
+
+        if (this.state !== 'EXPLORE') return;
+
+        let interaction = this.mapSystem.checkInteraction({x: this.player.x, y: this.player.y, w: this.player.w, h: this.player.h});
+        if (interaction) {
+            if (interaction.type === 'door') {
+                this.mapSystem.loadRoom(interaction.data.target);
+                // Reset player position for new room (simple center spawn for now)
+                this.player.x = 80;
+                this.player.y = 80;
+                this.ui.log(`Entered ${interaction.data.label}`);
+            } else if (interaction.type === 'npc') {
+                this.state = 'DIALOGUE';
+                this.ui.showDialogue(`${interaction.data.name}: "${interaction.data.dialogue}"`, true);
+                if (interaction.data.action) {
+                    this.pendingAction = { type: interaction.data.action, name: interaction.data.name };
+                }
+            }
+        }
+    }
+
+    draw() {
+        // Clear
+        this.ctx.fillStyle = '#000';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Draw Map
+        this.mapSystem.draw(this.ctx, this.camera.x, this.camera.y);
+
+        // Draw Chaser (Teacher)
+        if (this.mapSystem.currentRoom === ROOMS.HALLWAY && this.chaser.active) {
+            this.ctx.fillStyle = '#b91c1c';
+            this.ctx.fillRect(this.chaser.x - this.camera.x, this.chaser.y - this.camera.y, 40, 40);
+            this.ctx.fillStyle = 'white';
+            this.ctx.font = '10px Arial';
+            this.ctx.fillText("TEACHER", this.chaser.x - this.camera.x, this.chaser.y - this.camera.y - 5);
+        }
+
+        // Draw Player
+        this.player.draw(this.ctx, this.camera.x, this.camera.y);
+
+        // Draw Floating Texts
+        this.drawFloatTexts();
+        
+        // Draw Vignette
+        const gradient = this.ctx.createRadialGradient(
+            this.canvas.width/2, this.canvas.height/2, 200,
+            this.canvas.width/2, this.canvas.height/2, 500
+        );
+        gradient.addColorStop(0, 'rgba(0,0,0,0)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0.8)');
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+}
+
+const game = new Game();
+</script>
+</body>
+</html>
