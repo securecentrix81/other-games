@@ -223,8 +223,9 @@ class GameEngine {
             
             this.updateLoadingProgress(25, 'Loading game data...');
             
-            // Initialize game data structure
+            // Initialize game data structure with 67 reference
             this.gameData = {
+                version: '1.0.0',
                 week: 1,
                 maxWeeks: 10,
                 player: {
@@ -248,7 +249,9 @@ class GameEngine {
                         { id: 'notebook', name: 'Notebook', type: 'tool', quantity: 1 },
                         { id: 'pencil', name: 'Pencil', type: 'weapon', quantity: 3 },
                         { id: 'energy_drink', name: 'Energy Drink', type: 'consumable', quantity: 2 }
-                    ]
+                    ],
+                    achievements: [],
+                    unlockedSecrets: []
                 },
                 school: {
                     currentArea: 'hallway1',
@@ -264,7 +267,10 @@ class GameEngine {
                     flags: {},
                     completedQuests: [],
                     currentQuest: null
-                }
+                },
+                // Hidden level 67 achievement system
+                level67Unlocked: false,
+                secretAreas: ['level_67_secret_passage']
             };
             
             this.updateLoadingProgress(50, 'Setting up character system...');
@@ -305,6 +311,12 @@ class GameEngine {
             // Initialize save system
             this.save = new SaveSystem(this);
             
+            // Initialize visual effects
+            this.visualEffects = new VisualEffects(this);
+            
+            // Initialize UI manager
+            this.uiManager = new UIManager(this);
+            
             this.updateLoadingProgress(100, 'Ready!');
             
             // Hide loading screen after a brief delay
@@ -315,6 +327,7 @@ class GameEngine {
             
         } catch (error) {
             console.error('Failed to initialize game systems:', error);
+            this.showError(`Failed to initialize game: ${error.message}`);
             throw error;
         }
     }
