@@ -21,7 +21,7 @@ class CombatSystem {
         this.battleConfig = {
             maxTurns: 50,
             autoSave: true,
-            allow Flee: true
+            allowFlee: true
         };
         
         // Battle UI elements
