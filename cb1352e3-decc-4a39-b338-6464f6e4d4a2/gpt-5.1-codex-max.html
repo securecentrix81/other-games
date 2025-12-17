@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eric m failing class - Nightmare School RPG</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    body { margin:0; background: radial-gradient(circle at 20% 20%, #1f2937, #0b0f1a 60%); font-family: 'Inter', system-ui, -apple-system, sans-serif; color:#f8fafc; overflow:hidden; }
+    #game { background:#0f172a; border:3px solid #22d3ee; box-shadow:0 0 30px rgba(34,211,238,0.4); }
+    .panel { background: rgba(15,23,42,0.8); backdrop-filter: blur(6px); }
+    .btn { transition: transform 0.12s ease, box-shadow 0.12s ease; }
+    .btn:active { transform: scale(0.97); box-shadow:0 0 0 2px rgba(34,211,238,0.5); }
+    #battleLog { max-height:180px; overflow-y:auto; }
+    .shake { animation: shake 0.25s; }
+    @keyframes shake { 0%{transform:translate(2px, -2px);}25%{transform:translate(-2px,2px);}50%{transform:translate(2px,2px);}75%{transform:translate(-2px,-2px);}100%{transform:translate(0,0);} }
+  </style>
+</head>
+<body class="flex flex-col items-center py-4">
+  <div class="w-full max-w-6xl flex flex-col gap-3 items-center">
+    <header class="panel w-full rounded-xl p-4 shadow-lg flex flex-wrap gap-3 justify-between items-center">
+      <div>
+        <h1 class="text-2xl font-bold text-cyan-300">Eric m failing class</h1>
+        <p class="text-slate-300 text-sm">Story-driven action RPG inside a nightmare school. Survive, outsmart rivals, outrun the teacher, and pass the final exam.</p>
+      </div>
+      <div class="flex gap-2 text-sm text-slate-200 flex-wrap">
+        <span>Move: WASD</span>
+        <span>Dash Skill: Space</span>
+        <span>Pause: P</span>
+        <span>Restart: R</span>
+      </div>
+    </header>
+
+    <div class="w-full grid grid-cols-1 lg:grid-cols-4 gap-3">
+      <div class="panel rounded-xl p-4 lg:col-span-3 flex flex-col items-center">
+        <canvas id="game" width="960" height="600" class="rounded-xl"></canvas>
+      </div>
+      <div class="panel rounded-xl p-4 flex flex-col gap-3 text-sm">
+        <div class="flex justify-between text-cyan-300 font-semibold"><span>State:</span><span id="stateLabel">Menu</span></div>
+        <div class="grid grid-cols-2 gap-2 text-slate-200">
+          <span>HP</span><span id="hpLabel">-</span>
+          <span>Mana</span><span id="manaLabel">-</span>
+          <span>Level</span><span id="lvlLabel">-</span>
+          <span>EXP</span><span id="expLabel">-</span>
+          <span>GPA (Score)</span><span id="scoreLabel">0</span>
+          <span>Teacher Threat</span><span id="threatLabel">Calm</span>
+          <span>Location</span><span id="roomLabel">Lobby</span>
+          <span>High Score</span><span id="highLabel">0</span>
+        </div>
+        <div>
+          <h3 class="text-cyan-300 font-semibold mb-1">Inventory</h3>
+          <ul id="invList" class="list-disc list-inside text-slate-200 space-y-1"></ul>
+        </div>
+        <div>
+          <h3 class="text-cyan-300 font-semibold mb-1">Abilities</h3>
+          <ul id="abilList" class="list-disc list-inside text-slate-200 space-y-1"></ul>
+        </div>
+        <div>
+          <h3 class="text-cyan-300 font-semibold mb-1">Events</h3>
+          <div id="eventFeed" class="text-slate-200 h-28 overflow-y-auto text-xs leading-5"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="battleUI" class="panel rounded-xl p-4 w-full max-w-6xl hidden">
+      <div class="flex flex-wrap justify-between items-center mb-2">
+        <div class="text-lg font-semibold text-cyan-300" id="battleTitle">Battle!</div>
+        <div class="text-slate-200" id="enemyStats"></div>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
+        <button class="btn bg-cyan-500 text-slate-900 font-semibold rounded px-3 py-2" id="btnAttack">Attack</button>
+        <button class="btn bg-indigo-500 text-white font-semibold rounded px-3 py-2" id="btnSkill">Skill</button>
+        <button class="btn bg-emerald-500 text-slate-900 font-semibold rounded px-3 py-2" id="btnItem">Item</button>
+        <button class="btn bg-amber-400 text-slate-900 font-semibold rounded px-3 py-2" id="btnRun">Excuse Escape</button>
+      </div>
+      <div id="skillBar" class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2 hidden"></div>
+      <div id="itemBar" class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2 hidden"></div>
+      <div id="battleLog" class="panel rounded-lg p-3 text-xs text-slate-200 h-44"></div>
+    </div>
+
+    <div class="panel rounded-xl p-4 w-full max-w-6xl text-slate-200 text-sm">
+      <h3 class="text-cyan-300 font-semibold mb-1">How to play</h3>
+      <ul class="list-disc list-inside space-y-1">
+        <li>Explore the nightmare school (hallways, classrooms, library, cafeteria, gym). Classrooms trigger battles, cafeteria is monster-heavy, library heals, gym holds bosses.</li>
+        <li>WASD to move. Space activates Speed Dash when unlocked. P pauses. R restarts instantly.</li>
+        <li>Teacher hunts you. The longer you stay, the faster they become. Avoid contact or enter battles to delay them.</li>
+        <li>Turn-based battles: Attack, use Skills, Items, or Excuse Escape to flee. Win to gain EXP, GPA score, and loot.</li>
+        <li>Reach Level 5+, then enter the Exam Door (top-right) to fight the final Teacher and pass the class.</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+
+    const stateLabel = document.getElementById('stateLabel');
+    const hpLabel = document.getElementById('hpLabel');
+    const manaLabel = document.getElementById('manaLabel');
+    const lvlLabel = document.getElementById('lvlLabel');
+    const expLabel = document.getElementById('expLabel');
+    const scoreLabel = document.getElementById('scoreLabel');
+    const roomLabel = document.getElementById('roomLabel');
+    const threatLabel = document.getElementById('threatLabel');
+    const invList = document.getElementById('invList');
+    const abilList = document.getElementById('abilList');
+    const eventFeed = document.getElementById('eventFeed');
+    const highLabel = document.getElementById('highLabel');
+
+    const battleUI = document.getElementById('battleUI');
+    const battleLog = document.getElementById('battleLog');
+    const battleTitle = document.getElementById('battleTitle');
+    const enemyStats = document.getElementById('enemyStats');
+    const btnAttack = document.getElementById('btnAttack');
+    const btnSkill = document.getElementById('btnSkill');
+    const btnItem = document.getElementById('btnItem');
+    const btnRun = document.getElementById('btnRun');
+    const skillBar = document.getElementById('skillBar');
+    const itemBar = document.getElementById('itemBar');
+
+    const storagePrefix = location.pathname + '-ericRPG-';
+    const highKey = storagePrefix + 'highScore';
+    highLabel.textContent = localStorage.getItem(highKey) || 0;
+
+    const keys = {};
+    window.addEventListener('keydown', e=>{ keys[e.key.toLowerCase()] = true; if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase())) e.preventDefault(); });
+    window.addEventListener('keyup', e=>{ keys[e.key.toLowerCase()] = false; });
+
+    const colors = {
+      hallway:'#111827', classroom:'#0f172a', library:'#0b3b3b', cafeteria:'#2f0f2f', gym:'#2b1b0f', exam:'#123722'
+    };
+
+    const rooms = [];
+    function buildRooms(){
+      rooms.length = 0;
+      const grid = [
+        ['hall','hall','hall','hall','exam'],
+        ['class','class','caf','hall','gym'],
+        ['lib','hall','caf','hall','hall'],
+        ['hall','class','class','hall','hall'],
+        ['hall','hall','hall','hall','hall']
+      ];
+      const size = 180;
+      for(let r=0;r<grid.length;r++){
+        for(let c=0;c<grid[0].length;c++){
+          const type = grid[r][c];
+          let label = 'Hallway';
+          if(type==='class') label='Classroom';
+          if(type==='lib') label='Library';
+          if(type==='caf') label='Cafeteria';
+          if(type==='gym') label='Gym';
+          if(type==='exam') label='Exam Door';
+          rooms.push({x:c*size,y:r*size,w:size-6,h:size-6,type,label});
+        }
+      }
+    }
+
+    const playerBase = {
+      x:40,y:40,w:24,h:24,speed:2.6,dashSpeed:5,hp:60,maxHp:60,mana:30,maxMana:30,
+      level:1,exp:0,expToLevel:20,gpa:0,inventory:[],abilities:['Homework Strike'],
+      shield:0,dashTimer:0,dashCD:0,focus:1,alive:true
+    };
+    let player = {};
+
+    const teacherBase = {x:700,y:300,w:28,h:28,speed:1.8,boost:0,active:true};
+    let teacher = {};
+
+    const itemsPool = ['Notebook','Pencil','Hall Pass','Energy Drink','Study Guide'];
+    let looseItems = [];
+
+    let gameState = 'menu';
+    let roomName = 'Lobby';
+    let threat = 0;
+    let tick = 0;
+    let battle = null;
+    let lastEvent = '';
+    let battleEndHook = null;
+
+    function resetGame(){
+      buildRooms();
+      player = JSON.parse(JSON.stringify(playerBase));
+      player.inventory = ['Notebook'];
+      player.abilities = ['Homework Strike'];
+      teacher = JSON.parse(JSON.stringify(teacherBase));
+      looseItems = spawnItems(10);
+      gameState = 'playing';
+      roomName = 'Hallway';
+      threat = 0; tick = 0; battle = null; lastEvent = '';
+      logEvent('Back to class? Nah. Survive the nightmare.');
+    }
+
+    function spawnItems(n){
+      const arr=[];
+      for(let i=0;i<n;i++){
+        arr.push({
+          x:40+Math.random()*(w-80),
+          y:40+Math.random()*(h-80),
+          type: itemsPool[Math.floor(Math.random()*itemsPool.length)],
+          color:'#22d3ee'
+        });
+      }
+      return arr;
+    }
+
+    function updateHUD(){
+      stateLabel.textContent = gameState.toUpperCase();
+      hpLabel.textContent = `${Math.max(0,Math.round(player.hp))}/${player.maxHp}`;
+      manaLabel.textContent = `${Math.round(player.mana)}/${player.maxMana}`;
+      lvlLabel.textContent = player.level;
+      expLabel.textContent = `${player.exp}/${player.expToLevel}`;
+      scoreLabel.textContent = Math.floor(player.gpa);
+      roomLabel.textContent = roomName;
+      highLabel.textContent = localStorage.getItem(highKey)||0;
+      threatLabel.textContent = threat<30? 'Calm': threat<70? 'Hunting':'Relentless';
+      invList.innerHTML = '';
+      if(player.inventory.length===0) invList.innerHTML='<li>Empty</li>';
+      else player.inventory.forEach(i=>{const li=document.createElement('li'); li.textContent=i; invList.appendChild(li);});
+      abilList.innerHTML = '';
+      player.abilities.forEach(a=>{const li=document.createElement('li'); li.textContent=a; abilList.appendChild(li);});
+    }
+
+    function logEvent(msg){
+      lastEvent = msg;
+      const p=document.createElement('div');
+      p.textContent = msg;
+      eventFeed.prepend(p);
+      while(eventFeed.children.length>10) eventFeed.removeChild(eventFeed.lastChild);
+    }
+
+    function getRoomAt(x,y){
+      return rooms.find(r=>x>r.x && x<r.x+r.w && y>r.y && y<r.y+r.h);
+    }
+
+    function levelUp(){
+      player.level++;
+      player.exp = 0;
+      player.expToLevel = Math.round(player.expToLevel*1.4+10);
+      player.maxHp += 10; player.maxMana += 6;
+      player.hp = player.maxHp; player.mana = player.maxMana;
+      player.speed += 0.2;
+      if(player.level===2) player.abilities.push('Study Shield');
+      if(player.level===3) player.abilities.push('Speed Dash');
+      if(player.level===4) player.abilities.push('Excuse Escape');
+      logEvent(`Leveled up to ${player.level}!`);
+    }
+
+    function startBattle(opponent){
+      // prevent overlapping battles and reset any pending hooks
+      if(gameState==='battle' || !opponent) return;
+      battleEndHook = null;
+      gameState = 'battle';
+      battle = {
+        foe: opponent,
+        foeHp: opponent.hp,
+        foeMax: opponent.hp,
+        foeAtk: opponent.atk,
+        foeLoot: opponent.loot||[],
+        turn: 'player'
+      };
+      battleLog.innerHTML='';
+      skillBar.classList.add('hidden');
+      itemBar.classList.add('hidden');
+      battleUI.classList.remove('hidden');
+      battleTitle.textContent = `Battle vs ${opponent.name}`;
+      enemyStats.textContent = `HP ${battle.foeHp}/${battle.foeMax} | ATK ${battle.foeAtk}`;
+      drawSkillButtons(); drawItemButtons();
+      logBattle(`A wild ${opponent.name} challenges you!`);
+    }
+
+    function logBattle(msg){
+      const div=document.createElement('div'); div.textContent=msg; battleLog.appendChild(div);
+      battleLog.scrollTop = battleLog.scrollHeight;
+    }
+
+    function playerAttack(){
+      if(!battle || gameState!=='battle') return;
+      const dmg = 6 + Math.random()*6 + player.level*1.2;
+      battle.foeHp -= dmg;
+      screenShake();
+      logBattle(`Homework Strike hits for ${dmg.toFixed(1)}!`);
+      checkBattleState();
+    }
+
+    function useSkill(name){
+      if(!battle || gameState!=='battle') return;
+      if(name==='Speed Dash'){
+        if(player.mana<6){ logBattle('Not enough mana.'); return; }
+        player.mana -= 6; player.dashTimer = 240; player.dashCD=0; logBattle('Speed Dash activated! Movement boosted.');
+      }
+      else if(name==='Study Shield'){
+        if(player.mana<5){ logBattle('Not enough mana.'); return; }
+        player.mana -=5; player.shield = 2; logBattle('Study Shield: next hits blocked.');
+      }
+      else if(name==='Homework Strike'){
+        if(player.mana<4){ logBattle('Not enough mana.'); return; }
+        player.mana -=4; const dmg = 10 + Math.random()*8 + player.level*1.5; battle.foeHp -= dmg; logBattle(`Critical Homework Strike deals ${dmg.toFixed(1)}!`); screenShake();
+        checkBattleState(); return;
+      }
+      else if(name==='Excuse Escape'){
+        if(player.mana<6){ logBattle('Not enough mana.'); return; }
+        player.mana -=6; const chance = 0.55 + Math.random()*0.3; if(chance>0.7){ logBattle('Your excuse worked! You escaped.'); endBattle(false); return; } else { logBattle('Excuse denied!'); }
+      }
+      enemyTurn();
+      drawSkillButtons();
+    }
+
+    function useItem(item){
+      if(!battle || gameState!=='battle') return;
+      const idx = player.inventory.indexOf(item);
+      if(idx===-1) { logBattle('Item missing.'); return; }
+      player.inventory.splice(idx,1);
+      if(item==='Energy Drink'){ player.hp = Math.min(player.maxHp, player.hp+20); logBattle('Energy restored 20 HP!'); }
+      if(item==='Study Guide'){ player.mana = Math.min(player.maxMana, player.mana+15); logBattle('Mana boosted by 15!'); }
+      if(item==='Hall Pass'){ threat = Math.max(0, threat-15); logBattle('Hall Pass slows teacher pursuit.'); }
+      if(item==='Notebook'){ player.exp += 5; logBattle('Notebook grants +5 EXP.'); if(player.exp>=player.expToLevel) levelUp(); }
+      if(item==='Pencil'){ battle.foeHp -= 8; logBattle('Thrown Pencil hits for 8.'); }
+      enemyTurn();
+      drawItemButtons();
+    }
+
+    function enemyTurn(){
+      if(!battle || gameState!=='battle') return;
+      setTimeout(()=>{
+        if(!battle || gameState!=='battle') return;
+        const dmg = battle.foeAtk + Math.random()*4;
+        if(player.shield>0){
+          player.shield--; logBattle(`${battle.foe.name} hits, but Study Shield blocks it!`);
+        } else {
+          player.hp -= dmg; screenShake(); logBattle(`${battle.foe.name} deals ${dmg.toFixed(1)} damage!`);
+          if(player.hp<=0){ player.hp=0; gameOver('Detention! The teacher caught you during battle.'); }
+        }
+        player.mana = Math.min(player.maxMana, player.mana+2);
+      },300);
+    }
+
+    function checkBattleState(){
+      if(!battle) return;
+      enemyStats.textContent = `HP ${Math.max(0,battle.foeHp.toFixed(1))}/${battle.foeMax} | ATK ${battle.foeAtk}`;
+      if(battle.foeHp<=0){
+        logBattle(`${battle.foe.name} defeated!`);
+        endBattle(true);
+      } else {
+        enemyTurn();
+      }
+    }
+
+    btnAttack.onclick = ()=>{ if(gameState==='battle') playerAttack(); };
+    btnSkill.onclick = ()=>{ if(gameState==='battle') toggleBar(skillBar); };
+    btnItem.onclick = ()=>{ if(gameState==='battle') toggleBar(itemBar); };
+    btnRun.onclick = ()=>{ if(gameState==='battle') useSkill('Excuse Escape'); };
+
+    function toggleBar(el){ el.classList.toggle('hidden'); }
+
+    function drawSkillButtons(){
+      skillBar.innerHTML='';
+      player.abilities.forEach(a=>{
+        const b=document.createElement('button'); b.className='btn bg-slate-700 text-slate-100 rounded px-2 py-2 text-sm'; b.textContent=a; b.onclick=()=>useSkill(a); skillBar.appendChild(b);
+      });
+    }
+    function drawItemButtons(){
+      itemBar.innerHTML='';
+      if(player.inventory.length===0){ itemBar.innerHTML='<div class="text-slate-400">No items</div>'; return; }
+      player.inventory.forEach(i=>{
+        const b=document.createElement('button'); b.className='btn bg-slate-700 text-slate-100 rounded px-2 py-2 text-sm'; b.textContent=i; b.onclick=()=>useItem(i); itemBar.appendChild(b);
+      });
+    }
+
+    function spawnBattleForRoom(room){
+      if(gameState!=='playing') return;
+      if(room.type==='class' || room.type==='caf' || room.type==='gym'){
+        if(Math.random()<0.012 || room.type==='gym'){
+          const rivals = [
+            {name:'Anbu', hp:40+player.level*6, atk:6+player.level*1.4, loot:['Pencil']},
+            {name:'Saharsh', hp:44+player.level*7, atk:7+player.level*1.5, loot:['Notebook']},
+            {name:'Calvin', hp:50+player.level*8, atk:8+player.level*1.6, loot:['Energy Drink']}
+          ];
+          let foe = rivals[Math.floor(Math.random()*rivals.length)];
+          if(room.type==='caf') foe = {name:'Stress Monster', hp:46+player.level*9, atk:9+player.level*1.8, loot:['Study Guide']};
+          if(room.type==='gym') foe = {name:'Coach Titan', hp:80+player.level*12, atk:12+player.level*2.2, loot:['Energy Drink','Hall Pass']};
+          startBattle(foe);
+        }
+      }
+    }
+
+    function teacherUpdate(){
+      if(!teacher.active) return;
+      const dx = player.x - teacher.x; const dy = player.y - teacher.y; const dist = Math.hypot(dx,dy)+0.001;
+      const spd = teacher.speed + teacher.boost;
+      teacher.x += (dx/dist)*spd; teacher.y += (dy/dist)*spd;
+      if(dist<20 && gameState==='playing'){
+        gameOver('Detention! The teacher caught you.');
+      }
+    }
+
+    function screenShake(){
+      canvas.classList.add('shake');
+      setTimeout(()=>canvas.classList.remove('shake'),250);
+    }
+
+    function gameOver(msg){
+      gameState='gameover';
+      logEvent(msg);
+      battleUI.classList.add('hidden');
+      battle = null;
+    }
+
+    function winGame(){
+      gameState='victory';
+      logEvent('You passed the final exam and escaped the nightmare!');
+      const score = Math.floor(player.gpa + player.level*30);
+      const high = parseInt(localStorage.getItem(highKey)||0);
+      if(score>high){ localStorage.setItem(highKey, score); }
+    }
+
+    function update(){
+      requestAnimationFrame(update);
+      tick++;
+      if(gameState==='playing'){
+        movement();
+        teacherUpdate();
+        randomEvents();
+      }
+      draw();
+      updateHUD();
+    }
+
+    function movement(){
+      let spd = player.speed;
+      if(player.dashTimer>0){ spd = player.dashSpeed; player.dashTimer--; }
+      if(keys[' ']){ // manual dash
+        if(player.abilities.includes('Speed Dash') && player.dashCD<=0 && player.mana>=4){
+          player.mana-=4; player.dashTimer=120; player.dashCD=240; logEvent('Speed Dash activated!');
+        }
+      }
+      if(player.dashCD>0) player.dashCD--;
+      let vx=0, vy=0;
+      if(keys['w']) vy-=1;
+      if(keys['s']) vy+=1;
+      if(keys['a']) vx-=1;
+      if(keys['d']) vx+=1;
+      const len = Math.hypot(vx,vy)||1;
+      player.x += vx/len*spd; player.y += vy/len*spd;
+      player.x = Math.max(10, Math.min(w-34, player.x));
+      player.y = Math.max(10, Math.min(h-34, player.y));
+      const room = getRoomAt(player.x, player.y);
+      if(room){ roomName = room.label; spawnBattleForRoom(room); roomEffects(room); }
+    }
+
+    function roomEffects(room){
+      if(room.type==='lib' && tick%30===0){
+        player.hp = Math.min(player.maxHp, player.hp+0.6);
+        player.mana = Math.min(player.maxMana, player.mana+0.8);
+        threat = Math.max(0, threat-0.05);
+      }
+      if(room.type==='caf' && tick%50===0){
+        threat += 0.2;
+      }
+      if(room.type==='class' && tick%60===0){
+        threat += 0.3;
+      }
+      if(room.type==='gym' && player.level>=5 && !battle && Math.random()<0.004){
+        startBattle({name:'The Teacher (Boss)', hp:120+player.level*15, atk:14+player.level*2.5, loot:['Study Guide','Energy Drink']});
+      }
+      if(room.type==='exam' && player.level>=5 && !battle){
+        startBattle({name:'Final Teacher', hp:140+player.level*20, atk:16+player.level*3, loot:['Study Guide','Hall Pass']});
+        battleTitle.textContent = 'Final Exam!';
+        battleEndHook = ()=>winGame();
+      }
+    }
+    // unified endBattle used everywhere
+    function endBattle(victory){
+      battleUI.classList.add('hidden');
+      skillBar.classList.add('hidden');
+      itemBar.classList.add('hidden');
+      if(victory){
+        const gain = 10 + Math.floor(Math.random()*10);
+        player.exp += gain;
+        player.gpa += 35 + Math.random()*25;
+        battle.foeLoot.forEach(i=>player.inventory.push(i));
+        logEvent(`Won vs ${battle.foe.name}! +${gain} EXP, loot: ${battle.foeLoot.join(', ')||'none'}`);
+        if(player.exp>=player.expToLevel) levelUp();
+        if(battleEndHook){ battleEndHook(); battleEndHook=null; }
+      } else {
+        logEvent(`Escaped from ${battle.foe.name}.`);
+      }
+      battle = null;
+      if(gameState!=='victory' && gameState!=='gameover') gameState = 'playing';
+      threat += 10;
+    }
+
+    function randomEvents(){
+      if(tick%300===0){
+        const item = {x:40+Math.random()*(w-80), y:40+Math.random()*(h-80), type:'Energy Drink', color:'#f59e0b'};
+        looseItems.push(item); logEvent('A fresh Energy Drink drops nearby.');
+      }
+      if(tick%200===0){ threat += 4; teacher.boost += 0.08; }
+      if(tick%420===0){
+        const rumors = ['Rumor wave slows you','Panicked students block halls','Alarm bell rings loudly'];
+        logEvent(rumors[Math.floor(Math.random()*rumors.length)]);
+      }
+      // pick items
+      looseItems = looseItems.filter(it=>{
+        const d = Math.hypot(player.x - it.x, player.y - it.y);
+        if(d<18){ player.inventory.push(it.type); player.gpa+=8; logEvent(`Picked up ${it.type}`); return false; }
+        return true;
+      });
+    }
+
+    function draw(){
+      ctx.clearRect(0,0,w,h);
+      ctx.save();
+      // draw rooms
+      rooms.forEach(r=>{
+        ctx.fillStyle = colors[r.type==='hall'?'hallway':r.type==='class'?'classroom':r.type==='lib'?'library':r.type==='caf'?'cafeteria':r.type==='gym'?'gym':'exam'];
+        ctx.fillRect(r.x,r.y,r.w,r.h);
+        ctx.strokeStyle='rgba(34,211,238,0.2)'; ctx.strokeRect(r.x,r.y,r.w,r.h);
+        ctx.fillStyle='rgba(255,255,255,0.1)'; ctx.font='12px Inter'; ctx.fillText(r.label,r.x+6,r.y+14);
+      });
+
+      // items
+      looseItems.forEach(i=>{
+        ctx.fillStyle=i.color; ctx.beginPath(); ctx.arc(i.x,i.y,6,0,Math.PI*2); ctx.fill();
+      });
+
+      // teacher
+      ctx.fillStyle = '#ef4444'; ctx.fillRect(teacher.x, teacher.y, teacher.w, teacher.h);
+      ctx.fillStyle = '#fff'; ctx.font='10px Inter'; ctx.fillText('Teacher', teacher.x-4, teacher.y-4);
+
+      // player
+      ctx.fillStyle = '#22d3ee'; ctx.fillRect(player.x, player.y, player.w, player.h);
+      ctx.fillStyle = '#fff'; ctx.font='10px Inter'; ctx.fillText('Eric', player.x+2, player.y-4);
+
+      // exam door marker
+      const exam = rooms.find(r=>r.type==='exam');
+      ctx.strokeStyle='#22c55e'; ctx.lineWidth=3; ctx.strokeRect(exam.x+10,exam.y+10,exam.w-20,exam.h-20);
+      ctx.fillStyle='rgba(34,197,94,0.15)'; ctx.fillRect(exam.x+10,exam.y+10,exam.w-20,exam.h-20);
+      ctx.fillStyle='#22c55e'; ctx.fillText('FINAL EXAM', exam.x+22, exam.y+30);
+
+      // HUD overlay inside canvas
+      ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.fillRect(10,10,200,64);
+      ctx.fillStyle='#e2e8f0'; ctx.font='12px Inter';
+      ctx.fillText(`HP ${Math.round(player.hp)}/${player.maxHp}`,20,26);
+      ctx.fillText(`MP ${Math.round(player.mana)}/${player.maxMana}`,20,42);
+      ctx.fillText(`Lvl ${player.level} | EXP ${player.exp}/${player.expToLevel}`,20,58);
+
+      if(gameState==='menu' || gameState==='gameover' || gameState==='victory'){
+        ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(0,0,w,h);
+        if(gameState==='menu'){
+          ctx.fillStyle='#22d3ee'; ctx.font='32px Inter'; ctx.fillText('Nightmare School', w/2-120, h/2-10);
+          ctx.font='16px Inter'; ctx.fillStyle='#e2e8f0'; ctx.fillText('Press R to start', w/2-70, h/2+16);
+        }
+      }
+      if(gameState==='gameover'){
+        ctx.fillStyle='#ef4444'; ctx.font='40px Inter'; ctx.fillText('DETENTION!', w/2-120, h/2);
+        ctx.font='18px Inter'; ctx.fillStyle='#e2e8f0'; ctx.fillText('Press R to retry instantly', w/2-120, h/2+26);
+      }
+      if(gameState==='victory'){
+        ctx.fillStyle='#22c55e'; ctx.font='36px Inter'; ctx.fillText('You passed the class!', w/2-150, h/2);
+        ctx.font='18px Inter'; ctx.fillStyle='#e2e8f0'; ctx.fillText('Press R to chase higher GPA', w/2-140, h/2+26);
+      }
+      ctx.restore();
+    }
+
+    document.addEventListener('keydown', e=>{
+      if(e.key.toLowerCase()==='p'){ if(gameState==='playing'){ gameState='paused'; logEvent('Paused'); } else if(gameState==='paused'){ gameState='playing'; logEvent('Resume'); } }
+      if(e.key.toLowerCase()==='r'){ resetGame(); }
+    });
+
+    // start
+    resetGame();
+    update();
+  </script>
+</body>
+</html>
