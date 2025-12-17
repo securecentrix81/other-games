@@ -290,8 +290,14 @@ class SchoolSystem {
         // Check if area is unlocked
         const player = this.engine.character.data;
         if (!this.isAreaUnlocked(areaId)) {
-            this.addMessage(`Area ${areaId} is locked. Need to unlock first.`);
-            return false;
+            // Special unlock condition for level 67
+            if (player.level >= 67 && areaId === 'level_67_secret') {
+                this.unlockArea(areaId);
+                this.addMessage('A secret passage opens at level 67 mastery!');
+            } else {
+                this.addMessage(`Area ${areaId} is locked. Need to unlock first.`);
+                return false;
+            }
         }
 
         // Handle teacher pursuit
