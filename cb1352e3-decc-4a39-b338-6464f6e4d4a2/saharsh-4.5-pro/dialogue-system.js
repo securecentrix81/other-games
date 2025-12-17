@@ -855,6 +855,13 @@ class DialogueSystem {
     }
 
     /**
+     * Alias for startDialogue - for compatibility
+     */
+    start(character, text = null, choices = [], options = {}) {
+        return this.startDialogue(character, text, choices, options);
+    }
+
+    /**
      * Start dialogue with a character or story event
      */
     startDialogue(character, text = null, choices = [], options = {}) {
