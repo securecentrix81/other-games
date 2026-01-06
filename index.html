@@ -98,20 +98,10 @@
     <!-- end of "normal person" blocker -->
     <h1><a href=https://forms.gle/aR7bQ4U1szfQNqKn9>Request a game</a></h1>
     
-    <!--<h2>
-      <a href="d1195d43-c473-4479-a15e-37663bda2688">Cornhub</a>
-      <sup class="newtag" remove="1766021954919">NEW!</sup>
-      <span class="info-container">
-        <span class="info-button">i</span>
-        <span class="info-details">
-          <span class="note-detail blue-note">Requested by <b>i forgor</b></span>
-        </span>
-      </span>
-    </h2>-->
     <p class="newtag"><b>* Italicized names are <u>not</u> verified and may not relect the actual creator/requestor</b></p>
 
     <h2>
-      <a href="https://securecentrix81.github.io/captcha-verification/">Free $38,000,000,000,000 dollars</a>
+      <a href="https://securecentrix81.github.io/captcha-verification/">Free <span class="us-debt">$38,000,000,000,000</span> dollars</a>
       <sup class="newtag" remove="1768255244561">NEW!</sup>
       <span class="info-container">
         <span class="info-button">i</span>
@@ -360,6 +350,40 @@
       for (let i of infoBtn) {
       	i.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#ffffff" viewBox="0 0 16 16"><path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0"></path></svg>`
       }
+    </script>
+    <script>
+        // API URL: Sort by record_date descending (-) to get the latest entry first
+        const apiUrl = 'https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v2/accounting/od/debt_to_penny?sort=-record_date&page[size]=1';
+
+        async function fetchDebt() {
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                // 1. Get the data array from the response
+                const latestRecord = data.data[0];
+
+                // 2. Extract the debt amount (tot_pub_debt_out_amt)
+                const rawDebt = parseFloat(latestRecord.tot_pub_debt_out_amt);
+
+                // 3. Format into Currency (USD)
+                const formattedDebt = new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'USD',
+                    maximumFractionDigits: 2
+                }).format(rawDebt);
+
+                // 4. Update the HTML Page
+                for (let i of document.querySelectorAll('.us-debt')) i.innerText = formattedDebt
+
+            } catch (error) {
+                console.error('Error fetching debt data:', error);
+                for (let i of document.querySelectorAll('.us-debt')) i.innerText = "$38,422,818,570,606.72";
+            }
+        }
+
+        // Run the function when the page loads
+        fetchDebt();
     </script>
   </body>
 </html>
