@@ -268,7 +268,7 @@
             {
               name: "PBKDF2",
               salt,
-              iterations: 100000,
+              iterations: 1000000,
               hash: "SHA-256"
             },
             keyMaterial,
@@ -803,7 +803,7 @@
             if (note && !note.isEncrypted) {
               const password = prompt("Enter password to encrypt this note:");
               if (password) {
-                const confirm = prompt("Confirm password:");
+                const confirm = password//prompt("Confirm password:");
                 if (password === confirm) {
                   await note.encryptNote(password);
                   alert("Note encrypted successfully!");
@@ -820,7 +820,7 @@
               if (currentPass) {
                 const newPass = prompt("Enter new password:");
                 if (newPass) {
-                  const confirmPass = prompt("Confirm new password:");
+                  const confirmPass = newPass//prompt("Confirm new password:");
                   if (newPass === confirmPass) {
                     const success = await note.changePassword(currentPass, newPass);
                     alert(success ? "Password changed!" : "Incorrect current password!");
