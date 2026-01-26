@@ -8,24 +8,24 @@
       * {
         user-select: none;
       }
-      
+
       textarea, input[type="text"], input[type="password"] {
         user-select: text;
       }
-      
+
       body {
         overflow: hidden;
         margin: 0;
         padding: 0;
         font-family: Arial, sans-serif;
       }
-      
+
       body.is-dragging,
       body.is-dragging * {
         user-select: none !important;
         cursor: move !important;
       }
-      
+
       .note {
         background-color: #999;
         display: flex;
@@ -35,18 +35,18 @@
         overflow: hidden;
         box-shadow: 0 0 15px rgba(0,0,0,0.2);
       }
-      
+
       .note--minimized {
         width: auto !important;
         height: auto !important;
       }
-      
+
       .note__header {
         display: flex;
         flex-shrink: 0;
         cursor: move;
       }
-      
+
       .note__btn {
         display: flex;
         flex-shrink: 0;
@@ -62,7 +62,7 @@
         align-items: center;
         transition: background-color 0.15s, color 0.15s;
       }
-      
+
       .note__btn--close { background-color: #f00; }
       .note__btn--close:hover { background-color: #d00; color: #ddd; }
       .note__btn--close:active { background-color: #b00; color: #bbb; }
@@ -83,7 +83,7 @@
         min-width: 0;
         padding: 0 5px;
       }
-      
+
       .note__title {
         background-color: transparent;
         outline: none;
@@ -95,7 +95,7 @@
         font-size: 14px;
         pointer-events: none;
       }
-      
+
       .note__title--editing {
         background-color: rgba(255,255,0,0.5);
         pointer-events: auto;
@@ -107,7 +107,7 @@
         position: relative;
         min-height: 0;
       }
-      
+
       .note__textarea {
         resize: none;
         width: 100%;
@@ -120,7 +120,7 @@
         border-top: 1px solid #000;
         box-sizing: border-box;
       }
-      
+
       .note__resize-handle {
         background-color: #000;
         width: 12px;
@@ -143,17 +143,17 @@
         padding: 15px;
         gap: 10px;
       }
-      
+
       .note__lock-icon {
         font-size: 24px;
       }
-      
+
       .note__lock-label {
         font-weight: bold;
         color: #333;
         font-size: 14px;
       }
-      
+
       .note__lock-input {
         padding: 8px 12px;
         border: 1px solid #888;
@@ -162,11 +162,11 @@
         width: 150px;
         text-align: center;
       }
-      
+
       .note__lock-input:focus {
         border-color: #4CAF50;
       }
-      
+
       .note__lock-btn {
         padding: 8px 20px;
         background-color: #4CAF50;
@@ -176,11 +176,11 @@
         cursor: pointer;
         font-size: 14px;
       }
-      
+
       .note__lock-btn:hover {
         background-color: #45a049;
       }
-      
+
       .note__lock-error {
         color: #d00;
         font-size: 12px;
@@ -199,7 +199,7 @@
         padding: 5px 0;
         min-width: 160px;
       }
-      
+
       .context-menu__item {
         padding: 8px 15px;
         color: #333;
@@ -207,17 +207,17 @@
         transition: background-color 0.1s;
         font-size: 14px;
       }
-      
+
       .context-menu__item:hover {
         background-color: #e0e0e0;
       }
-      
+
       .context-menu__separator {
         height: 1px;
         background-color: #ddd;
         margin: 5px 0;
       }
-      
+
       .hidden {
         display: none !important;
       }
@@ -227,6 +227,7 @@
     <div id="contextMenu" class="context-menu hidden">
       <div id="noteContextOptions" class="hidden">
         <div class="context-menu__item" data-action="rename">📝 Rename Note</div>
+        <div class="context-menu__item hidden" data-action="lock-note">🔒 Lock note</div>
         <div class="context-menu__item" data-action="encrypt">🔒 Encrypt Note</div>
         <div class="context-menu__item hidden" data-action="change-password">🔑 Change Password</div>
         <div class="context-menu__item hidden" data-action="remove-encryption">🔓 Remove Encryption</div>
@@ -235,786 +236,802 @@
       <div class="context-menu__item" data-action="create">➕ Create New Note</div>
       <div class="context-menu__item" data-action="delete-all">🗑️ Delete All Notes</div>
     </div>
-    
+
     <script>
-      // ============ Crypto Utilities ============
-      const Crypto = {
-        strToBuf(str) {
-          return new TextEncoder().encode(str);
-        },
-        
-        bufToStr(buf) {
-          return new TextDecoder().decode(buf);
-        },
-        
-        bufToBase64(buf) {
-          return btoa(String.fromCharCode(...new Uint8Array(buf)));
-        },
-        
-        base64ToBuf(b64) {
-          return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-        },
-        
-        async deriveKey(password, salt) {
-          const keyMaterial = await crypto.subtle.importKey(
-            "raw",
-            this.strToBuf(password),
-            { name: "PBKDF2" },
-            false,
-            ["deriveKey"]
-          );
-          
-          return crypto.subtle.deriveKey(
-            {
-              name: "PBKDF2",
-              salt,
-              iterations: 1000000,
-              hash: "SHA-256"
-            },
-            keyMaterial,
-            { name: "AES-GCM", length: 256 },
-            false,
-            ["encrypt", "decrypt"]
-          );
-        },
-        
-        async encrypt(plaintext, password) {
-          const salt = crypto.getRandomValues(new Uint8Array(16));
-          const iv = crypto.getRandomValues(new Uint8Array(12));
-          const key = await this.deriveKey(password, salt);
-          
-          const ciphertext = await crypto.subtle.encrypt(
-            { name: "AES-GCM", iv },
-            key,
-            this.strToBuf(plaintext)
-          );
-          
-          return JSON.stringify({
-            salt: this.bufToBase64(salt),
-            iv: this.bufToBase64(iv),
-            data: this.bufToBase64(ciphertext)
-          });
-        },
-        
-        async decrypt(encryptedJson, password) {
-          const { salt, iv, data } = JSON.parse(encryptedJson);
-          const key = await this.deriveKey(password, this.base64ToBuf(salt));
-          
-          const plaintextBuf = await crypto.subtle.decrypt(
-            { name: "AES-GCM", iv: this.base64ToBuf(iv) },
-            key,
-            this.base64ToBuf(data)
-          );
-          
-          return this.bufToStr(plaintextBuf);
-        }
-      };
+      (function() {
+        // ============ Crypto Utilities ============
+        const Crypto = {
+          strToBuf(str) {
+            return new TextEncoder().encode(str);
+          },
 
-      // ============ Global State ============
-      const STORAGE_KEY = "noteData-v8.0.0";
-      const contextMenuEl = document.getElementById("contextMenu");
-      const noteContextOptionsEl = document.getElementById("noteContextOptions");
-      
-      let notes = {};
-      let maxZIndex = 10;
-      let contextTargetNoteId = null;
-      
-      const dragState = {
-        active: false,
-        action: null, // 'move' | 'resize' | null
-        noteId: null,
-        startX: 0,
-        startY: 0,
-        noteStartX: 0,
-        noteStartY: 0,
-        noteStartWidth: 0,
-        noteStartHeight: 0
-      };
+          bufToStr(buf) {
+            return new TextDecoder().decode(buf);
+          },
 
-      // ============ Note Class ============
-      class Note {
-        constructor(config = {}) {
-          this.id = this.generateId();
-          this.x = config.x ?? 100;
-          this.y = config.y ?? 100;
-          this.width = config.width ?? 300;
-          this.height = config.height ?? 200;
-          this.title = config.title ?? "";
-          this.content = config.content ?? "";
-          this.zIndex = config.zIndex ?? ++maxZIndex;
-          this.isMinimized = config.isMinimized ?? false;
-          this.isFullscreen = config.isFullscreen ?? false;
-          
-          // Encryption state
-          this.isEncrypted = config.isEncrypted ?? false;
-          this.encryptedData = config.encryptedData ?? null;
-          this.isLocked = this.isEncrypted;
-          this.cachedPassword = null; // Stored while unlocked for re-encryption
-          
-          this.buildDOM();
-          document.body.appendChild(this.el);
-          this.updateLayout();
-        }
-        
-        generateId() {
-          return Math.random().toString(36).substring(2, 10);
-        }
-        
-        buildDOM() {
-          // Main container
-          this.el = document.createElement("div");
-          this.el.className = "note";
-          this.el.dataset.noteId = this.id;
-          
-          // Header
-          this.headerEl = document.createElement("div");
-          this.headerEl.className = "note__header";
-          this.el.appendChild(this.headerEl);
-          
-          // Close button
-          this.closeBtnEl = document.createElement("button");
-          this.closeBtnEl.className = "note__btn note__btn--close";
-          this.closeBtnEl.textContent = "✕";
-          this.closeBtnEl.title = "Delete note";
-          this.headerEl.appendChild(this.closeBtnEl);
-          
-          // Minimize button
-          this.minimizeBtnEl = document.createElement("button");
-          this.minimizeBtnEl.className = "note__btn note__btn--minimize";
-          this.minimizeBtnEl.textContent = "−";
-          this.minimizeBtnEl.title = "Minimize";
-          this.headerEl.appendChild(this.minimizeBtnEl);
-          
-          // Fullscreen button
-          this.fullscreenBtnEl = document.createElement("button");
-          this.fullscreenBtnEl.className = "note__btn note__btn--fullscreen";
-          this.fullscreenBtnEl.textContent = "+";
-          this.fullscreenBtnEl.title = "Fullscreen";
-          this.headerEl.appendChild(this.fullscreenBtnEl);
-          
-          // Drag handle with title
-          this.dragHandleEl = document.createElement("div");
-          this.dragHandleEl.className = "note__drag-handle";
-          this.headerEl.appendChild(this.dragHandleEl);
-          
-          this.titleEl = document.createElement("input");
-          this.titleEl.type = "text";
-          this.titleEl.className = "note__title";
-          this.titleEl.value = this.title;
-          this.titleEl.placeholder = "Untitled";
-          this.dragHandleEl.appendChild(this.titleEl);
-          
-          // Content area
-          this.contentEl = document.createElement("div");
-          this.contentEl.className = "note__content";
-          this.el.appendChild(this.contentEl);
-          
-          // Textarea
-          this.textareaEl = document.createElement("textarea");
-          this.textareaEl.className = "note__textarea";
-          this.textareaEl.value = this.content;
-          this.textareaEl.placeholder = "Write your note here...";
-          this.contentEl.appendChild(this.textareaEl);
-          
-          // Lock UI
-          this.lockUiEl = document.createElement("div");
-          this.lockUiEl.className = "note__lock-ui hidden";
-          this.contentEl.appendChild(this.lockUiEl);
-          
-          const lockIcon = document.createElement("div");
-          lockIcon.className = "note__lock-icon";
-          lockIcon.textContent = "🔒";
-          this.lockUiEl.appendChild(lockIcon);
-          
-          const lockLabel = document.createElement("div");
-          lockLabel.className = "note__lock-label";
-          lockLabel.textContent = "Locked Note";
-          this.lockUiEl.appendChild(lockLabel);
-          
-          this.lockInputEl = document.createElement("input");
-          this.lockInputEl.type = "password";
-          this.lockInputEl.className = "note__lock-input";
-          this.lockInputEl.placeholder = "Password";
-          this.lockUiEl.appendChild(this.lockInputEl);
-          
-          this.lockBtnEl = document.createElement("button");
-          this.lockBtnEl.className = "note__lock-btn";
-          this.lockBtnEl.textContent = "Unlock";
-          this.lockUiEl.appendChild(this.lockBtnEl);
-          
-          this.lockErrorEl = document.createElement("div");
-          this.lockErrorEl.className = "note__lock-error";
-          this.lockUiEl.appendChild(this.lockErrorEl);
-          
-          // Resize handle
-          this.resizeHandleEl = document.createElement("div");
-          this.resizeHandleEl.className = "note__resize-handle";
-          this.contentEl.appendChild(this.resizeHandleEl);
-          
-          // Setup lock UI events
-          this.lockBtnEl.addEventListener("click", () => this.attemptUnlock());
-          this.lockInputEl.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") this.attemptUnlock();
-          });
-          
-          // Show lock UI if encrypted
-          if (this.isEncrypted && this.isLocked) {
-            this.showLockUI();
-          }
-        }
-        
-        showLockUI() {
-          this.textareaEl.classList.add("hidden");
-          this.lockUiEl.classList.remove("hidden");
-          this.lockInputEl.value = "";
-          this.lockErrorEl.textContent = "";
-        }
-        
-        hideLockUI() {
-          this.textareaEl.classList.remove("hidden");
-          this.lockUiEl.classList.add("hidden");
-        }
-        
-        async attemptUnlock() {
-          const password = this.lockInputEl.value;
-          if (!password) {
-            this.lockErrorEl.textContent = "Please enter a password";
-            return;
-          }
-          
-          try {
-            const decrypted = await Crypto.decrypt(this.encryptedData, password);
-            this.content = decrypted;
-            this.textareaEl.value = decrypted;
-            this.isLocked = false;
-            this.cachedPassword = password;
-            this.hideLockUI();
-            this.lockErrorEl.textContent = "";
-          } catch (e) {
-            this.lockErrorEl.textContent = "Incorrect password";
-            this.lockInputEl.select();
-          }
-        }
-        
-        async encryptNote(password) {
-          this.content = this.textareaEl.value;
-          this.encryptedData = await Crypto.encrypt(this.content, password);
-          this.isEncrypted = true;
-          this.isLocked = true;
-          this.cachedPassword = null;
-          this.showLockUI();
-        }
-        
-        async changePassword(currentPassword, newPassword) {
-          try {
-            // Verify current password if locked
-            if (this.isLocked) {
-              await Crypto.decrypt(this.encryptedData, currentPassword);
-            } else if (this.cachedPassword !== currentPassword) {
-              // Verify against cached password
-              await Crypto.decrypt(this.encryptedData, currentPassword);
-            }
-            
-            // Re-encrypt with new password
-            const content = this.isLocked ? 
-              await Crypto.decrypt(this.encryptedData, currentPassword) : 
-              this.textareaEl.value;
-            
-            this.encryptedData = await Crypto.encrypt(content, newPassword);
-            this.cachedPassword = this.isLocked ? null : newPassword;
-            return true;
-          } catch (e) {
-            return false;
-          }
-        }
-        
-        async removeEncryption(password) {
-          try {
-            const content = this.isLocked ?
-              await Crypto.decrypt(this.encryptedData, password) :
-              this.textareaEl.value;
-            
-            // Verify password
-            if (this.isLocked || this.cachedPassword !== password) {
-              await Crypto.decrypt(this.encryptedData, password);
-            }
-            
-            this.content = content;
-            this.textareaEl.value = content;
-            this.isEncrypted = false;
-            this.isLocked = false;
-            this.encryptedData = null;
-            this.cachedPassword = null;
-            this.hideLockUI();
-            return true;
-          } catch (e) {
-            return false;
-          }
-        }
-        
-        updateLayout() {
-          const MIN_WIDTH = 120;
-          const MIN_HEIGHT = 80;
-          
-          // Clamp dimensions
-          this.width = Math.max(this.width, MIN_WIDTH);
-          this.height = Math.max(this.height, MIN_HEIGHT);
-          
-          // Clamp position to viewport
-          this.x = Math.max(0, Math.min(this.x, window.innerWidth - 50));
-          this.y = Math.max(0, Math.min(this.y, window.innerHeight - 50));
-          
-          // Reset visibility
-          this.closeBtnEl.style.display = "";
-          this.minimizeBtnEl.style.display = "";
-          this.fullscreenBtnEl.style.display = "";
-          this.contentEl.style.display = "";
-          this.resizeHandleEl.style.display = "";
-          this.el.classList.remove("note--minimized");
-          
-          let displayX = this.x;
-          let displayY = this.y;
-          let displayWidth = this.width;
-          let displayHeight = this.height;
-          
-          if (this.isMinimized) {
-            this.el.classList.add("note--minimized");
-            this.closeBtnEl.style.display = "none";
-            this.minimizeBtnEl.style.display = "none";
-            this.contentEl.style.display = "none";
-            // Width/height auto via CSS class
-            this.el.style.width = "";
-            this.el.style.height = "";
-          } else if (this.isFullscreen) {
-            displayX = 0;
-            displayY = 0;
-            displayWidth = window.innerWidth - 2;
-            displayHeight = window.innerHeight - 2;
-            this.fullscreenBtnEl.style.display = "none";
-            this.resizeHandleEl.style.display = "none";
-            this.el.style.width = displayWidth + "px";
-            this.el.style.height = displayHeight + "px";
-          } else {
-            this.el.style.width = displayWidth + "px";
-            this.el.style.height = displayHeight + "px";
-          }
-          
-          this.el.style.left = displayX + "px";
-          this.el.style.top = displayY + "px";
-          this.el.style.zIndex = this.zIndex;
-        }
-        
-        bringToFront() {
-          this.zIndex = ++maxZIndex;
-          this.el.style.zIndex = this.zIndex;
-        }
-        
-        startRename() {
-          this.titleEl.classList.add("note__title--editing");
-          this.titleEl.focus();
-          this.titleEl.select();
-          
-          const finishRename = () => {
-            this.titleEl.classList.remove("note__title--editing");
-            this.title = this.titleEl.value;
-            this.titleEl.removeEventListener("blur", finishRename);
-            this.titleEl.removeEventListener("keydown", handleKeydown);
-          };
-          
-          const handleKeydown = (e) => {
-            if (e.key === "Enter") {
-              this.titleEl.blur();
-            } else if (e.key === "Escape") {
-              this.titleEl.value = this.title;
-              this.titleEl.blur();
-            }
-          };
-          
-          this.titleEl.addEventListener("blur", finishRename);
-          this.titleEl.addEventListener("keydown", handleKeydown);
-        }
-        
-        async toJSON() {
-          // If unlocked and encrypted, re-encrypt current content
-          if (this.isEncrypted && !this.isLocked && this.cachedPassword) {
-            this.encryptedData = await Crypto.encrypt(this.textareaEl.value, this.cachedPassword);
-          }
-          
-          return {
-            x: this.x,
-            y: this.y,
-            width: this.width,
-            height: this.height,
-            title: this.titleEl.value,
-            content: this.isEncrypted ? "" : this.textareaEl.value,
-            zIndex: this.zIndex,
-            isMinimized: this.isMinimized,
-            isFullscreen: this.isFullscreen,
-            isEncrypted: this.isEncrypted,
-            encryptedData: this.encryptedData
-          };
-        }
-        
-        fromJSON(data) {
-          this.x = data.x ?? this.x;
-          this.y = data.y ?? this.y;
-          this.width = data.width ?? this.width;
-          this.height = data.height ?? this.height;
-          this.title = data.title ?? "";
-          this.content = data.content ?? "";
-          this.zIndex = data.zIndex ?? this.zIndex;
-          this.isMinimized = data.isMinimized ?? false;
-          this.isFullscreen = data.isFullscreen ?? false;
-          this.isEncrypted = data.isEncrypted ?? false;
-          this.encryptedData = data.encryptedData ?? null;
-          this.isLocked = this.isEncrypted;
-          
-          this.titleEl.value = this.title;
-          this.textareaEl.value = this.content;
-          
-          if (this.isEncrypted) {
-            this.showLockUI();
-          } else {
-            this.hideLockUI();
-          }
-          
-          this.updateLayout();
-          
-          if (this.zIndex > maxZIndex) {
-            maxZIndex = this.zIndex;
-          }
-        }
-        
-        destroy() {
-          this.el.remove();
-          delete notes[this.id];
-        }
-      }
+          bufToBase64(buf) {
+            return btoa(String.fromCharCode(...new Uint8Array(buf)));
+          },
 
-      // ============ Note Manager ============
-      async function exportAllNotes() {
-        const noteDataPromises = Object.values(notes).map(note => note.toJSON());
-        const notesData = await Promise.all(noteDataPromises);
-        
-        return JSON.stringify({
-          version: "8.0.0",
-          maxZIndex,
-          notes: notesData
-        });
-      }
-      
-      function importAllNotes(jsonString) {
-        try {
-          const data = JSON.parse(jsonString);
-          maxZIndex = data.maxZIndex ?? 10;
-          
-          for (const noteData of data.notes) {
-            const note = new Note();
-            note.fromJSON(noteData);
-            notes[note.id] = note;
-          }
-        } catch (e) {
-          console.error("Failed to import notes:", e);
-        }
-      }
-      
-      function createNote(x, y) {
-        const note = new Note({ x, y });
-        notes[note.id] = note;
-        return note;
-      }
-      
-      function deleteAllNotes() {
-        for (const id in notes) {
-          notes[id].el.remove();
-        }
-        notes = {};
-      }
+          base64ToBuf(b64) {
+            return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+          },
 
-      // ============ Context Menu ============
-      function showContextMenu(x, y, noteId = null) {
-        contextTargetNoteId = noteId;
-        
-        if (noteId && notes[noteId]) {
-          const note = notes[noteId];
-          noteContextOptionsEl.classList.remove("hidden");
-          
-          const encryptItem = noteContextOptionsEl.querySelector('[data-action="encrypt"]');
-          const changePassItem = noteContextOptionsEl.querySelector('[data-action="change-password"]');
-          const removeEncryptItem = noteContextOptionsEl.querySelector('[data-action="remove-encryption"]');
-          
-          if (note.isEncrypted) {
-            encryptItem.classList.add("hidden");
-            changePassItem.classList.remove("hidden");
-            removeEncryptItem.classList.remove("hidden");
-          } else {
-            encryptItem.classList.remove("hidden");
-            changePassItem.classList.add("hidden");
-            removeEncryptItem.classList.add("hidden");
-          }
-        } else {
-          noteContextOptionsEl.classList.add("hidden");
-        }
-        
-        contextMenuEl.style.left = x + "px";
-        contextMenuEl.style.top = y + "px";
-        contextMenuEl.classList.remove("hidden");
-        
-        // Adjust position if menu goes off screen
-        const rect = contextMenuEl.getBoundingClientRect();
-        if (rect.right > window.innerWidth) {
-          contextMenuEl.style.left = (window.innerWidth - rect.width - 5) + "px";
-        }
-        if (rect.bottom > window.innerHeight) {
-          contextMenuEl.style.top = (window.innerHeight - rect.height - 5) + "px";
-        }
-      }
-      
-      function hideContextMenu() {
-        contextMenuEl.classList.add("hidden");
-        contextTargetNoteId = null;
-      }
-      
-      async function handleContextAction(action) {
-        const note = contextTargetNoteId ? notes[contextTargetNoteId] : null;
-        hideContextMenu();
-        
-        switch (action) {
-          case "create":
-            createNote(
-              parseInt(contextMenuEl.style.left) || 100,
-              parseInt(contextMenuEl.style.top) || 100
+          async deriveKey(password, salt) {
+            const keyMaterial = await crypto.subtle.importKey(
+              "raw",
+              this.strToBuf(password),
+              { name: "PBKDF2" },
+              false,
+              ["deriveKey"]
             );
-            break;
-            
-          case "delete-all":
-            if (prompt('Type "DELETE" to confirm deleting all notes:') === "DELETE") {
-              deleteAllNotes();
+
+            return crypto.subtle.deriveKey(
+              {
+                name: "PBKDF2",
+                salt,
+                iterations: 2000000,
+                hash: "SHA-256"
+              },
+              keyMaterial,
+              { name: "AES-GCM", length: 256 },
+              false,
+              ["encrypt", "decrypt"]
+            );
+          },
+
+          async encrypt(plaintext, password) {
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const key = await this.deriveKey(password, salt);
+
+            const ciphertext = await crypto.subtle.encrypt(
+              { name: "AES-GCM", iv },
+              key,
+              this.strToBuf(plaintext)
+            );
+
+            return JSON.stringify({
+              salt: this.bufToBase64(salt),
+              iv: this.bufToBase64(iv),
+              data: this.bufToBase64(ciphertext)
+            });
+          },
+
+          async decrypt(encryptedJson, password) {
+            const { salt, iv, data } = JSON.parse(encryptedJson);
+            const key = await this.deriveKey(password, this.base64ToBuf(salt));
+
+            const plaintextBuf = await crypto.subtle.decrypt(
+              { name: "AES-GCM", iv: this.base64ToBuf(iv) },
+              key,
+              this.base64ToBuf(data)
+            );
+
+            return this.bufToStr(plaintextBuf);
+          }
+        };
+
+        // ============ Global State ============
+        const STORAGE_KEY = "noteData-v8.0.0";
+        const contextMenuEl = document.getElementById("contextMenu");
+        const noteContextOptionsEl = document.getElementById("noteContextOptions");
+
+        let notes = {};
+        let maxZIndex = 10;
+        let contextTargetNoteId = null;
+
+        const dragState = {
+          active: false,
+          action: null, // 'move' | 'resize' | null
+          noteId: null,
+          startX: 0,
+          startY: 0,
+          noteStartX: 0,
+          noteStartY: 0,
+          noteStartWidth: 0,
+          noteStartHeight: 0
+        };
+
+        // ============ Note Class ============
+        class Note {
+          constructor(config = {}) {
+            this.id = this.generateId();
+            this.x = config.x ?? 100;
+            this.y = config.y ?? 100;
+            this.width = config.width ?? 300;
+            this.height = config.height ?? 200;
+            this.title = config.title ?? "";
+            this.content = config.content ?? "";
+            this.zIndex = config.zIndex ?? ++maxZIndex;
+            this.isMinimized = config.isMinimized ?? false;
+            this.isFullscreen = config.isFullscreen ?? false;
+
+            // Encryption state
+            this.isEncrypted = config.isEncrypted ?? false;
+            this.encryptedData = config.encryptedData ?? null;
+            this.isLocked = this.isEncrypted;
+            this.cachedPassword = null; // Stored while unlocked for re-encryption
+
+            this.buildDOM();
+            document.body.appendChild(this.el);
+            this.updateLayout();
+          }
+
+          generateId() {
+            return Math.random().toString(36).substring(2, 10);
+          }
+
+          buildDOM() {
+            // Main container
+            this.el = document.createElement("div");
+            this.el.className = "note";
+            this.el.dataset.noteId = this.id;
+
+            // Header
+            this.headerEl = document.createElement("div");
+            this.headerEl.className = "note__header";
+            this.el.appendChild(this.headerEl);
+
+            // Close button
+            this.closeBtnEl = document.createElement("button");
+            this.closeBtnEl.className = "note__btn note__btn--close";
+            this.closeBtnEl.textContent = "X";
+            this.closeBtnEl.title = "Delete note";
+            this.headerEl.appendChild(this.closeBtnEl);
+
+            // Minimize button
+            this.minimizeBtnEl = document.createElement("button");
+            this.minimizeBtnEl.className = "note__btn note__btn--minimize";
+            this.minimizeBtnEl.textContent = "−";
+            this.minimizeBtnEl.title = "Minimize";
+            this.headerEl.appendChild(this.minimizeBtnEl);
+
+            // Fullscreen button
+            this.fullscreenBtnEl = document.createElement("button");
+            this.fullscreenBtnEl.className = "note__btn note__btn--fullscreen";
+            this.fullscreenBtnEl.textContent = "+";
+            this.fullscreenBtnEl.title = "Fullscreen";
+            this.headerEl.appendChild(this.fullscreenBtnEl);
+
+            // Drag handle with title
+            this.dragHandleEl = document.createElement("div");
+            this.dragHandleEl.className = "note__drag-handle";
+            this.headerEl.appendChild(this.dragHandleEl);
+
+            this.titleEl = document.createElement("input");
+            this.titleEl.type = "text";
+            this.titleEl.className = "note__title";
+            this.titleEl.value = this.title;
+            this.titleEl.placeholder = "Untitled";
+            this.dragHandleEl.appendChild(this.titleEl);
+
+            // Content area
+            this.contentEl = document.createElement("div");
+            this.contentEl.className = "note__content";
+            this.el.appendChild(this.contentEl);
+
+            // Textarea
+            this.textareaEl = document.createElement("textarea");
+            this.textareaEl.className = "note__textarea";
+            this.textareaEl.value = this.content;
+            this.textareaEl.placeholder = "Write your note here...";
+            this.contentEl.appendChild(this.textareaEl);
+
+            // Lock UI
+            this.lockUiEl = document.createElement("div");
+            this.lockUiEl.className = "note__lock-ui hidden";
+            this.contentEl.appendChild(this.lockUiEl);
+
+            const lockIcon = document.createElement("div");
+            lockIcon.className = "note__lock-icon";
+            lockIcon.textContent = "🔒";
+            this.lockUiEl.appendChild(lockIcon);
+
+            const lockLabel = document.createElement("div");
+            lockLabel.className = "note__lock-label";
+            lockLabel.textContent = "Locked Note";
+            this.lockUiEl.appendChild(lockLabel);
+
+            this.lockInputEl = document.createElement("input");
+            this.lockInputEl.type = "password";
+            this.lockInputEl.className = "note__lock-input";
+            this.lockInputEl.placeholder = "Password";
+            this.lockUiEl.appendChild(this.lockInputEl);
+
+            this.lockBtnEl = document.createElement("button");
+            this.lockBtnEl.className = "note__lock-btn";
+            this.lockBtnEl.textContent = "Unlock";
+            this.lockUiEl.appendChild(this.lockBtnEl);
+
+            this.lockErrorEl = document.createElement("div");
+            this.lockErrorEl.className = "note__lock-error";
+            this.lockUiEl.appendChild(this.lockErrorEl);
+
+            // Resize handle
+            this.resizeHandleEl = document.createElement("div");
+            this.resizeHandleEl.className = "note__resize-handle";
+            this.contentEl.appendChild(this.resizeHandleEl);
+
+            // Setup lock UI events
+            this.lockBtnEl.addEventListener("click", () => this.attemptUnlock());
+            this.lockInputEl.addEventListener("keydown", (e) => {
+              if (e.key === "Enter") this.attemptUnlock();
+            });
+
+            // Show lock UI if encrypted
+            if (this.isEncrypted && this.isLocked) {
+              this.showLockUI();
             }
-            break;
-            
-          case "rename":
-            if (note) {
-              setTimeout(() => note.startRename(), 10);
+          }
+
+          showLockUI() {
+            this.textareaEl.classList.add("hidden");
+            this.lockUiEl.classList.remove("hidden");
+            this.lockInputEl.value = "";
+            this.lockErrorEl.textContent = "";
+          }
+
+          hideLockUI() {
+            this.textareaEl.classList.remove("hidden");
+            this.lockUiEl.classList.add("hidden");
+          }
+
+          async attemptUnlock() {
+            const password = this.lockInputEl.value;
+            if (!password) {
+              this.lockErrorEl.textContent = "Please enter a password";
+              return;
             }
-            break;
-            
-          case "encrypt":
-            if (note && !note.isEncrypted) {
-              const password = prompt("Enter password to encrypt this note:");
-              if (password) {
-                const confirm = password//prompt("Confirm password:");
-                if (password === confirm) {
+
+            try {
+              const decrypted = await Crypto.decrypt(this.encryptedData, password);
+              this.content = decrypted;
+              this.textareaEl.value = decrypted;
+              this.isLocked = false;
+              this.cachedPassword = password;
+              this.hideLockUI();
+              this.lockErrorEl.textContent = "";
+            } catch (e) {
+              this.lockErrorEl.textContent = "Incorrect password";
+              this.lockInputEl.select();
+            }
+          }
+
+          async encryptNote(password) {
+            this.content = this.textareaEl.value;
+            this.encryptedData = await Crypto.encrypt(this.content, password);
+            this.isEncrypted = true;
+            this.isLocked = true;
+            this.cachedPassword = null;
+            this.showLockUI();
+          }
+
+          lock() {
+            this.isEncrypted = true;
+            this.isLocked = true;
+            this.cachedPassword = null;
+            this.showLockUI();
+          }
+
+          async changePassword(currentPassword, newPassword) {
+            try {
+              // Verify current password if locked
+              if (this.isLocked) {
+                await Crypto.decrypt(this.encryptedData, currentPassword);
+              } else if (this.cachedPassword !== currentPassword) {
+                // Verify against cached password
+                await Crypto.decrypt(this.encryptedData, currentPassword);
+              }
+
+              // Re-encrypt with new password
+              const content = this.isLocked ? 
+                    await Crypto.decrypt(this.encryptedData, currentPassword) : 
+              this.textareaEl.value;
+
+              this.encryptedData = await Crypto.encrypt(content, newPassword);
+              this.cachedPassword = this.isLocked ? null : newPassword;
+              return true;
+            } catch (e) {
+              return false;
+            }
+          }
+
+          async removeEncryption(password) {
+            try {
+              const content = this.isLocked ?
+                    await Crypto.decrypt(this.encryptedData, password) :
+              this.textareaEl.value;
+
+              // Verify password
+              if (this.isLocked || this.cachedPassword !== password) {
+                await Crypto.decrypt(this.encryptedData, password);
+              }
+
+              this.content = content;
+              this.textareaEl.value = content;
+              this.isEncrypted = false;
+              this.isLocked = false;
+              this.encryptedData = null;
+              this.cachedPassword = null;
+              this.hideLockUI();
+              return true;
+            } catch (e) {
+              return false;
+            }
+          }
+
+          updateLayout() {
+            const MIN_WIDTH = 120;
+            const MIN_HEIGHT = 80;
+
+            // Clamp dimensions
+            this.width = Math.max(this.width, MIN_WIDTH);
+            this.height = Math.max(this.height, MIN_HEIGHT);
+
+            // Clamp position to viewport
+            this.x = Math.max(0, Math.min(this.x, window.innerWidth - 50));
+            this.y = Math.max(0, Math.min(this.y, window.innerHeight - 50));
+
+            // Reset visibility
+            this.closeBtnEl.style.display = "";
+            this.minimizeBtnEl.style.display = "";
+            this.fullscreenBtnEl.style.display = "";
+            this.contentEl.style.display = "";
+            this.resizeHandleEl.style.display = "";
+            this.el.classList.remove("note--minimized");
+
+            let displayX = this.x;
+            let displayY = this.y;
+            let displayWidth = this.width;
+            let displayHeight = this.height;
+
+            if (this.isMinimized) {
+              this.el.classList.add("note--minimized");
+              this.closeBtnEl.style.display = "none";
+              this.minimizeBtnEl.style.display = "none";
+              this.contentEl.style.display = "none";
+              // Width/height auto via CSS class
+              this.el.style.width = "";
+              this.el.style.height = "";
+            } else if (this.isFullscreen) {
+              displayX = 0;
+              displayY = 0;
+              displayWidth = window.innerWidth - 2;
+              displayHeight = window.innerHeight - 2;
+              this.fullscreenBtnEl.style.display = "none";
+              this.resizeHandleEl.style.display = "none";
+              this.el.style.width = displayWidth + "px";
+              this.el.style.height = displayHeight + "px";
+            } else {
+              this.el.style.width = displayWidth + "px";
+              this.el.style.height = displayHeight + "px";
+            }
+
+            this.el.style.left = displayX + "px";
+            this.el.style.top = displayY + "px";
+            this.el.style.zIndex = this.zIndex;
+          }
+
+          bringToFront() {
+            this.zIndex = ++maxZIndex;
+            this.el.style.zIndex = this.zIndex;
+          }
+
+          startRename() {
+            this.titleEl.classList.add("note__title--editing");
+            this.titleEl.focus();
+            this.titleEl.select();
+
+            const finishRename = () => {
+              this.titleEl.classList.remove("note__title--editing");
+              this.title = this.titleEl.value;
+              this.titleEl.removeEventListener("blur", finishRename);
+              this.titleEl.removeEventListener("keydown", handleKeydown);
+            };
+
+            const handleKeydown = (e) => {
+              if (e.key === "Enter") {
+                this.titleEl.blur();
+              } else if (e.key === "Escape") {
+                this.titleEl.value = this.title;
+                this.titleEl.blur();
+              }
+            };
+
+            this.titleEl.addEventListener("blur", finishRename);
+            this.titleEl.addEventListener("keydown", handleKeydown);
+          }
+
+          async toJSON() {
+            // If unlocked and encrypted, re-encrypt current content
+            if (this.isEncrypted && !this.isLocked && this.cachedPassword) {
+              this.encryptedData = await Crypto.encrypt(this.textareaEl.value, this.cachedPassword);
+            }
+
+            return {
+              x: this.x,
+              y: this.y,
+              width: this.width,
+              height: this.height,
+              title: this.titleEl.value,
+              content: this.isEncrypted ? "" : this.textareaEl.value,
+              zIndex: this.zIndex,
+              isMinimized: this.isMinimized,
+              isFullscreen: this.isFullscreen,
+              isEncrypted: this.isEncrypted,
+              encryptedData: this.encryptedData
+            };
+          }
+
+          fromJSON(data) {
+            this.x = data.x ?? this.x;
+            this.y = data.y ?? this.y;
+            this.width = data.width ?? this.width;
+            this.height = data.height ?? this.height;
+            this.title = data.title ?? "";
+            this.content = data.content ?? "";
+            this.zIndex = data.zIndex ?? this.zIndex;
+            this.isMinimized = data.isMinimized ?? false;
+            this.isFullscreen = data.isFullscreen ?? false;
+            this.isEncrypted = data.isEncrypted ?? false;
+            this.encryptedData = data.encryptedData ?? null;
+            this.isLocked = this.isEncrypted;
+
+            this.titleEl.value = this.title;
+            this.textareaEl.value = this.content;
+
+            if (this.isEncrypted) {
+              this.showLockUI();
+            } else {
+              this.hideLockUI();
+            }
+
+            this.updateLayout();
+
+            if (this.zIndex > maxZIndex) {
+              maxZIndex = this.zIndex;
+            }
+          }
+
+          destroy() {
+            this.el.remove();
+            delete notes[this.id];
+          }
+        }
+
+        // ============ Note Manager ============
+        async function exportAllNotes() {
+          const noteDataPromises = Object.values(notes).map(note => note.toJSON());
+          const notesData = await Promise.all(noteDataPromises);
+
+          return JSON.stringify({
+            version: "8.0.0",
+            maxZIndex,
+            notes: notesData
+          });
+        }
+
+        function importAllNotes(jsonString) {
+          try {
+            const data = JSON.parse(jsonString);
+            maxZIndex = data.maxZIndex ?? 10;
+
+            for (const noteData of data.notes) {
+              const note = new Note();
+              note.fromJSON(noteData);
+              notes[note.id] = note;
+            }
+          } catch (e) {
+            console.error("Failed to import notes:", e);
+          }
+        }
+
+        function createNote(x, y) {
+          const note = new Note({ x, y });
+          notes[note.id] = note;
+          return note;
+        }
+
+        function deleteAllNotes() {
+          for (const id in notes) {
+            notes[id].el.remove();
+          }
+          notes = {};
+        }
+
+        // ============ Context Menu ============
+        function showContextMenu(x, y, noteId = null) {
+          contextTargetNoteId = noteId;
+
+          if (noteId && notes[noteId]) {
+            const note = notes[noteId];
+            noteContextOptionsEl.classList.remove("hidden");
+
+            const encryptItem = noteContextOptionsEl.querySelector('[data-action="encrypt"]');
+            const changePassItem = noteContextOptionsEl.querySelector('[data-action="change-password"]');
+            const removeEncryptItem = noteContextOptionsEl.querySelector('[data-action="remove-encryption"]');
+            const lockNoteItem = noteContextOptionsEl.querySelector('[data-action="lock-note"]');
+
+            if (note.isEncrypted) {
+              encryptItem.classList.add("hidden");
+              changePassItem.classList.remove("hidden");
+              removeEncryptItem.classList.remove("hidden");
+              if (!note.isLocked) {
+                lockNoteItem.classList.remove("hidden");
+              }
+            } else {
+              encryptItem.classList.remove("hidden");
+              changePassItem.classList.add("hidden");
+              removeEncryptItem.classList.add("hidden");
+              lockNoteItem.classList.add("hidden");
+            }
+          } else {
+            noteContextOptionsEl.classList.add("hidden");
+          }
+
+          contextMenuEl.style.left = x + "px";
+          contextMenuEl.style.top = y + "px";
+          contextMenuEl.classList.remove("hidden");
+
+          // Adjust position if menu goes off screen
+          const rect = contextMenuEl.getBoundingClientRect();
+          if (rect.right > window.innerWidth) {
+            contextMenuEl.style.left = (window.innerWidth - rect.width - 5) + "px";
+          }
+          if (rect.bottom > window.innerHeight) {
+            contextMenuEl.style.top = (window.innerHeight - rect.height - 5) + "px";
+          }
+        }
+
+        function hideContextMenu() {
+          contextMenuEl.classList.add("hidden");
+          contextTargetNoteId = null;
+        }
+
+        async function handleContextAction(action) {
+          const note = contextTargetNoteId ? notes[contextTargetNoteId] : null;
+          hideContextMenu();
+
+          switch (action) {
+            case "create":
+              createNote(
+                parseInt(contextMenuEl.style.left) || 100,
+                parseInt(contextMenuEl.style.top) || 100
+              );
+              break;
+
+            case "delete-all":
+              if (prompt('Type "DELETE" to confirm deleting all notes:') === "DELETE") {
+                deleteAllNotes();
+              }
+              break;
+
+            case "rename":
+              if (note) {
+                setTimeout(() => note.startRename(), 1);
+              }
+              break;
+
+            case "encrypt":
+              if (note && !note.isEncrypted) {
+                const password = prompt("Enter password to encrypt this note:");
+                if (password) {
                   await note.encryptNote(password);
-                  alert("Note encrypted successfully!");
-                } else {
-                  alert("Passwords don't match!");
                 }
               }
-            }
-            break;
-            
-          case "change-password":
-            if (note && note.isEncrypted) {
-              const currentPass = prompt("Enter current password:");
-              if (currentPass) {
-                const newPass = prompt("Enter new password:");
-                if (newPass) {
-                  const confirmPass = newPass//prompt("Confirm new password:");
-                  if (newPass === confirmPass) {
+              break;
+
+            case "change-password":
+              if (note && note.isEncrypted) {
+                const currentPass = prompt("Enter current password:");
+                if (currentPass) {
+                  const newPass = prompt("Enter new password:");
+                  if (newPass) {
                     const success = await note.changePassword(currentPass, newPass);
                     alert(success ? "Password changed!" : "Incorrect current password!");
-                  } else {
-                    alert("Passwords don't match!");
                   }
                 }
               }
-            }
-            break;
-            
-          case "remove-encryption":
-            if (note && note.isEncrypted) {
-              const password = prompt("Enter password to remove encryption:");
-              if (password) {
-                const success = await note.removeEncryption(password);
-                alert(success ? "Encryption removed!" : "Incorrect password!");
+              break;
+
+            case "remove-encryption":
+              if (note && note.isEncrypted) {
+                const password = prompt("Enter password to remove encryption:");
+                if (password) {
+                  const success = await note.removeEncryption(password);
+                  alert(success ? "Encryption removed!" : "Incorrect password!");
+                }
               }
+              break;
+            case "lock-note":
+              note.lock()
+              break
+                        }
+        }
+
+        // ============ Event Handlers ============
+        document.addEventListener("mousedown", (e) => {
+          // Context menu click
+          if (e.target.closest(".context-menu")) {
+            const actionItem = e.target.closest("[data-action]");
+            if (actionItem) {
+              handleContextAction(actionItem.dataset.action);
             }
-            break;
-        }
-      }
+            return;
+          }
 
-      // ============ Event Handlers ============
-      document.addEventListener("mousedown", (e) => {
-        // Context menu click
-        if (e.target.closest(".context-menu")) {
-          const actionItem = e.target.closest("[data-action]");
-          if (actionItem) {
-            handleContextAction(actionItem.dataset.action);
-          }
-          return;
-        }
-        
-        hideContextMenu();
-        
-        // Note interaction
-        const noteEl = e.target.closest(".note");
-        if (!noteEl) return;
-        
-        const noteId = noteEl.dataset.noteId;
-        const note = notes[noteId];
-        if (!note) return;
-        
-        note.bringToFront();
-        
-        // Button clicks
-        if (e.target.closest(".note__btn--close")) {
-          if (confirm("Delete this note?")) {
-            note.destroy();
-          }
-          return;
-        }
-        
-        if (e.target.closest(".note__btn--minimize")) {
-          note.isFullscreen = false;
-          note.isMinimized = !note.isMinimized;
-          note.updateLayout();
-          return;
-        }
-        
-        if (e.target.closest(".note__btn--fullscreen")) {
-          note.isMinimized = false;
-          note.isFullscreen = !note.isFullscreen;
-          note.updateLayout();
-          return;
-        }
-        
-        // Drag initiation
-        if (e.target.closest(".note__drag-handle") && !e.target.closest(".note__title--editing")) {
-          e.preventDefault();
-          dragState.active = true;
-          dragState.action = "move";
-          dragState.noteId = noteId;
-          dragState.startX = e.clientX;
-          dragState.startY = e.clientY;
-          dragState.noteStartX = note.x;
-          dragState.noteStartY = note.y;
-          document.body.classList.add("is-dragging");
-        }
-        
-        // Resize initiation
-        if (e.target.closest(".note__resize-handle")) {
-          e.preventDefault();
-          dragState.active = true;
-          dragState.action = "resize";
-          dragState.noteId = noteId;
-          dragState.startX = e.clientX;
-          dragState.startY = e.clientY;
-          dragState.noteStartWidth = note.width;
-          dragState.noteStartHeight = note.height;
-          document.body.classList.add("is-dragging");
-        }
-      });
-      
-      document.addEventListener("mousemove", (e) => {
-        if (!dragState.active || !dragState.noteId) return;
-        
-        const note = notes[dragState.noteId];
-        if (!note) return;
-        
-        const deltaX = e.clientX - dragState.startX;
-        const deltaY = e.clientY - dragState.startY;
-        
-        if (dragState.action === "move") {
-          note.x = dragState.noteStartX + deltaX;
-          note.y = dragState.noteStartY + deltaY;
-          note.updateLayout();
-        } else if (dragState.action === "resize") {
-          note.width = dragState.noteStartWidth + deltaX;
-          note.height = dragState.noteStartHeight + deltaY;
-          note.updateLayout();
-        }
-        
-        e.preventDefault();
-      });
-      
-      document.addEventListener("mouseup", () => {
-        dragState.active = false;
-        dragState.action = null;
-        dragState.noteId = null;
-        document.body.classList.remove("is-dragging");
-      });
-      
-      document.addEventListener("dblclick", (e) => {
-        const dragHandle = e.target.closest(".note__drag-handle");
-        if (dragHandle && !e.target.closest(".note__title--editing")) {
+          hideContextMenu();
+
+          // Note interaction
           const noteEl = e.target.closest(".note");
-          if (noteEl) {
-            const note = notes[noteEl.dataset.noteId];
-            if (note) note.startRename();
+          if (!noteEl) return;
+
+          const noteId = noteEl.dataset.noteId;
+          const note = notes[noteId];
+          if (!note) return;
+
+          note.bringToFront();
+
+          // Button clicks
+          if (e.target.closest(".note__btn--close")) {
+            if (confirm("Delete this note?")) {
+              note.destroy();
+            }
+            return;
+          }
+
+          if (e.target.closest(".note__btn--minimize")) {
+            if (note.isFullscreen) {
+              // When fullscreen, minimize button just restores to normal
+              note.isFullscreen = false;
+            } else {
+              // Otherwise toggle minimized state
+              note.isMinimized = !note.isMinimized;
+            }
+            note.updateLayout();
+            return;
+          }
+
+          if (e.target.closest(".note__btn--fullscreen")) {
+            if (note.isMinimized) {
+              // When minimized, fullscreen button just restores to normal
+              note.isMinimized = false;
+            } else {
+              // Otherwise toggle fullscreen state
+              note.isFullscreen = !note.isFullscreen;
+            }
+            note.updateLayout();
+            return;
+          }
+
+          // Drag initiation
+          if (e.target.closest(".note__drag-handle") && !e.target.closest(".note__title--editing")) {
+            e.preventDefault();
+            dragState.active = true;
+            dragState.action = "move";
+            dragState.noteId = noteId;
+            dragState.startX = e.clientX;
+            dragState.startY = e.clientY;
+            dragState.noteStartX = note.x;
+            dragState.noteStartY = note.y;
+            document.body.classList.add("is-dragging");
+          }
+
+          // Resize initiation
+          if (e.target.closest(".note__resize-handle")) {
+            e.preventDefault();
+            dragState.active = true;
+            dragState.action = "resize";
+            dragState.noteId = noteId;
+            dragState.startX = e.clientX;
+            dragState.startY = e.clientY;
+            dragState.noteStartWidth = note.width;
+            dragState.noteStartHeight = note.height;
+            document.body.classList.add("is-dragging");
+          }
+        });
+
+        document.addEventListener("mousemove", (e) => {
+          if (!dragState.active || !dragState.noteId) return;
+
+          const note = notes[dragState.noteId];
+          if (!note) return;
+
+          const deltaX = e.clientX - dragState.startX;
+          const deltaY = e.clientY - dragState.startY;
+
+          if (dragState.action === "move") {
+            note.x = dragState.noteStartX + deltaX;
+            note.y = dragState.noteStartY + deltaY;
+            note.updateLayout();
+          } else if (dragState.action === "resize") {
+            note.width = dragState.noteStartWidth + deltaX;
+            note.height = dragState.noteStartHeight + deltaY;
+            note.updateLayout();
+          }
+
+          e.preventDefault();
+        });
+
+        document.addEventListener("mouseup", () => {
+          dragState.active = false;
+          dragState.action = null;
+          dragState.noteId = null;
+          document.body.classList.remove("is-dragging");
+        });
+
+        document.addEventListener("dblclick", (e) => {
+          const dragHandle = e.target.closest(".note__drag-handle");
+          if (dragHandle && !e.target.closest(".note__title--editing")) {
+            const noteEl = e.target.closest(".note");
+            if (noteEl) {
+              const note = notes[noteEl.dataset.noteId];
+              if (note) note.startRename();
+            }
+          }
+        });
+
+        document.addEventListener("contextmenu", (e) => {
+          // Allow default context menu for text inputs
+          if (e.target.matches("textarea, input[type='text'], input[type='password']")) {
+            return;
+          }
+
+          e.preventDefault();
+
+          const noteEl = e.target.closest(".note");
+          const noteId = noteEl ? noteEl.dataset.noteId : null;
+
+          showContextMenu(e.clientX, e.clientY, noteId);
+        });
+
+        // Handle window resize
+        window.addEventListener("resize", () => {
+          for (const id in notes) {
+            notes[id].updateLayout();
+          }
+        });
+
+        // ============ Auto-save ============
+        let saveTimeout = null;
+
+        async function saveNotes() {
+          try {
+            const data = await exportAllNotes();
+            localStorage.setItem(STORAGE_KEY, data);
+          } catch (e) {
+            console.error("Failed to save notes:", e);
           }
         }
-      });
-      
-      document.addEventListener("contextmenu", (e) => {
-        // Allow default context menu for text inputs
-        if (e.target.matches("textarea, input[type='text'], input[type='password']")) {
-          return;
-        }
-        
-        e.preventDefault();
-        
-        const noteEl = e.target.closest(".note");
-        const noteId = noteEl ? noteEl.dataset.noteId : null;
-        
-        showContextMenu(e.clientX, e.clientY, noteId);
-      });
-      
-      // Handle window resize
-      window.addEventListener("resize", () => {
-        for (const id in notes) {
-          notes[id].updateLayout();
-        }
-      });
 
-      // ============ Auto-save ============
-      let saveTimeout = null;
-      
-      async function saveNotes() {
-        try {
-          const data = await exportAllNotes();
-          localStorage.setItem(STORAGE_KEY, data);
-        } catch (e) {
-          console.error("Failed to save notes:", e);
+        function scheduleSave() {
+          if (saveTimeout) clearTimeout(saveTimeout);
+          saveTimeout = setTimeout(saveNotes, 200);
         }
-      }
-      
-      function scheduleSave() {
-        if (saveTimeout) clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(saveNotes, 500);
-      }
-      
-      // Save on any change
-      document.addEventListener("input", scheduleSave);
-      document.addEventListener("mouseup", scheduleSave);
-      
-      // Periodic save as backup
-      setInterval(saveNotes, 5000);
 
-      // ============ Load saved notes ============
-      const savedData = localStorage.getItem(STORAGE_KEY);
-      if (savedData) {
-        importAllNotes(savedData);
-      }
+        // Save on any change
+        document.addEventListener("input", scheduleSave);
+        document.addEventListener("mouseup", scheduleSave);
 
-      // ============ Error Handler ============
-      let errorShown = false;
-      window.addEventListener("error", (e) => {
-        if (!errorShown) {
-          errorShown = true;
-          console.error(`Error: ${e.message} at line ${e.lineno}`);
+        // Periodic save as backup
+        setInterval(saveNotes, 1000);
+
+        // ============ Load saved notes ============
+        const savedData = localStorage.getItem(STORAGE_KEY);
+        if (savedData) {
+          importAllNotes(savedData);
         }
-      });
+
+        // ============ Error Handler ============
+        let errorShown = false;
+        window.addEventListener("error", (e) => {
+          if (!errorShown) {
+            errorShown = true;
+            console.error(`Error: ${e.message} at line ${e.lineno}`);
+          }
+        });
+      })()
     </script>
   </body>
 </html>
