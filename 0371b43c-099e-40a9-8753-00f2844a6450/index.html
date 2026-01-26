@@ -40,37 +40,46 @@
       }
       .header-container .close {
         background-color: #ff0000;
+        transition: 0.15s;
       }
       .header-container .close:hover {
         background-color: #dd0000;
+        transition: 0.15s;
         color: #ddd;
       }
       .header-container .close:active {
         background-color: #bb0000;
+        transition: 0.15s;
         color: #bbb;
       }
 
       .header-container .minimize {
         background-color: #ff9900;
+        transition: 0.15s;
       }
       .header-container .minimize:hover {
         background-color: #dd7700;
+        transition: 0.15s;
         color: #ddd;
       }
       .header-container .minimize:active {
         background-color: #bb5500;
+        transition: 0.15s;
         color: #bbb;
       }
 
       .header-container .fullscreen {
         background-color: #00ff00;
+        transition: 0.15s;
       }
       .header-container .fullscreen:hover {
         background-color: #00dd00;
+        transition: 0.15s;
         color: #ddd;
       }
       .header-container .fullscreen:active {
         background-color: #00bb00;
+        transition: 0.15s;
         color: #bbb;
       }
 
@@ -93,6 +102,7 @@
       .drag-area {
         background-color: #fe9;
         width: 100%;
+        text-align: center;
       }
       .resize-area {
         background-color: #000;
@@ -118,18 +128,30 @@
         padding: 7.5px 10px;
         color: #000;
         text-align: center;
+        transition: 0.3s;
       }
       #context-menu .option:hover {
         background-color: #bbb;
+        transition: 0.15s;
         cursor: pointer;
       }
       .hidden {
         display: none !important;
       }
+      .noteTitle {
+        background-color: rgba(0,0,0,0);
+        outline: none;
+        border: none;
+        text-align: center;
+        flex: 1;
+        min-width:0;
+        font-family: monospace;
+      }
     </style>
   </head>
   <body>
     <div id="context-menu" class="hidden">
+      <div class="option" data-action="rename" id="renameNoteOption">Rename Note</div>
       <div class="option" data-action="create">Create new note</div>
       <div class="option" data-action="delete-all">Delete all notes</div>
     </div>
@@ -144,6 +166,7 @@
     </script>
     <script>
       let contextMenu = document.getElementById("context-menu")
+      let renameNoteOption = document.getElementById("renameNoteOption")
       let notes = {}
       class Note {
         constructor(content="",x=0,y=0,width=300,height=200) {
@@ -212,7 +235,14 @@
           let dragArea = document.createElement("div")
           this.dragArea = dragArea
           dragArea.classList.add("drag-area")
+          dragArea.style.display = "flex"
           headerContainer.appendChild(dragArea)
+
+          let noteTitle = document.createElement("input")
+          this.noteTitle = noteTitle
+          noteTitle.classList.add("noteTitle")
+          noteTitle.style["pointerEvents"] = "none"
+          dragArea.appendChild(noteTitle)
 
           let textContainer = document.createElement("div")
           this.textContainer = textContainer
@@ -242,12 +272,12 @@
           if (this.y < 0) this.y = 0
           if (this.x+this.width > window.innerWidth) this.x = window.innerWidth - this.width
           if (this.y+this.height > window.innerHeight) this.y = window.innerHeight - this.height
-          
+
           let width = this.width
           let height = this.height
           let x = this.x
           let y = this.y
-          
+
           if (this.isMinimized) {
             width = 40
             height = 20
@@ -277,8 +307,8 @@
           this.noteElement.style.top = y + "px"
 
           this.noteElement.style["z-index"] = maxIndex
-          
-          ++maxIndex
+
+            ++maxIndex
         }
         export() {
           return [
@@ -289,7 +319,8 @@
             this.textAreaElement.value,
             this.noteElement.style["z-index"],
             this.isMinimized,
-            this.isFullscreen
+            this.isFullscreen,
+            this.noteTitle.value
           ]
         }
         import(json) {
@@ -302,7 +333,7 @@
           this.isFullscreen = json[7]
           this.updatePosition()
           this.noteElement.style["z-index"] = json[5]
-          
+          this.noteTitle.value = json[8]
         }
       }
       function exportNotes() {
@@ -361,7 +392,7 @@
                 note.updatePosition()
                 notes[note.ID] = note
                 contextMenu.classList.add("hidden")
-                break
+        		  break
               case "delete-all":
                 if (prompt("Are you sure you want to delete everything? Type \"Delete All\" to confirm") === "Delete All") {
                   for (let id in notes) {
@@ -370,11 +401,17 @@
                   notes = {}
                 }
                 break
+              case "rename":
+                contextMenu.classList.add("hidden")
+                setTimeout(()=>{
+                  startRename(renameNoteOption.getAttribute("data-ID"))
+                })
+                break
             }
           }
         } else {
-            contextMenu.classList.add("hidden")
-          }
+          contextMenu.classList.add("hidden")
+        }
         if (e.target.closest("[data-ID]")) {
           let noteID = e.target.closest("[data-ID]").getAttribute("data-ID")
           mouse.noteID = noteID
@@ -389,7 +426,7 @@
           if (classList.contains("button")) {
             if (classList.contains("close") && confirm("Are you sure you want to delete this note?")) {
               note.noteElement.remove()
-              delete note
+              delete notes[noteID]
               return
             }
             if (classList.contains("minimize")) {
@@ -414,6 +451,25 @@
             mouse.action = "resize"
           }
           note.updatePosition()
+        }
+      })
+      function startRename(noteID) {
+        let note = notes[noteID]
+        note.noteTitle.style["background-color"] = "rgba(255,255,0,0.5)"
+        note.noteTitle.focus()
+        let deselectFunction = () => {
+          note.noteTitle.style["pointerEvents"] = "none"
+          note.noteTitle.style["background-color"] = "rgba(0,0,0,0)"
+          note.noteTitle.removeEventListener("focusout", deselectFunction)
+          note.noteTitle.blur()
+        }
+        note.noteTitle.style["pointerEvents"] = ""
+        let listener = note.noteTitle.addEventListener("focusout", deselectFunction)
+      }
+      addEventListener("dblclick", (e) => {
+        if (e.target.classList.contains("drag-area")) {
+          let noteID = e.target.closest("[data-ID]").getAttribute("data-ID")
+          startRename(noteID)
         }
       })
       addEventListener("mouseup", (e) => {
@@ -442,6 +498,12 @@
       addEventListener("contextmenu", (e) => {
         if (e.target.type === "textarea") {
           return
+        }
+        if (e.target.classList.contains("drag-area")) {
+          renameNoteOption.classList.remove("hidden")
+          renameNoteOption.setAttribute("data-ID", e.target.closest("[data-ID]").getAttribute("data-ID"))
+        } else {
+          renameNoteOption.classList.add("hidden")
         }
         e.preventDefault()
         contextMenu.classList.remove("hidden")
