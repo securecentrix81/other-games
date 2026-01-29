@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barcode Forge | Generator</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00f0ff;
+            --secondary: #ff00aa;
+            --dark: #0a0a0f;
+            --panel: #12121a;
+            --text: #e0e0ff;
+            --text-dim: #8888aa;
+            --border: #2a2a3a;
+            --success: #00ff88;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--dark);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(0, 240, 255, 0.1) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(255, 0, 170, 0.1) 0%, transparent 20%);
+        }
+
+        .noise {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.03;
+            z-index: 1;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 4rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: -2px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            position: relative;
+            display: inline-block;
+        }
+
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 2px;
+        }
+
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 1.1rem;
+            margin-top: 1.5rem;
+            letter-spacing: 2px;
+        }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .panel:hover {
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            border-color: rgba(0, 240, 255, 0.2);
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+            transition: color 0.3s ease;
+        }
+
+        .control-group:hover label {
+            color: var(--primary);
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            background: var(--dark);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.1);
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .color-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--dark);
+            padding: 0.5rem;
+            border-radius: 10px;
+            border: 2px solid var(--border);
+        }
+
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            background: none;
+        }
+
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        input[type="color"]::-webkit-color-swatch {
+            border: 2px solid var(--border);
+            border-radius: 6px;
+        }
+
+        .color-value {
+            font-family: monospace;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        .range-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 6px;
+            background: var(--dark);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: var(--secondary);
+        }
+
+        .range-value {
+            min-width: 50px;
+            text-align: center;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 8px;
+            transition: background 0.3s ease;
+        }
+
+        .checkbox-wrapper:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        .preview-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 600px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .preview-panel::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 60%;
+            background: radial-gradient(circle, rgba(0, 240, 255, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        #barcode-container {
+            background: white;
+            padding: 3rem;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            transform: perspective(1000px) rotateX(0deg);
+            transition: transform 0.5s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #barcode-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.5s ease;
+        }
+
+        #barcode-container:hover::before {
+            left: 100%;
+        }
+
+        #barcode-container:hover {
+            transform: perspective(1000px) rotateX(2deg) scale(1.02);
+        }
+
+        svg {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .actions {
+            margin-top: 2rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 10px;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: var(--dark);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text);
+            border: 2px solid var(--border);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 10px 30px rgba(0, 240, 255, 0.3);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .error-message {
+            color: #ff4444;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            display: none;
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--primary);
+            box-shadow: 0 0 10px var(--primary);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .scanning .scan-line {
+            animation: scan 2s ease-in-out infinite;
+            opacity: 1;
+        }
+
+        @keyframes scan {
+            0% { top: 0%; }
+            50% { top: 100%; }
+            100% { top: 0%; }
+        }
+
+        @media (max-width: 968px) {
+            .workspace {
+                grid-template-columns: 1fr;
+            }
+            h1 { font-size: 2.5rem; }
+            .preview-panel { min-height: 400px; }
+        }
+
+        .preset-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.5rem;
+        }
+
+        .preset {
+            padding: 0.3rem 0.8rem;
+            background: var(--dark);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--text-dim);
+        }
+
+        .preset:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: scale(1.05);
+        }
+
+        .stats {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="noise"></div>
+    
+    <div class="container">
+        <header>
+            <h1>Barcode Forge</h1>
+            <div class="subtitle">Advanced Symbology Generator</div>
+        </header>
+
+        <div class="workspace">
+            <div class="panel controls">
+                <div class="control-group">
+                    <label>Data Content</label>
+                    <input type="text" id="barcode-value" value="HELLO123" placeholder="Enter text or numbers...">
+                    <div class="error-message" id="error-msg">Invalid format for selected type</div>
+                    <div class="preset-buttons">
+                        <span class="preset" onclick="setPreset('123456789012')">EAN-12</span>
+                        <span class="preset" onclick="setPreset('HELLO')">Text</span>
+                        <span class="preset" onclick="setPreset('987654321098')">Test</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Symbology Format</label>
+                    <select id="barcode-format">
+                        <option value="CODE128">CODE 128 (Universal)</option>
+                        <option value="EAN13">EAN-13 (Retail)</option>
+                        <option value="UPC">UPC (North America)</option>
+                        <option value="CODE39">CODE 39 (Industrial)</option>
+                        <option value="ITF14">ITF-14 (Shipping)</option>
+                        <option value="MSI">MSI (Inventory)</option>
+                        <option value="pharmacode">Pharmacode</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Dimensions</label>
+                    <div class="range-group">
+                        <span style="font-size: 0.8rem; color: var(--text-dim)">Width</span>
+                        <input type="range" id="bar-width" min="1" max="4" step="1" value="2">
+                        <span class="range-value" id="width-val">2</span>
+                    </div>
+                    <div class="range-group" style="margin-top: 0.5rem;">
+                        <span style="font-size: 0.8rem; color: var(--text-dim)">Height</span>
+                        <input type="range" id="bar-height" min="30" max="150" value="100">
+                        <span class="range-value" id="height-val">100</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Color Scheme</label>
+                    <div class="color-grid">
+                        <div class="color-input-wrapper">
+                            <input type="color" id="line-color" value="#000000">
+                            <span class="color-value" id="line-color-val">#000000</span>
+                        </div>
+                        <div class="color-input-wrapper">
+                            <input type="color" id="bg-color" value="#ffffff">
+                            <span class="color-value" id="bg-color-val">#FFFFFF</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Typography</label>
+                    <div class="range-group">
+                        <span style="font-size: 0.8rem; color: var(--text-dim)">Size</span>
+                        <input type="range" id="font-size" min="10" max="24" value="16">
+                        <span class="range-value" id="font-val">16</span>
+                    </div>
+                    <div style="margin-top: 0.5rem;">
+                        <label class="checkbox-wrapper">
+                            <input type="checkbox" id="show-text" checked>
+                            <span>Show Text</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Advanced</label>
+                    <label class="checkbox-wrapper">
+                        <input type="checkbox" id="flat">
+                        <span>Flat Bars (No Guardian)</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="panel preview-panel" id="preview-area">
+                <div class="stats" id="barcode-stats">128×100px</div>
+                <div class="scan-line"></div>
+                <div id="barcode-container">
+                    <svg id="barcode"></svg>
+                </div>
+                
+                <div class="actions">
+                    <button class="btn-primary" onclick="downloadBarcode('png')">Download PNG</button>
+                    <button class="btn-secondary" onclick="downloadBarcode('svg')">Download SVG</button>
+                    <button class="btn-secondary" onclick="randomize()">Randomize</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const barcodeValue = document.getElementById('barcode-value');
+        const barcodeFormat = document.getElementById('barcode-format');
+        const barWidth = document.getElementById('bar-width');
+        const barHeight = document.getElementById('bar-height');
+        const lineColor = document.getElementById('line-color');
+        const bgColor = document.getElementById('bg-color');
+        const fontSize = document.getElementById('font-size');
+        const showText = document.getElementById('show-text');
+        const flat = document.getElementById('flat');
+        const errorMsg = document.getElementById('error-msg');
+        const previewArea = document.getElementById('preview-area');
+        const barcodeContainer = document.getElementById('barcode-container');
+
+        // Update value displays
+        barWidth.addEventListener('input', (e) => {
+            document.getElementById('width-val').textContent = e.target.value;
+            generateBarcode();
+        });
+        
+        barHeight.addEventListener('input', (e) => {
+            document.getElementById('height-val').textContent = e.target.value;
+            generateBarcode();
+        });
+        
+        fontSize.addEventListener('input', (e) => {
+            document.getElementById('font-val').textContent = e.target.value;
+            generateBarcode();
+        });
+
+        lineColor.addEventListener('input', (e) => {
+            document.getElementById('line-color-val').textContent = e.target.value.toUpperCase();
+            generateBarcode();
+        });
+
+        bgColor.addEventListener('input', (e) => {
+            document.getElementById('bg-color-val').textContent = e.target.value.toUpperCase();
+            barcodeContainer.style.background = e.target.value;
+            generateBarcode();
+        });
+
+        // Event listeners
+        barcodeValue.addEventListener('input', generateBarcode);
+        barcodeFormat.addEventListener('change', generateBarcode);
+        showText.addEventListener('change', generateBarcode);
+        flat.addEventListener('change', generateBarcode);
+
+        let generateTimeout;
+        function generateBarcode() {
+            clearTimeout(generateTimeout);
+            previewArea.classList.add('scanning');
+            
+            generateTimeout = setTimeout(() => {
+                const value = barcodeValue.value || ' ';
+                const format = barcodeFormat.value;
+                
+                try {
+                    JsBarcode("#barcode", value, {
+                        format: format,
+                        lineColor: lineColor.value,
+                        background: bgColor.value,
+                        width: parseInt(barWidth.value),
+                        height: parseInt(barHeight.value),
+                        displayValue: showText.checked,
+                        fontSize: parseInt(fontSize.value),
+                        font: "Space Grotesk",
+                        flat: flat.checked,
+                        margin: 10,
+                        valid: function(valid) {
+                            if (!valid) {
+                                errorMsg.style.display = 'block';
+                                errorMsg.textContent = `Invalid ${format} format`;
+                            } else {
+                                errorMsg.style.display = 'none';
+                            }
+                        }
+                    });
+                    
+                    // Update stats
+                    const svg = document.getElementById('barcode');
+                    const bbox = svg.getBBox();
+                    document.getElementById('barcode-stats').textContent = 
+                        `${Math.round(bbox.width)}×${Math.round(bbox.height)}px`;
+                        
+                } catch (e) {
+                    errorMsg.style.display = 'block';
+                    errorMsg.textContent = 'Error generating barcode';
+                }
+                
+                setTimeout(() => {
+                    previewArea.classList.remove('scanning');
+                }, 500);
+            }, 300);
+        }
+
+        function setPreset(value) {
+            barcodeValue.value = value;
+            generateBarcode();
+        }
+
+        function randomize() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < 8; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            barcodeValue.value = result;
+            
+            // Random colors
+            const randomColor = () => '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+            lineColor.value = randomColor();
+            document.getElementById('line-color-val').textContent = lineColor.value.toUpperCase();
+            
+            generateBarcode();
+        }
+
+        function downloadBarcode(type) {
+            const svg = document.getElementById('barcode');
+            const serializer = new XMLSerializer();
+            const svgStr = serializer.serializeToString(svg);
+            
+            if (type === 'svg') {
+                const blob = new Blob([svgStr], {type: 'image/svg+xml'});
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `barcode-${Date.now()}.svg`;
+                link.click();
+                URL.revokeObjectURL(url);
+            } else {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                
+                img.onload = function() {
+                    canvas.width = img.width * 2;
+                    canvas.height = img.height * 2;
+                    ctx.fillStyle = bgColor.value;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    
+                    const link = document.createElement('a');
+                    link.download = `barcode-${Date.now()}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                };
+                
+                img.src = 'data:image/svg+xml;base64,' + btoa(svgStr);
+            }
+        }
+
+        // Initialize
+        generateBarcode();
+
+        // 3D tilt effect on preview
+        previewArea.addEventListener('mousemove', (e) => {
+            const rect = previewArea.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            
+            const rotateX = (y - centerY) / 50;
+            const rotateY = (centerX - x) / 50;
+            
+            barcodeContainer.style.transform = 
+                `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
+        });
+
+        previewArea.addEventListener('mouseleave', () => {
+            barcodeContainer.style.transform = 
+                'perspective(1000px) rotateX(0deg) rotateY(0deg) scale(1)';
+        });
+    </script>
+</body>
+</html>
