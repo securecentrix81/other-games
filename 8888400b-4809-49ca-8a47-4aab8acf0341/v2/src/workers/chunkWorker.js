@@ -1,3 +1,8 @@
+// Add this to the very top of chunkWorker.js
+self.onerror = function(message, source, lineno, colno, error) {
+  console.log("Worker internal error:", message, "at", lineno, ":", colno);
+};
+console.log("Worker script loaded successfully");
 import SimplexNoise from "../noise/SimplexNoise.js";
 import {
   CHUNK_SIZE,
