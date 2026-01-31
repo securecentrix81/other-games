@@ -1,1 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Minecraft - Secure Centrix81</title>
+    <link rel="stylesheet" href="./styles.css" />
 
+    <!-- Browser-friendly ES modules for Three.js (no bundler required) -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+        }
+      }
+    </script>
+  </head>
+
+  <body>
+    <div id="game-container">
+      <div id="crosshair"></div>
+      <div id="hotbar"></div>
+      <div id="health-bar"></div>
+      <div id="hud">
+        <div id="position">XYZ: 0 / 0 / 0</div>
+        <div id="fps">FPS: 0</div>
+        <div id="chunk-info">Chunks: 0</div>
+      </div>
+      <div id="gamemode-indicator" class="survival">Survival</div>
+      <div id="break-indicator"><div id="break-indicator-inner"></div></div>
+      <div id="break-progress-bar"><div id="break-progress-fill"></div></div>
+
+      <div id="menu">
+        <h1>⛏ MINECRAFT</h1>
+        <p class="subtitle">A Voxel Sandbox Adventure</p>
+        <div class="controls">
+          <p><span class="key">W A S D</span> Move around</p>
+          <p><span class="key">SPACE</span> Jump / Fly up</p>
+          <p><span class="key">SHIFT</span> Sprint / Fly down</p>
+          <p><span class="key">MOUSE</span> Look around</p>
+          <p><span class="key">LEFT CLICK</span> Break block</p>
+          <p><span class="key">RIGHT CLICK</span> Place block</p>
+          <p><span class="key">1 - 9</span> Select block</p>
+          <p><span class="key">SCROLL</span> Cycle blocks</p>
+          <p><span class="key">E</span> Open Inventory</p>
+          <p><span class="key">C</span> Toggle Creative/Survival</p>
+          <p><span class="key">ESC</span> Settings</p>
+        </div>
+        <button id="start-btn">Play World</button>
+        <button id="settings-btn" class="secondary">Settings</button>
+      </div>
+
+      <div id="settings-panel">
+        <h2>⚙ Settings</h2>
+        <div class="settings-container">
+          <div class="setting-row">
+            <label>Render Distance</label>
+            <input type="range" id="setting-render-distance" min="1" max="8" value="2" />
+            <span class="setting-value" id="render-distance-value">2</span>
+          </div>
+          <div class="setting-row">
+            <label>Shadows Enabled</label>
+            <input type="checkbox" id="setting-shadows" />
+          </div>
+          <div class="setting-row" id="shadow-distance-row" style="display:none">
+            <label>Shadow Distance</label>
+            <input type="range" id="setting-shadow-distance" min="100" max="500" value="200" />
+            <span class="setting-value" id="shadow-distance-value">200</span>
+          </div>
+          <div class="setting-row">
+            <label>FOV</label>
+            <input type="range" id="setting-fov" min="60" max="120" value="80" />
+            <span class="setting-value" id="fov-value">80</span>
+          </div>
+          <div class="setting-row">
+            <label>Mouse Sensitivity</label>
+            <input type="range" id="setting-sensitivity" min="0.5" max="3" step="0.1" value="1" />
+            <span class="setting-value" id="sensitivity-value">1.0</span>
+          </div>
+          <div class="setting-row">
+            <label>Fullscreen</label>
+            <input type="checkbox" id="setting-fullscreen" />
+          </div>
+        </div>
+        <button id="settings-close-btn">Done</button>
+      </div>
+
+      <div id="inventory-screen">
+        <h2>Inventory</h2>
+        <div class="inventory-container">
+          <div class="inventory-section">
+            <h3>Inventory</h3>
+            <div class="inventory-grid" id="main-inventory"></div>
+          </div>
+          <div class="inventory-section">
+            <h3>Hotbar</h3>
+            <div class="inventory-grid" id="hotbar-inventory"></div>
+          </div>
+        </div>
+        <div id="crafting-section">
+          <h3>Crafting</h3>
+          <div class="recipe-list" id="recipe-list"></div>
+        </div>
+      </div>
+
+      <div id="death-screen">
+        <h1>You Died!</h1>
+        <p style="color:#ddd;margin-bottom:20px;">Fell from a high place</p>
+        <button id="respawn-btn">Respawn</button>
+      </div>
+
+      <div id="loading">
+        <div class="spinner"></div>
+        Generating World...
+      </div>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
