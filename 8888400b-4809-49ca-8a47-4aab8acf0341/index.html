@@ -49,6 +49,11 @@
         color: #aaa; font-size: 10px; font-weight: bold;
         text-shadow: 1px 1px 1px #000;
       }
+      .slot-count {
+        position: absolute; bottom: 2px; right: 4px;
+        color: #fff; font-size: 12px; font-weight: bold;
+        text-shadow: 1px 1px 2px #000;
+      }
       .slot-name {
         position: absolute; bottom: -18px; left: 50%;
         transform: translateX(-50%); white-space: nowrap;
@@ -78,6 +83,31 @@
       }
       #gamemode-indicator.creative { background: rgba(100, 200, 100, 0.5); }
       #gamemode-indicator.survival { background: rgba(200, 100, 100, 0.5); }
+
+      /* Health Bar */
+      #health-bar {
+        position: fixed; bottom: 75px; left: 50%;
+        transform: translateX(-50%);
+        display: flex; gap: 2px;
+        z-index: 100;
+      }
+      .heart {
+        width: 18px; height: 18px;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18"><path d="M9 16s-7-4.35-7-9A4 4 0 019 4a4 4 0 017 3c0 4.65-7 9-7 9z" fill="%23222" stroke="%23000" stroke-width="1"/></svg>');
+        position: relative;
+      }
+      .heart-fill {
+        position: absolute; top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18"><path d="M9 16s-7-4.35-7-9A4 4 0 019 4a4 4 0 017 3c0 4.65-7 9-7 9z" fill="%23e74c3c"/></svg>');
+        clip-path: inset(0 0 0 0);
+      }
+      .heart-fill.half {
+        clip-path: inset(0 50% 0 0);
+      }
+      .heart-fill.empty {
+        opacity: 0;
+      }
 
       #menu {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -119,6 +149,7 @@
         text-transform: uppercase; letter-spacing: 2px;
         transition: all 0.2s;
         box-shadow: 0 4px 0 #166534, 0 6px 10px rgba(0,0,0,0.3);
+        margin: 5px;
       }
       #menu button:hover {
         transform: translateY(-2px);
@@ -127,6 +158,149 @@
       #menu button:active {
         transform: translateY(2px);
         box-shadow: 0 2px 0 #166534;
+      }
+      #menu button.secondary {
+        background: linear-gradient(180deg, #666 0%, #444 100%);
+        box-shadow: 0 4px 0 #222, 0 6px 10px rgba(0,0,0,0.3);
+        padding: 12px 40px; font-size: 16px;
+      }
+      #menu button.secondary:hover {
+        box-shadow: 0 6px 0 #222, 0 8px 15px rgba(0,0,0,0.3);
+      }
+
+      /* Settings Menu */
+      #settings-panel {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.9);
+        display: none; flex-direction: column;
+        align-items: center; justify-content: center;
+        z-index: 250;
+      }
+      #settings-panel.visible { display: flex; }
+      #settings-panel h2 {
+        color: #4ade80; font-size: 36px; margin-bottom: 30px;
+      }
+      .settings-container {
+        background: rgba(50,50,50,0.8);
+        padding: 30px 50px; border-radius: 10px;
+        max-width: 500px; width: 90%;
+      }
+      .setting-row {
+        display: flex; justify-content: space-between;
+        align-items: center; margin: 15px 0;
+        color: #fff;
+      }
+      .setting-row label { font-size: 16px; }
+      .setting-row input[type="range"] {
+        width: 150px; cursor: pointer;
+      }
+      .setting-row input[type="checkbox"] {
+        width: 20px; height: 20px; cursor: pointer;
+      }
+      .setting-value {
+        color: #4ade80; min-width: 50px; text-align: right;
+        margin-left: 10px;
+      }
+      #settings-panel button {
+        margin-top: 20px; padding: 12px 40px;
+        font-size: 16px; background: #4ade80;
+        color: #0a0a0a; border: none; border-radius: 5px;
+        cursor: pointer; font-weight: bold;
+      }
+
+      /* Inventory */
+      #inventory-screen {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.8);
+        display: none; flex-direction: column;
+        align-items: center; justify-content: center;
+        z-index: 150;
+      }
+      #inventory-screen.visible { display: flex; }
+      #inventory-screen h2 {
+        color: #fff; font-size: 24px; margin-bottom: 20px;
+      }
+      .inventory-container {
+        background: #8b8b8b;
+        padding: 10px; border-radius: 5px;
+        border: 4px solid #373737;
+      }
+      .inventory-section {
+        margin-bottom: 15px;
+      }
+      .inventory-section h3 {
+        color: #404040; font-size: 14px; margin-bottom: 5px;
+      }
+      .inventory-grid {
+        display: grid;
+        grid-template-columns: repeat(9, 50px);
+        gap: 2px;
+      }
+      .inv-slot {
+        width: 50px; height: 50px;
+        background: #8b8b8b;
+        border: 2px solid;
+        border-color: #373737 #fff #fff #373737;
+        display: flex; align-items: center; justify-content: center;
+        position: relative; cursor: pointer;
+      }
+      .inv-slot:hover { background: #aaa; }
+      .inv-slot.selected { border-color: #4ade80; }
+      .inv-slot canvas { image-rendering: pixelated; }
+      .inv-slot .slot-count {
+        position: absolute; bottom: 2px; right: 4px;
+        color: #fff; font-size: 12px; font-weight: bold;
+        text-shadow: 1px 1px 2px #000;
+      }
+
+      /* Crafting */
+      #crafting-section {
+        margin-top: 20px;
+        background: #8b8b8b;
+        padding: 15px; border-radius: 5px;
+        border: 4px solid #373737;
+      }
+      #crafting-section h3 {
+        color: #404040; font-size: 16px; margin-bottom: 10px;
+        text-align: center;
+      }
+      .recipe-list {
+        max-height: 200px;
+        overflow-y: auto;
+      }
+      .recipe-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px;
+        margin: 4px 0;
+        background: #6b6b6b;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .recipe-item:hover { background: #7b7b7b; }
+      .recipe-item.can-craft { background: #5a8a5a; }
+      .recipe-item.can-craft:hover { background: #6a9a6a; }
+      .recipe-ingredients {
+        display: flex; align-items: center; gap: 5px;
+        color: #ddd; font-size: 12px;
+      }
+      .recipe-result {
+        display: flex; align-items: center; gap: 5px;
+        color: #fff; font-weight: bold;
+      }
+      .recipe-arrow { color: #fff; font-size: 18px; margin: 0 10px; }
+
+      /* Tool durability bar */
+      .durability-bar {
+        position: absolute; bottom: 2px; left: 2px; right: 2px;
+        height: 3px; background: #333;
+        border-radius: 1px;
+      }
+      .durability-fill {
+        height: 100%; background: #4ade80;
+        border-radius: 1px;
+        transition: width 0.1s;
       }
 
       #loading {
@@ -182,12 +356,32 @@
         width: 0%;
         transition: width 0.05s linear;
       }
+
+      /* Death screen */
+      #death-screen {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(139, 0, 0, 0.7);
+        display: none; flex-direction: column;
+        align-items: center; justify-content: center;
+        z-index: 200;
+      }
+      #death-screen.visible { display: flex; }
+      #death-screen h1 {
+        color: #fff; font-size: 48px; margin-bottom: 20px;
+      }
+      #death-screen button {
+        padding: 15px 50px; font-size: 18px;
+        background: #4ade80; color: #0a0a0a;
+        border: none; border-radius: 5px;
+        cursor: pointer; font-weight: bold;
+      }
     </style>
   </head>
   <body>
     <div id="game-container">
       <div id="crosshair"></div>
       <div id="hotbar"></div>
+      <div id="health-bar"></div>
       <div id="hud">
         <div id="position">XYZ: 0 / 0 / 0</div>
         <div id="fps">FPS: 0</div>
@@ -209,9 +403,71 @@
           <p><span class="key">RIGHT CLICK</span> Place block</p>
           <p><span class="key">1 - 9</span> Select block</p>
           <p><span class="key">SCROLL</span> Cycle blocks</p>
+          <p><span class="key">E</span> Open Inventory</p>
           <p><span class="key">C</span> Toggle Creative/Survival</p>
+          <p><span class="key">ESC</span> Settings</p>
         </div>
         <button id="start-btn">Play World</button>
+        <button id="settings-btn" class="secondary">Settings</button>
+      </div>
+
+      <div id="settings-panel">
+        <h2>⚙ Settings</h2>
+        <div class="settings-container">
+          <div class="setting-row">
+            <label>Render Distance</label>
+            <input type="range" id="setting-render-distance" min="1" max="8" value="2">
+            <span class="setting-value" id="render-distance-value">2</span>
+          </div>
+          <div class="setting-row">
+            <label>Shadows Enabled</label>
+            <input type="checkbox" id="setting-shadows">
+          </div>
+          <div class="setting-row" id="shadow-distance-row" style="display:none">
+            <label>Shadow Distance</label>
+            <input type="range" id="setting-shadow-distance" min="100" max="500" value="200">
+            <span class="setting-value" id="shadow-distance-value">200</span>
+          </div>
+          <div class="setting-row">
+            <label>FOV</label>
+            <input type="range" id="setting-fov" min="60" max="120" value="80">
+            <span class="setting-value" id="fov-value">80</span>
+          </div>
+          <div class="setting-row">
+            <label>Mouse Sensitivity</label>
+            <input type="range" id="setting-sensitivity" min="0.5" max="3" step="0.1" value="1">
+            <span class="setting-value" id="sensitivity-value">1.0</span>
+          </div>
+          <div class="setting-row">
+            <label>Fullscreen</label>
+            <input type="checkbox" id="setting-fullscreen">
+          </div>
+        </div>
+        <button id="settings-close-btn">Done</button>
+      </div>
+
+      <div id="inventory-screen">
+        <h2>Inventory</h2>
+        <div class="inventory-container">
+          <div class="inventory-section">
+            <h3>Inventory</h3>
+            <div class="inventory-grid" id="main-inventory"></div>
+          </div>
+          <div class="inventory-section">
+            <h3>Hotbar</h3>
+            <div class="inventory-grid" id="hotbar-inventory"></div>
+          </div>
+        </div>
+        <div id="crafting-section">
+          <h3>Crafting</h3>
+          <div class="recipe-list" id="recipe-list"></div>
+        </div>
+      </div>
+
+      <div id="death-screen">
+        <h1>You Died!</h1>
+        <p style="color:#ddd;margin-bottom:20px;">Fell from a high place</p>
+        <button id="respawn-btn">Respawn</button>
       </div>
 
       <div id="loading">
@@ -225,8 +481,7 @@
     <script>
       // ==================== CONSTANTS ====================
       const CHUNK_SIZE = 16;
-      const WORLD_HEIGHT = 64;
-      const RENDER_DISTANCE = 2;
+      const WORLD_HEIGHT = 1000;
       const GRAVITY = 28;
       const JUMP_FORCE = 9;
       const PLAYER_HEIGHT = 1.62;
@@ -235,34 +490,145 @@
       const SPRINT_SPEED = 5.6;
       const FLY_SPEED = 10;
       const WATER_LEVEL = 0;
-      const PLACE_COOLDOWN = 0.3; // seconds between placing blocks
-      const SHADOW_RESOLUTION = 0//200;
+      const PLACE_COOLDOWN = 0.3;
+      const MAX_HEALTH = 20;
+      const MAX_STACK_SIZE = 64;
 
       // Block types
       const BLOCK = {
         AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, WOOD: 4, LEAVES: 5,
         SAND: 6, WATER: 7, COBBLE: 8, PLANKS: 9, BEDROCK: 10,
-        GRAVEL: 11, COAL_ORE: 12, IRON_ORE: 13, SNOW: 14, GLASS: 15
+        GRAVEL: 11, COAL_ORE: 12, IRON_ORE: 13, SNOW: 14, GLASS: 15,
+        DIAMOND_ORE: 16, GOLD_ORE: 17, CRAFTING_TABLE: 18
+      };
+
+      // Item types (tools, materials, etc.)
+      const ITEM = {
+        // Raw materials (100-199)
+        COAL: 100,
+        IRON_INGOT: 101,
+        GOLD_INGOT: 102,
+        DIAMOND: 103,
+        STICK: 104,
+        
+        // Pickaxes (200-209)
+        WOODEN_PICKAXE: 200,
+        STONE_PICKAXE: 201,
+        IRON_PICKAXE: 202,
+        DIAMOND_PICKAXE: 203,
+        GOLD_PICKAXE: 204,
+        
+        // Axes (210-219)
+        WOODEN_AXE: 210,
+        STONE_AXE: 211,
+        IRON_AXE: 212,
+        DIAMOND_AXE: 213,
+        
+        // Shovels (220-229)
+        WOODEN_SHOVEL: 220,
+        STONE_SHOVEL: 221,
+        IRON_SHOVEL: 222,
+        DIAMOND_SHOVEL: 223,
+        
+        // Swords (230-239)
+        WOODEN_SWORD: 230,
+        STONE_SWORD: 231,
+        IRON_SWORD: 232,
+        DIAMOND_SWORD: 233
       };
 
       // Block data with hardness (time to break in seconds with hand)
       const BLOCK_DATA = {
-        [BLOCK.GRASS]:    { name: 'Grass',       hardness: 0.9,  top: 0x7cba3d, side: 0x8b6914, bottom: 0x6b4423, solid: true },
-        [BLOCK.DIRT]:     { name: 'Dirt',        hardness: 0.75, top: 0x8b6914, side: 0x8b6914, bottom: 0x8b6914, solid: true },
-        [BLOCK.STONE]:    { name: 'Stone',       hardness: 7.5,  top: 0x7f7f7f, side: 0x7f7f7f, bottom: 0x7f7f7f, solid: true },
-        [BLOCK.WOOD]:     { name: 'Oak Log',     hardness: 2.0,  top: 0x9c7f4a, side: 0x5b3413, bottom: 0x9c7f4a, solid: true },
+        [BLOCK.GRASS]:    { name: 'Grass',       hardness: 0.9,  top: 0x7cba3d, side: 0x8b6914, bottom: 0x6b4423, solid: true, toolType: 'shovel' },
+        [BLOCK.DIRT]:     { name: 'Dirt',        hardness: 0.75, top: 0x8b6914, side: 0x8b6914, bottom: 0x8b6914, solid: true, toolType: 'shovel' },
+        [BLOCK.STONE]:    { name: 'Stone',       hardness: 7.5,  top: 0x7f7f7f, side: 0x7f7f7f, bottom: 0x7f7f7f, solid: true, toolType: 'pickaxe', minTool: 'wooden' },
+        [BLOCK.WOOD]:     { name: 'Oak Log',     hardness: 2.0,  top: 0x9c7f4a, side: 0x5b3413, bottom: 0x9c7f4a, solid: true, toolType: 'axe' },
         [BLOCK.LEAVES]:   { name: 'Leaves',      hardness: 0.2,  top: 0x3d8c40, side: 0x3d8c40, bottom: 0x3d8c40, solid: true },
-        [BLOCK.SAND]:     { name: 'Sand',        hardness: 0.75, top: 0xdbd3a0, side: 0xdbd3a0, bottom: 0xdbd3a0, solid: true },
+        [BLOCK.SAND]:     { name: 'Sand',        hardness: 0.75, top: 0xdbd3a0, side: 0xdbd3a0, bottom: 0xdbd3a0, solid: true, toolType: 'shovel' },
         [BLOCK.WATER]:    { name: 'Water',       hardness: -1,   top: 0x3498db, side: 0x3498db, bottom: 0x3498db, solid: false, transparent: true },
-        [BLOCK.COBBLE]:   { name: 'Cobblestone', hardness: 10.0, top: 0x6a6a6a, side: 0x6a6a6a, bottom: 0x6a6a6a, solid: true },
-        [BLOCK.PLANKS]:   { name: 'Oak Planks',  hardness: 2.0,  top: 0xb8945f, side: 0xb8945f, bottom: 0xb8945f, solid: true },
+        [BLOCK.COBBLE]:   { name: 'Cobblestone', hardness: 10.0, top: 0x6a6a6a, side: 0x6a6a6a, bottom: 0x6a6a6a, solid: true, toolType: 'pickaxe', minTool: 'wooden' },
+        [BLOCK.PLANKS]:   { name: 'Oak Planks',  hardness: 2.0,  top: 0xb8945f, side: 0xb8945f, bottom: 0xb8945f, solid: true, toolType: 'axe' },
         [BLOCK.BEDROCK]:  { name: 'Bedrock',     hardness: -1,   top: 0x333333, side: 0x333333, bottom: 0x333333, solid: true },
-        [BLOCK.GRAVEL]:   { name: 'Gravel',      hardness: 0.9,  top: 0x7a7a7a, side: 0x7a7a7a, bottom: 0x7a7a7a, solid: true },
-        [BLOCK.COAL_ORE]: { name: 'Coal Ore',    hardness: 4.5,  top: 0x4a4a4a, side: 0x4a4a4a, bottom: 0x4a4a4a, solid: true },
-        [BLOCK.IRON_ORE]: { name: 'Iron Ore',    hardness: 4.5,  top: 0x8a7560, side: 0x8a7560, bottom: 0x8a7560, solid: true },
-        [BLOCK.SNOW]:     { name: 'Snow',        hardness: 0.15, top: 0xf0f0f0, side: 0xe8e8e8, bottom: 0xdedede, solid: true },
-        [BLOCK.GLASS]:    { name: 'Glass',       hardness: 0.45, top: 0xc8e8ff, side: 0xc8e8ff, bottom: 0xc8e8ff, solid: true, transparent: true }
+        [BLOCK.GRAVEL]:   { name: 'Gravel',      hardness: 0.9,  top: 0x7a7a7a, side: 0x7a7a7a, bottom: 0x7a7a7a, solid: true, toolType: 'shovel' },
+        [BLOCK.COAL_ORE]: { name: 'Coal Ore',    hardness: 4.5,  top: 0x4a4a4a, side: 0x4a4a4a, bottom: 0x4a4a4a, solid: true, toolType: 'pickaxe', minTool: 'wooden', drops: ITEM.COAL },
+        [BLOCK.IRON_ORE]: { name: 'Iron Ore',    hardness: 4.5,  top: 0x8a7560, side: 0x8a7560, bottom: 0x8a7560, solid: true, toolType: 'pickaxe', minTool: 'stone' },
+        [BLOCK.SNOW]:     { name: 'Snow',        hardness: 0.15, top: 0xf0f0f0, side: 0xe8e8e8, bottom: 0xdedede, solid: true, toolType: 'shovel' },
+        [BLOCK.GLASS]:    { name: 'Glass',       hardness: 0.45, top: 0xc8e8ff, side: 0xc8e8ff, bottom: 0xc8e8ff, solid: true, transparent: true, drops: null },
+        [BLOCK.DIAMOND_ORE]: { name: 'Diamond Ore', hardness: 4.5, top: 0x4aedd9, side: 0x4aedd9, bottom: 0x4aedd9, solid: true, toolType: 'pickaxe', minTool: 'iron', drops: ITEM.DIAMOND },
+        [BLOCK.GOLD_ORE]: { name: 'Gold Ore',    hardness: 4.5,  top: 0xfcee4b, side: 0xfcee4b, bottom: 0xfcee4b, solid: true, toolType: 'pickaxe', minTool: 'iron' },
+        [BLOCK.CRAFTING_TABLE]: { name: 'Crafting Table', hardness: 2.5, top: 0xbc9862, side: 0x9c7f4a, bottom: 0xb8945f, solid: true, toolType: 'axe' }
       };
+
+      // Item data
+      const ITEM_DATA = {
+        [ITEM.COAL]:       { name: 'Coal',       color: 0x333333, stackable: true },
+        [ITEM.IRON_INGOT]: { name: 'Iron Ingot', color: 0xd8d8d8, stackable: true },
+        [ITEM.GOLD_INGOT]: { name: 'Gold Ingot', color: 0xfcee4b, stackable: true },
+        [ITEM.DIAMOND]:    { name: 'Diamond',    color: 0x4aedd9, stackable: true },
+        [ITEM.STICK]:      { name: 'Stick',      color: 0x8b6914, stackable: true },
+        
+        [ITEM.WOODEN_PICKAXE]:  { name: 'Wooden Pickaxe',  color: 0x8b6914, durability: 60,  miningSpeed: 2, toolType: 'pickaxe', toolTier: 'wooden', isTool: true },
+        [ITEM.STONE_PICKAXE]:   { name: 'Stone Pickaxe',   color: 0x7f7f7f, durability: 132, miningSpeed: 4, toolType: 'pickaxe', toolTier: 'stone', isTool: true },
+        [ITEM.IRON_PICKAXE]:    { name: 'Iron Pickaxe',    color: 0xd8d8d8, durability: 251, miningSpeed: 6, toolType: 'pickaxe', toolTier: 'iron', isTool: true },
+        [ITEM.DIAMOND_PICKAXE]: { name: 'Diamond Pickaxe', color: 0x4aedd9, durability: 1562, miningSpeed: 8, toolType: 'pickaxe', toolTier: 'diamond', isTool: true },
+        [ITEM.GOLD_PICKAXE]:    { name: 'Gold Pickaxe',    color: 0xfcee4b, durability: 33,  miningSpeed: 12, toolType: 'pickaxe', toolTier: 'gold', isTool: true },
+        
+        [ITEM.WOODEN_AXE]:  { name: 'Wooden Axe',  color: 0x8b6914, durability: 60,  miningSpeed: 2, toolType: 'axe', toolTier: 'wooden', isTool: true },
+        [ITEM.STONE_AXE]:   { name: 'Stone Axe',   color: 0x7f7f7f, durability: 132, miningSpeed: 4, toolType: 'axe', toolTier: 'stone', isTool: true },
+        [ITEM.IRON_AXE]:    { name: 'Iron Axe',    color: 0xd8d8d8, durability: 251, miningSpeed: 6, toolType: 'axe', toolTier: 'iron', isTool: true },
+        [ITEM.DIAMOND_AXE]: { name: 'Diamond Axe', color: 0x4aedd9, durability: 1562, miningSpeed: 8, toolType: 'axe', toolTier: 'diamond', isTool: true },
+        
+        [ITEM.WOODEN_SHOVEL]:  { name: 'Wooden Shovel',  color: 0x8b6914, durability: 60,  miningSpeed: 2, toolType: 'shovel', toolTier: 'wooden', isTool: true },
+        [ITEM.STONE_SHOVEL]:   { name: 'Stone Shovel',   color: 0x7f7f7f, durability: 132, miningSpeed: 4, toolType: 'shovel', toolTier: 'stone', isTool: true },
+        [ITEM.IRON_SHOVEL]:    { name: 'Iron Shovel',    color: 0xd8d8d8, durability: 251, miningSpeed: 6, toolType: 'shovel', toolTier: 'iron', isTool: true },
+        [ITEM.DIAMOND_SHOVEL]: { name: 'Diamond Shovel', color: 0x4aedd9, durability: 1562, miningSpeed: 8, toolType: 'shovel', toolTier: 'diamond', isTool: true },
+        
+        [ITEM.WOODEN_SWORD]: { name: 'Wooden Sword', color: 0x8b6914, durability: 60,  damage: 4, isTool: true },
+        [ITEM.STONE_SWORD]:  { name: 'Stone Sword',  color: 0x7f7f7f, durability: 132, damage: 5, isTool: true },
+        [ITEM.IRON_SWORD]:   { name: 'Iron Sword',   color: 0xd8d8d8, durability: 251, damage: 6, isTool: true },
+        [ITEM.DIAMOND_SWORD]:{ name: 'Diamond Sword',color: 0x4aedd9, durability: 1562, damage: 7, isTool: true }
+      };
+
+      // Tool tier hierarchy for mining requirements
+      const TOOL_TIERS = ['wooden', 'stone', 'iron', 'diamond', 'gold'];
+
+      // Crafting recipes
+      const RECIPES = [
+        // Basic items
+        { result: BLOCK.PLANKS, resultCount: 4, ingredients: [{ item: BLOCK.WOOD, count: 1 }], name: 'Oak Planks' },
+        { result: ITEM.STICK, resultCount: 4, ingredients: [{ item: BLOCK.PLANKS, count: 2 }], name: 'Sticks' },
+        { result: BLOCK.CRAFTING_TABLE, resultCount: 1, ingredients: [{ item: BLOCK.PLANKS, count: 4 }], name: 'Crafting Table' },
+        
+        // Wooden tools
+        { result: ITEM.WOODEN_PICKAXE, resultCount: 1, ingredients: [{ item: BLOCK.PLANKS, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Wooden Pickaxe' },
+        { result: ITEM.WOODEN_AXE, resultCount: 1, ingredients: [{ item: BLOCK.PLANKS, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Wooden Axe' },
+        { result: ITEM.WOODEN_SHOVEL, resultCount: 1, ingredients: [{ item: BLOCK.PLANKS, count: 1 }, { item: ITEM.STICK, count: 2 }], name: 'Wooden Shovel' },
+        { result: ITEM.WOODEN_SWORD, resultCount: 1, ingredients: [{ item: BLOCK.PLANKS, count: 2 }, { item: ITEM.STICK, count: 1 }], name: 'Wooden Sword' },
+        
+        // Stone tools
+        { result: ITEM.STONE_PICKAXE, resultCount: 1, ingredients: [{ item: BLOCK.COBBLE, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Stone Pickaxe' },
+        { result: ITEM.STONE_AXE, resultCount: 1, ingredients: [{ item: BLOCK.COBBLE, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Stone Axe' },
+        { result: ITEM.STONE_SHOVEL, resultCount: 1, ingredients: [{ item: BLOCK.COBBLE, count: 1 }, { item: ITEM.STICK, count: 2 }], name: 'Stone Shovel' },
+        { result: ITEM.STONE_SWORD, resultCount: 1, ingredients: [{ item: BLOCK.COBBLE, count: 2 }, { item: ITEM.STICK, count: 1 }], name: 'Stone Sword' },
+        
+        // Iron tools
+        { result: ITEM.IRON_PICKAXE, resultCount: 1, ingredients: [{ item: ITEM.IRON_INGOT, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Iron Pickaxe' },
+        { result: ITEM.IRON_AXE, resultCount: 1, ingredients: [{ item: ITEM.IRON_INGOT, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Iron Axe' },
+        { result: ITEM.IRON_SHOVEL, resultCount: 1, ingredients: [{ item: ITEM.IRON_INGOT, count: 1 }, { item: ITEM.STICK, count: 2 }], name: 'Iron Shovel' },
+        { result: ITEM.IRON_SWORD, resultCount: 1, ingredients: [{ item: ITEM.IRON_INGOT, count: 2 }, { item: ITEM.STICK, count: 1 }], name: 'Iron Sword' },
+        
+        // Diamond tools
+        { result: ITEM.DIAMOND_PICKAXE, resultCount: 1, ingredients: [{ item: ITEM.DIAMOND, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Diamond Pickaxe' },
+        { result: ITEM.DIAMOND_AXE, resultCount: 1, ingredients: [{ item: ITEM.DIAMOND, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Diamond Axe' },
+        { result: ITEM.DIAMOND_SHOVEL, resultCount: 1, ingredients: [{ item: ITEM.DIAMOND, count: 1 }, { item: ITEM.STICK, count: 2 }], name: 'Diamond Shovel' },
+        { result: ITEM.DIAMOND_SWORD, resultCount: 1, ingredients: [{ item: ITEM.DIAMOND, count: 2 }, { item: ITEM.STICK, count: 1 }], name: 'Diamond Sword' },
+        
+        // Smelting (simplified)
+        { result: ITEM.IRON_INGOT, resultCount: 1, ingredients: [{ item: BLOCK.IRON_ORE, count: 1 }, { item: ITEM.COAL, count: 1 }], name: 'Smelt Iron' },
+        { result: ITEM.GOLD_INGOT, resultCount: 1, ingredients: [{ item: BLOCK.GOLD_ORE, count: 1 }, { item: ITEM.COAL, count: 1 }], name: 'Smelt Gold' },
+        { result: BLOCK.GLASS, resultCount: 1, ingredients: [{ item: BLOCK.SAND, count: 1 }, { item: ITEM.COAL, count: 1 }], name: 'Smelt Glass' },
+        { result: BLOCK.STONE, resultCount: 1, ingredients: [{ item: BLOCK.COBBLE, count: 1 }, { item: ITEM.COAL, count: 1 }], name: 'Smelt Stone' }
+      ];
       
       const FACE_DATA = {
         top:    { dir: [0,1,0],  shade: 1.0, corners: [{pos:[0,1,0],neighbors:[[-1,1,0],[0,1,-1],[-1,1,-1]]},{pos:[0,1,1],neighbors:[[-1,1,0],[0,1,1],[-1,1,1]]},{pos:[1,1,1],neighbors:[[1,1,0],[0,1,1],[1,1,1]]},{pos:[1,1,0],neighbors:[[1,1,0],[0,1,-1],[1,1,-1]]}]},
@@ -343,11 +709,19 @@
       // ==================== GAME CLASS ====================
       class MinecraftGame {
         constructor() {
+          // Settings
+          this.settings = {
+            renderDistance: 2,
+            shadowsEnabled: false,
+            shadowDistance: 200,
+            fov: 80,
+            sensitivity: 1.0,
+            fullscreen: false
+          };
+          
           this.scene = new THREE.Scene();
-          this.camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 0.01, 500);
+          this.camera = new THREE.PerspectiveCamera(this.settings.fov, window.innerWidth / window.innerHeight, 0.01, 500);
           this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
-          this.renderer.shadowMap.enabled = true;
-          this.renderer.shadowMap.type = THREE.VSMShadowMap;
           this.renderer.setSize(window.innerWidth, window.innerHeight);
           this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
           this.renderer.setClearColor(0x87ceeb);
@@ -366,15 +740,19 @@
             onGround: false,
             yaw: 0,
             pitch: 0,
-            inWater: false
+            inWater: false,
+            health: MAX_HEALTH,
+            fallStartY: null,
+            isDead: false
           };
 
           this.keys = {};
           this.selectedSlot = 0;
-          this.hotbarBlocks = [
-            BLOCK.GRASS, BLOCK.DIRT, BLOCK.STONE, BLOCK.COBBLE,
-            BLOCK.PLANKS, BLOCK.WOOD, BLOCK.GLASS, BLOCK.SAND, BLOCK.LEAVES
-          ];
+          
+          // Inventory system: each slot has { id, count, durability? }
+          this.hotbarSlots = new Array(9).fill(null);
+          this.inventorySlots = new Array(27).fill(null);
+          this.inventoryOpen = false;
 
           this.isPlaying = false;
           this.isPaused = false;
@@ -394,7 +772,6 @@
 
           this.particleSystem = [];
           
-          // Game mode: 'survival' or 'creative'
           this.gameMode = 'survival';
           this.isFlying = false;
           this.lastSpacePress = 0;
@@ -406,7 +783,10 @@
           this.setupLighting();
           this.setupHighlight();
           this.setupHotbar();
+          this.setupHealthBar();
           this.setupEventListeners();
+          this.setupSettingsUI();
+          this.setupInventoryUI();
         }
 
         setupLighting() {
@@ -415,34 +795,58 @@
         
           this.sun = new THREE.DirectionalLight(0xfff5e0, 1.2);
           this.sun.position.set(100, 200, 50);
-          if (SHADOW_RESOLUTION) {
-            this.sun.castShadow = true;
-            
-            this.sun.shadow.mapSize.set(SHADOW_RESOLUTION*CHUNK_SIZE*RENDER_DISTANCE, SHADOW_RESOLUTION*CHUNK_SIZE*RENDER_DISTANCE); // try 2048 if too slow
-            
-            const d = CHUNK_SIZE*RENDER_DISTANCE;
-            this.sun.shadow.camera.left = -d;
-            this.sun.shadow.camera.right = d;
-            this.sun.shadow.camera.top = d;
-            this.sun.shadow.camera.bottom = -d;
-            
-            this.sun.shadow.camera.near = 1;
-            this.sun.shadow.camera.far = 350;
-            
-            // VSM-specific smoothing
-            this.sun.shadow.blurSamples = 4; // 8–32
-            
-            // Kill striping (acne) without reintroducing big peter-panning
-            this.sun.shadow.bias = -0.0002;       // try -0.0001 to -0.0005
-            this.sun.shadow.normalBias = 0;   // keep VERY small (0 to 0.003)
-          }
           
           this.sunTarget = new THREE.Object3D();
           this.scene.add(this.sunTarget);
           this.sun.target = this.sunTarget;
           this.scene.add(this.sun);
         
-          const viewDistance = CHUNK_SIZE * RENDER_DISTANCE;
+          this.updateFog();
+        }
+
+        updateShadows() {
+          if (this.settings.shadowsEnabled) {
+            this.renderer.shadowMap.enabled = true;
+            this.renderer.shadowMap.type = THREE.VSMShadowMap;
+            this.sun.castShadow = true;
+            
+            const res = this.settings.shadowDistance;
+            this.sun.shadow.mapSize.set(res * 8, res * 8);
+            
+            const d = this.settings.shadowDistance / 2;
+            this.sun.shadow.camera.left = -d;
+            this.sun.shadow.camera.right = d;
+            this.sun.shadow.camera.top = d;
+            this.sun.shadow.camera.bottom = -d;
+            this.sun.shadow.camera.near = 1;
+            this.sun.shadow.camera.far = 350;
+            this.sun.shadow.blurSamples = 4;
+            this.sun.shadow.bias = -0.0002;
+            this.sun.shadow.normalBias = 0;
+            this.sun.shadow.camera.updateProjectionMatrix();
+            
+            // Update existing meshes
+            this.chunkMeshes.forEach((group) => {
+              group.children.forEach(mesh => {
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+              });
+            });
+          } else {
+            this.renderer.shadowMap.enabled = false;
+            this.sun.castShadow = false;
+            
+            this.chunkMeshes.forEach((group) => {
+              group.children.forEach(mesh => {
+                mesh.castShadow = false;
+                mesh.receiveShadow = false;
+              });
+            });
+          }
+        }
+
+        updateFog() {
+          const viewDistance = CHUNK_SIZE * this.settings.renderDistance;
           this.scene.fog = new THREE.Fog(0x87ceeb, viewDistance * 0.5, viewDistance * 0.9);
         }
 
@@ -454,37 +858,277 @@
           this.scene.add(this.highlight);
         }
 
-        setupHotbar() {
-          const container = document.getElementById('hotbar');
+        setupHealthBar() {
+          const container = document.getElementById('health-bar');
           container.innerHTML = '';
+          
+          for (let i = 0; i < 10; i++) {
+            const heart = document.createElement('div');
+            heart.className = 'heart';
+            const fill = document.createElement('div');
+            fill.className = 'heart-fill';
+            fill.id = `heart-${i}`;
+            heart.appendChild(fill);
+            container.appendChild(heart);
+          }
+          
+          this.updateHealthBar();
+        }
 
-          this.hotbarBlocks.forEach((blockType, i) => {
-            const slot = document.createElement('div');
-            slot.className = 'hotbar-slot' + (i === this.selectedSlot ? ' selected' : '');
+        updateHealthBar() {
+          const health = this.player.health;
+          for (let i = 0; i < 10; i++) {
+            const fill = document.getElementById(`heart-${i}`);
+            const heartValue = (i + 1) * 2;
+            
+            if (health >= heartValue) {
+              fill.className = 'heart-fill';
+            } else if (health >= heartValue - 1) {
+              fill.className = 'heart-fill half';
+            } else {
+              fill.className = 'heart-fill empty';
+            }
+          }
+          
+          // Hide health bar in creative mode
+          document.getElementById('health-bar').style.display = 
+            this.gameMode === 'creative' ? 'none' : 'flex';
+        }
 
+        setupSettingsUI() {
+          const panel = document.getElementById('settings-panel');
+          
+          // Render distance
+          const rdSlider = document.getElementById('setting-render-distance');
+          rdSlider.value = this.settings.renderDistance;
+          document.getElementById('render-distance-value').textContent = this.settings.renderDistance;
+          rdSlider.oninput = () => {
+            this.settings.renderDistance = parseInt(rdSlider.value);
+            document.getElementById('render-distance-value').textContent = this.settings.renderDistance;
+          };
+          
+          // Shadows
+          const shadowCheck = document.getElementById('setting-shadows');
+          shadowCheck.checked = this.settings.shadowsEnabled;
+          document.getElementById('shadow-distance-row').style.display = 
+            this.settings.shadowsEnabled ? 'flex' : 'none';
+          shadowCheck.onchange = () => {
+            this.settings.shadowsEnabled = shadowCheck.checked;
+            document.getElementById('shadow-distance-row').style.display = 
+              shadowCheck.checked ? 'flex' : 'none';
+            if (this.isPlaying) this.updateShadows();
+          };
+          
+          // Shadow distance
+          const sdSlider = document.getElementById('setting-shadow-distance');
+          sdSlider.value = this.settings.shadowDistance;
+          document.getElementById('shadow-distance-value').textContent = this.settings.shadowDistance;
+          sdSlider.oninput = () => {
+            this.settings.shadowDistance = parseInt(sdSlider.value);
+            document.getElementById('shadow-distance-value').textContent = this.settings.shadowDistance;
+            if (this.isPlaying && this.settings.shadowsEnabled) this.updateShadows();
+          };
+          
+          // FOV
+          const fovSlider = document.getElementById('setting-fov');
+          fovSlider.value = this.settings.fov;
+          document.getElementById('fov-value').textContent = this.settings.fov;
+          fovSlider.oninput = () => {
+            this.settings.fov = parseInt(fovSlider.value);
+            document.getElementById('fov-value').textContent = this.settings.fov;
+            this.camera.fov = this.settings.fov;
+            this.camera.updateProjectionMatrix();
+          };
+          
+          // Sensitivity
+          const sensSlider = document.getElementById('setting-sensitivity');
+          sensSlider.value = this.settings.sensitivity;
+          document.getElementById('sensitivity-value').textContent = this.settings.sensitivity.toFixed(1);
+          sensSlider.oninput = () => {
+            this.settings.sensitivity = parseFloat(sensSlider.value);
+            document.getElementById('sensitivity-value').textContent = this.settings.sensitivity.toFixed(1);
+          };
+          
+          // Fullscreen
+          const fsCheck = document.getElementById('setting-fullscreen');
+          fsCheck.checked = this.settings.fullscreen;
+          fsCheck.onchange = () => {
+            this.settings.fullscreen = fsCheck.checked;
+            if (fsCheck.checked) {
+              document.documentElement.requestFullscreen?.();
+            } else {
+              document.exitFullscreen?.();
+            }
+          };
+          
+          // Settings buttons
+          document.getElementById('settings-btn').onclick = () => {
+            panel.classList.add('visible');
+          };
+          
+          document.getElementById('settings-close-btn').onclick = () => {
+            panel.classList.remove('visible');
+            this.updateFog();
+          };
+        }
+
+        setupInventoryUI() {
+          this.updateInventoryUI();
+        }
+
+        updateInventoryUI() {
+          const mainInv = document.getElementById('main-inventory');
+          const hotbarInv = document.getElementById('hotbar-inventory');
+          const recipeList = document.getElementById('recipe-list');
+          
+          mainInv.innerHTML = '';
+          hotbarInv.innerHTML = '';
+          recipeList.innerHTML = '';
+          
+          // Main inventory slots
+          for (let i = 0; i < 27; i++) {
+            const slot = this.createInventorySlot(this.inventorySlots[i], 'inventory', i);
+            mainInv.appendChild(slot);
+          }
+          
+          // Hotbar slots in inventory
+          for (let i = 0; i < 9; i++) {
+            const slot = this.createInventorySlot(this.hotbarSlots[i], 'hotbar', i);
+            hotbarInv.appendChild(slot);
+          }
+          
+          // Recipes
+          const recipes = this.gameMode === 'creative' ? this.getCreativeItems() : RECIPES;
+          
+          if (this.gameMode === 'creative') {
+            // Show all blocks and items for creative mode
+            recipes.forEach(item => {
+              const recipeEl = document.createElement('div');
+              recipeEl.className = 'recipe-item can-craft';
+              recipeEl.innerHTML = `
+                <span class="recipe-result">${item.name}</span>
+              `;
+              recipeEl.onclick = () => this.giveItem(item.id, 64);
+              recipeList.appendChild(recipeEl);
+            });
+          } else {
+            // Show actual recipes for survival
+            RECIPES.forEach(recipe => {
+              const canCraft = this.canCraftRecipe(recipe);
+              const recipeEl = document.createElement('div');
+              recipeEl.className = 'recipe-item' + (canCraft ? ' can-craft' : '');
+              
+              const ingredientStr = recipe.ingredients.map(ing => {
+                const name = this.getItemName(ing.item);
+                const has = this.countItem(ing.item);
+                return `${has}/${ing.count} ${name}`;
+              }).join(' + ');
+              
+              recipeEl.innerHTML = `
+                <span class="recipe-ingredients">${ingredientStr}</span>
+                <span class="recipe-arrow">→</span>
+                <span class="recipe-result">${recipe.resultCount}x ${recipe.name}</span>
+              `;
+              
+              if (canCraft) {
+                recipeEl.onclick = () => this.craftRecipe(recipe);
+              }
+              
+              recipeList.appendChild(recipeEl);
+            });
+          }
+        }
+
+        getCreativeItems() {
+          const items = [];
+          
+          // Add all blocks
+          for (const [id, data] of Object.entries(BLOCK_DATA)) {
+            items.push({ id: parseInt(id), name: data.name });
+          }
+          
+          // Add all items
+          for (const [id, data] of Object.entries(ITEM_DATA)) {
+            items.push({ id: parseInt(id), name: data.name });
+          }
+          
+          return items;
+        }
+
+        createInventorySlot(slotData, type, index) {
+          const slot = document.createElement('div');
+          slot.className = 'inv-slot';
+          
+          if (slotData) {
             const canvas = document.createElement('canvas');
-            canvas.width = 32; canvas.height = 32;
-            this.drawBlockIcon(canvas, blockType);
+            canvas.width = 32;
+            canvas.height = 32;
+            this.drawItemIcon(canvas, slotData.id);
             slot.appendChild(canvas);
+            
+            if (slotData.count > 1) {
+              const count = document.createElement('span');
+              count.className = 'slot-count';
+              count.textContent = slotData.count;
+              slot.appendChild(count);
+            }
+            
+            // Durability bar for tools
+            const itemData = ITEM_DATA[slotData.id];
+            if (itemData?.durability && slotData.durability !== undefined) {
+              const durBar = document.createElement('div');
+              durBar.className = 'durability-bar';
+              const durFill = document.createElement('div');
+              durFill.className = 'durability-fill';
+              durFill.style.width = (slotData.durability / itemData.durability * 100) + '%';
+              durFill.style.background = this.getDurabilityColor(slotData.durability / itemData.durability);
+              durBar.appendChild(durFill);
+              slot.appendChild(durBar);
+            }
+          }
+          
+          slot.onclick = () => this.handleInventoryClick(type, index);
+          
+          return slot;
+        }
 
-            const num = document.createElement('span');
-            num.className = 'slot-number';
-            num.textContent = i + 1;
-            slot.appendChild(num);
+        getDurabilityColor(ratio) {
+          if (ratio > 0.6) return '#4ade80';
+          if (ratio > 0.3) return '#fbbf24';
+          return '#ef4444';
+        }
 
-            const name = document.createElement('span');
-            name.className = 'slot-name';
-            name.textContent = BLOCK_DATA[blockType].name;
-            slot.appendChild(name);
+        handleInventoryClick(type, index) {
+          if (this.gameMode === 'creative') return;
+          
+          // Simple swap logic
+          const slots = type === 'hotbar' ? this.hotbarSlots : this.inventorySlots;
+          const item = slots[index];
+          
+          // For now, just log - could implement drag/drop
+          console.log('Clicked', type, index, item);
+        }
 
-            slot.onclick = () => { this.selectedSlot = i; this.updateHotbar(); };
-            container.appendChild(slot);
-          });
+        setupHotbar() {
+          this.updateHotbar();
+        }
+
+        drawItemIcon(canvas, itemId) {
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, 32, 32);
+          
+          // Check if it's a block or item
+          if (BLOCK_DATA[itemId]) {
+            this.drawBlockIcon(canvas, itemId);
+          } else if (ITEM_DATA[itemId]) {
+            this.drawToolIcon(canvas, itemId);
+          }
         }
 
         drawBlockIcon(canvas, type) {
           const ctx = canvas.getContext('2d');
           const data = BLOCK_DATA[type];
+          if (!data) return;
 
           const toRGB = hex => `rgb(${(hex>>16)&255},${(hex>>8)&255},${hex&255})`;
           const darken = (hex, f) => {
@@ -508,10 +1152,274 @@
           ctx.closePath(); ctx.fill();
         }
 
+        drawToolIcon(canvas, itemId) {
+          const ctx = canvas.getContext('2d');
+          const data = ITEM_DATA[itemId];
+          if (!data) return;
+          
+          const toRGB = hex => `rgb(${(hex>>16)&255},${(hex>>8)&255},${hex&255})`;
+          
+          ctx.fillStyle = toRGB(data.color);
+          
+          if (data.toolType === 'pickaxe') {
+            // Pickaxe shape
+            ctx.fillRect(14, 2, 4, 4);
+            ctx.fillRect(10, 6, 12, 4);
+            ctx.fillRect(14, 10, 4, 18);
+          } else if (data.toolType === 'axe') {
+            // Axe shape
+            ctx.fillRect(18, 2, 8, 8);
+            ctx.fillRect(14, 6, 4, 4);
+            ctx.fillRect(14, 10, 4, 18);
+          } else if (data.toolType === 'shovel') {
+            // Shovel shape
+            ctx.fillRect(12, 2, 8, 10);
+            ctx.fillRect(14, 12, 4, 16);
+          } else if (data.name?.includes('Sword')) {
+            // Sword shape
+            ctx.fillRect(14, 2, 4, 20);
+            ctx.fillRect(10, 22, 12, 4);
+            ctx.fillRect(14, 26, 4, 4);
+          } else {
+            // Generic item (diamond, coal, etc)
+            ctx.beginPath();
+            ctx.arc(16, 16, 10, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
         updateHotbar() {
-          document.querySelectorAll('.hotbar-slot').forEach((slot, i) => {
-            slot.classList.toggle('selected', i === this.selectedSlot);
-          });
+          const container = document.getElementById('hotbar');
+          container.innerHTML = '';
+
+          for (let i = 0; i < 9; i++) {
+            const slotData = this.hotbarSlots[i];
+            const slot = document.createElement('div');
+            slot.className = 'hotbar-slot' + (i === this.selectedSlot ? ' selected' : '');
+
+            if (slotData) {
+              const canvas = document.createElement('canvas');
+              canvas.width = 32;
+              canvas.height = 32;
+              this.drawItemIcon(canvas, slotData.id);
+              slot.appendChild(canvas);
+              
+              if (slotData.count > 1) {
+                const count = document.createElement('span');
+                count.className = 'slot-count';
+                count.textContent = slotData.count;
+                slot.appendChild(count);
+              }
+
+              const name = document.createElement('span');
+              name.className = 'slot-name';
+              name.textContent = this.getItemName(slotData.id);
+              slot.appendChild(name);
+              
+              // Durability bar
+              const itemData = ITEM_DATA[slotData.id];
+              if (itemData?.durability && slotData.durability !== undefined) {
+                const durBar = document.createElement('div');
+                durBar.className = 'durability-bar';
+                const durFill = document.createElement('div');
+                durFill.className = 'durability-fill';
+                durFill.style.width = (slotData.durability / itemData.durability * 100) + '%';
+                durFill.style.background = this.getDurabilityColor(slotData.durability / itemData.durability);
+                durBar.appendChild(durFill);
+                slot.appendChild(durBar);
+              }
+            }
+
+            const num = document.createElement('span');
+            num.className = 'slot-number';
+            num.textContent = i + 1;
+            slot.appendChild(num);
+
+            slot.onclick = () => { this.selectedSlot = i; this.updateHotbar(); };
+            container.appendChild(slot);
+          }
+        }
+
+        getItemName(itemId) {
+          if (BLOCK_DATA[itemId]) return BLOCK_DATA[itemId].name;
+          if (ITEM_DATA[itemId]) return ITEM_DATA[itemId].name;
+          return 'Unknown';
+        }
+
+        getHeldItem() {
+          return this.hotbarSlots[this.selectedSlot];
+        }
+
+        getHeldTool() {
+          const held = this.getHeldItem();
+          if (!held) return null;
+          const data = ITEM_DATA[held.id];
+          if (data?.isTool) return { ...data, durability: held.durability, slotIndex: this.selectedSlot };
+          return null;
+        }
+
+        // Inventory management
+        addToInventory(itemId, count = 1, durability = undefined) {
+          // Check if item is stackable
+          const itemData = ITEM_DATA[itemId];
+          const blockData = BLOCK_DATA[itemId];
+          const isStackable = itemData?.stackable !== false && !itemData?.isTool;
+          
+          let remaining = count;
+          
+          if (isStackable) {
+            // Try to stack in hotbar first
+            for (let i = 0; i < this.hotbarSlots.length && remaining > 0; i++) {
+              const slot = this.hotbarSlots[i];
+              if (slot && slot.id === itemId && slot.count < MAX_STACK_SIZE) {
+                const add = Math.min(remaining, MAX_STACK_SIZE - slot.count);
+                slot.count += add;
+                remaining -= add;
+              }
+            }
+            
+            // Then inventory
+            for (let i = 0; i < this.inventorySlots.length && remaining > 0; i++) {
+              const slot = this.inventorySlots[i];
+              if (slot && slot.id === itemId && slot.count < MAX_STACK_SIZE) {
+                const add = Math.min(remaining, MAX_STACK_SIZE - slot.count);
+                slot.count += add;
+                remaining -= add;
+              }
+            }
+          }
+          
+          // Find empty slots for remaining items
+          while (remaining > 0) {
+            const addCount = isStackable ? Math.min(remaining, MAX_STACK_SIZE) : 1;
+            let added = false;
+            
+            // Try hotbar first
+            for (let i = 0; i < this.hotbarSlots.length; i++) {
+              if (!this.hotbarSlots[i]) {
+                this.hotbarSlots[i] = { 
+                  id: itemId, 
+                  count: addCount,
+                  durability: durability !== undefined ? durability : (ITEM_DATA[itemId]?.durability)
+                };
+                remaining -= addCount;
+                added = true;
+                break;
+              }
+            }
+            
+            // Then inventory
+            if (!added) {
+              for (let i = 0; i < this.inventorySlots.length; i++) {
+                if (!this.inventorySlots[i]) {
+                  this.inventorySlots[i] = { 
+                    id: itemId, 
+                    count: addCount,
+                    durability: durability !== undefined ? durability : (ITEM_DATA[itemId]?.durability)
+                  };
+                  remaining -= addCount;
+                  added = true;
+                  break;
+                }
+              }
+            }
+            
+            if (!added) break; // Inventory full
+          }
+          
+          this.updateHotbar();
+          if (this.inventoryOpen) this.updateInventoryUI();
+          
+          return remaining === 0;
+        }
+
+        removeFromInventory(itemId, count = 1) {
+          let remaining = count;
+          
+          // Remove from hotbar first
+          for (let i = 0; i < this.hotbarSlots.length && remaining > 0; i++) {
+            const slot = this.hotbarSlots[i];
+            if (slot && slot.id === itemId) {
+              const remove = Math.min(remaining, slot.count);
+              slot.count -= remove;
+              remaining -= remove;
+              if (slot.count <= 0) this.hotbarSlots[i] = null;
+            }
+          }
+          
+          // Then from inventory
+          for (let i = 0; i < this.inventorySlots.length && remaining > 0; i++) {
+            const slot = this.inventorySlots[i];
+            if (slot && slot.id === itemId) {
+              const remove = Math.min(remaining, slot.count);
+              slot.count -= remove;
+              remaining -= remove;
+              if (slot.count <= 0) this.inventorySlots[i] = null;
+            }
+          }
+          
+          this.updateHotbar();
+          if (this.inventoryOpen) this.updateInventoryUI();
+          
+          return remaining === 0;
+        }
+
+        countItem(itemId) {
+          let count = 0;
+          
+          for (const slot of this.hotbarSlots) {
+            if (slot && slot.id === itemId) count += slot.count;
+          }
+          
+          for (const slot of this.inventorySlots) {
+            if (slot && slot.id === itemId) count += slot.count;
+          }
+          
+          return count;
+        }
+
+        giveItem(itemId, count = 1) {
+          const itemData = ITEM_DATA[itemId];
+          this.addToInventory(itemId, count, itemData?.durability);
+        }
+
+        canCraftRecipe(recipe) {
+          for (const ing of recipe.ingredients) {
+            if (this.countItem(ing.item) < ing.count) return false;
+          }
+          return true;
+        }
+
+        craftRecipe(recipe) {
+          if (!this.canCraftRecipe(recipe)) return false;
+          
+          // Remove ingredients
+          for (const ing of recipe.ingredients) {
+            this.removeFromInventory(ing.item, ing.count);
+          }
+          
+          // Add result
+          const resultData = ITEM_DATA[recipe.result];
+          this.addToInventory(recipe.result, recipe.resultCount, resultData?.durability);
+          
+          this.updateInventoryUI();
+          return true;
+        }
+
+        damageTool(slotIndex) {
+          const slot = this.hotbarSlots[slotIndex];
+          if (!slot) return;
+          
+          const itemData = ITEM_DATA[slot.id];
+          if (!itemData?.isTool) return;
+          
+          slot.durability--;
+          
+          if (slot.durability <= 0) {
+            this.hotbarSlots[slotIndex] = null;
+          }
+          
+          this.updateHotbar();
         }
 
         updateGameModeIndicator() {
@@ -523,6 +1431,8 @@
             indicator.textContent = 'Survival';
             indicator.className = 'survival';
           }
+          this.updateHealthBar();
+          if (this.inventoryOpen) this.updateInventoryUI();
         }
 
         toggleGameMode() {
@@ -530,7 +1440,26 @@
           if (this.gameMode === 'survival') {
             this.isFlying = false;
           }
+          if (this.gameMode === 'creative') {
+            this.player.health = MAX_HEALTH;
+          }
           this.updateGameModeIndicator();
+        }
+
+        toggleInventory() {
+          this.inventoryOpen = !this.inventoryOpen;
+          const invScreen = document.getElementById('inventory-screen');
+          
+          if (this.inventoryOpen) {
+            invScreen.classList.add('visible');
+            document.exitPointerLock();
+            this.updateInventoryUI();
+          } else {
+            invScreen.classList.remove('visible');
+            if (this.isPlaying && !this.isPaused) {
+              this.renderer.domElement.requestPointerLock();
+            }
+          }
         }
 
         setupEventListeners() {
@@ -540,24 +1469,34 @@
             this.startGame();
           };
 
+          document.getElementById('respawn-btn').onclick = () => {
+            this.respawn();
+          };
+
           document.addEventListener('keydown', e => {
-            if (this.keys[e.code]) return; // Prevent key repeat
+            if (this.keys[e.code]) return;
             this.keys[e.code] = true;
+            
+            if (e.code === 'KeyE' && this.isPlaying && !this.isPaused && !this.player.isDead) {
+              this.toggleInventory();
+              e.preventDefault();
+              return;
+            }
+            
+            if (this.inventoryOpen) return;
             
             if (e.code.startsWith('Digit') && e.code.length === 6) {
               const n = parseInt(e.code[5]) - 1;
-              if (n >= 0 && n < this.hotbarBlocks.length) {
+              if (n >= 0 && n < 9) {
                 this.selectedSlot = n;
                 this.updateHotbar();
               }
             }
             
-            // Toggle creative mode
             if (e.code === 'KeyC' && this.isPlaying && !this.isPaused) {
               this.toggleGameMode();
             }
             
-            // Double-tap space to toggle flying in creative
             if (e.code === 'Space' && this.gameMode === 'creative') {
               const now = performance.now();
               if (now - this.lastSpacePress < 300) {
@@ -568,6 +1507,11 @@
               this.lastSpacePress = now;
             }
             
+            if (e.code === 'Escape' && this.isPlaying && !this.inventoryOpen) {
+              document.getElementById('settings-panel').classList.add('visible');
+              document.exitPointerLock();
+            }
+            
             if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
               e.preventDefault();
             }
@@ -576,16 +1520,16 @@
           document.addEventListener('keyup', e => this.keys[e.code] = false);
 
           document.addEventListener('mousemove', e => {
-            if (document.pointerLockElement && this.isPlaying && !this.isPaused) {
-              this.player.yaw -= e.movementX * 0.002;
+            if (document.pointerLockElement && this.isPlaying && !this.isPaused && !this.inventoryOpen) {
+              const sens = this.settings.sensitivity * 0.002;
+              this.player.yaw -= e.movementX * sens;
               this.player.pitch = Math.max(-Math.PI/2 + 0.01, 
-                                           Math.min(Math.PI/2 - 0.01, this.player.pitch - e.movementY * 0.002));
+                                           Math.min(Math.PI/2 - 0.01, this.player.pitch - e.movementY * sens));
             }
           });
 
           document.addEventListener('mousedown', e => {
-            if (!this.isPlaying) return;
-            if (this.isPaused) return;
+            if (!this.isPlaying || this.isPaused || this.inventoryOpen || this.player.isDead) return;
             if (!document.pointerLockElement) {
               this.renderer.domElement.requestPointerLock();
               return;
@@ -610,7 +1554,7 @@
           });
 
           document.addEventListener('wheel', e => {
-            if (!this.isPlaying || this.isPaused) return;
+            if (!this.isPlaying || this.isPaused || this.inventoryOpen) return;
             this.selectedSlot = (this.selectedSlot + (e.deltaY > 0 ? 1 : -1) + 9) % 9;
             this.updateHotbar();
           });
@@ -618,17 +1562,20 @@
           document.addEventListener('contextmenu', e => e.preventDefault());
 
           document.addEventListener('pointerlockchange', () => {
-            if (!document.pointerLockElement && this.isPlaying && !this.isPaused) {
-              this.isPaused = true;
-              document.getElementById('menu').classList.remove('hidden');
-              document.getElementById('menu').querySelector('h1').textContent = '⏸ PAUSED';
-              document.getElementById('menu').querySelector('button').textContent = 'Resume';
+            if (!document.pointerLockElement && this.isPlaying && !this.isPaused && !this.inventoryOpen) {
+              // Check if settings panel is open
+              if (!document.getElementById('settings-panel').classList.contains('visible')) {
+                this.isPaused = true;
+                document.getElementById('menu').classList.remove('hidden');
+                document.getElementById('menu').querySelector('h1').textContent = '⏸ PAUSED';
+                document.getElementById('menu').querySelector('button').textContent = 'Resume';
+              }
             }
           });
 
           window.addEventListener('resize', () => {
             this.camera.aspect = window.innerWidth / window.innerHeight;
-            //this.camera.updateProjectionMatrix();
+            this.camera.updateProjectionMatrix();
             this.renderer.setSize(window.innerWidth, window.innerHeight);
           });
         }
@@ -643,7 +1590,6 @@
             progressBar.classList.add('active');
             progressFill.style.width = (progress * 100) + '%';
             
-            // Update crack pattern based on progress
             const inner = document.getElementById('break-indicator-inner');
             const crackSize = Math.floor(progress * 5) + 1;
             inner.style.background = `repeating-linear-gradient(
@@ -665,6 +1611,7 @@
           const menuButton = menu.querySelector('button');
 
           menu.classList.add('hidden');
+          document.getElementById('settings-panel').classList.remove('visible');
 
           if (!this.isPlaying) {
             document.getElementById('loading').classList.add('show');
@@ -673,6 +1620,7 @@
             this.generateInitialChunks();
             this.findSpawnPoint();
             this.isPlaying = true;
+            this.updateShadows();
 
             document.getElementById('loading').classList.remove('show');
             this.lastTime = performance.now();
@@ -739,8 +1687,11 @@
                 if (y === 0) {
                   chunk[idx] = BLOCK.BEDROCK;
                 } else if (y < height - 4) {
-                  if (Math.random() < 0.01) chunk[idx] = BLOCK.COAL_ORE;
-                  else if (Math.random() < 0.005 && y < 30) chunk[idx] = BLOCK.IRON_ORE;
+                  const rand = Math.random();
+                  if (rand < 0.008) chunk[idx] = BLOCK.COAL_ORE;
+                  else if (rand < 0.012 && y < 40) chunk[idx] = BLOCK.IRON_ORE;
+                  else if (rand < 0.014 && y < 20) chunk[idx] = BLOCK.GOLD_ORE;
+                  else if (rand < 0.016 && y < 16) chunk[idx] = BLOCK.DIAMOND_ORE;
                   else chunk[idx] = BLOCK.STONE;
                 } else if (y < height - 1) {
                   chunk[idx] = biome === 'desert' ? BLOCK.SAND : BLOCK.DIRT;
@@ -781,10 +1732,7 @@
           }
 
           this.chunks.set(key, chunk);
-          
-          // Apply any saved modifications to this chunk
           this.applyModificationsToChunk(cx, cz);
-          
           this.buildChunkMesh(cx, cz);
         }
 
@@ -812,17 +1760,15 @@
           const pcx = Math.floor(this.player.position.x / CHUNK_SIZE);
           const pcz = Math.floor(this.player.position.z / CHUNK_SIZE);
 
-          // Generate chunks in a spiral pattern from center outward
           const chunksToGenerate = [];
-          for (let dx = -RENDER_DISTANCE; dx <= RENDER_DISTANCE; dx++) {
-            for (let dz = -RENDER_DISTANCE; dz <= RENDER_DISTANCE; dz++) {
-              if (dx*dx + dz*dz <= RENDER_DISTANCE * RENDER_DISTANCE) {
+          for (let dx = -this.settings.renderDistance; dx <= this.settings.renderDistance; dx++) {
+            for (let dz = -this.settings.renderDistance; dz <= this.settings.renderDistance; dz++) {
+              if (dx*dx + dz*dz <= this.settings.renderDistance * this.settings.renderDistance) {
                 chunksToGenerate.push({cx: pcx + dx, cz: pcz + dz, dist: dx*dx + dz*dz});
               }
             }
           }
           
-          // Sort by distance to generate closer chunks first
           chunksToGenerate.sort((a, b) => a.dist - b.dist);
           
           for (const {cx, cz} of chunksToGenerate) {
@@ -860,7 +1806,6 @@
         setBlock(x, y, z, type) {
           if (y < 0 || y >= WORLD_HEIGHT) return;
 
-          // Always save to modifiedBlocks for persistence
           this.modifiedBlocks.set(`${x},${y},${z}`, type);
 
           const cx = Math.floor(x / CHUNK_SIZE);
@@ -906,7 +1851,6 @@
             const lz = z - (cz * CHUNK_SIZE);
 
             if (lx >= 0 && lx < CHUNK_SIZE && lz >= 0 && lz < CHUNK_SIZE) {
-              // Check modifications first
               const modKey = `${x},${y},${z}`;
               if (this.modifiedBlocks.has(modKey)) {
                 return this.modifiedBlocks.get(modKey);
@@ -959,7 +1903,6 @@
                 const wx = cx * CHUNK_SIZE + lx;
                 const wz = cz * CHUNK_SIZE + lz;
                 
-                // Check for modifications first
                 const modKey = `${wx},${y},${wz}`;
                 let block;
                 if (this.modifiedBlocks.has(modKey)) {
@@ -1013,8 +1956,10 @@
             });
             const mesh = new THREE.Mesh(geo, mat);
             
-            mesh.castShadow = !isTrans;
-            mesh.receiveShadow = !isTrans; 
+            if (this.settings.shadowsEnabled) {
+              mesh.castShadow = !isTrans;
+              mesh.receiveShadow = !isTrans;
+            }
             group.add(mesh);
           };
 
@@ -1027,6 +1972,8 @@
         // ==================== PLAYER & PHYSICS ====================
 
         updatePlayer(dt) {
+          if (this.player.isDead) return;
+          
           const moveDir = new THREE.Vector3();
           if (this.keys['KeyW'] || this.keys['ArrowUp']) moveDir.z -= 1;
           if (this.keys['KeyS'] || this.keys['ArrowDown']) moveDir.z += 1;
@@ -1041,12 +1988,10 @@
           const moveZ = -moveDir.x * sin + moveDir.z * cos;
 
           if (this.isFlying) {
-            // Flying mode
             const flySpeed = this.keys['ShiftLeft'] ? FLY_SPEED * 2 : FLY_SPEED;
             this.player.velocity.x = moveX * flySpeed;
             this.player.velocity.z = moveZ * flySpeed;
             
-            // Vertical movement
             if (this.keys['Space']) {
               this.player.velocity.y = flySpeed;
             } else if (this.keys['ShiftLeft']) {
@@ -1055,7 +2000,6 @@
               this.player.velocity.y = 0;
             }
           } else {
-            // Normal movement
             const speed = this.keys['ShiftLeft'] ? SPRINT_SPEED : WALK_SPEED;
             const waterMult = this.player.inWater ? 0.5 : 1;
 
@@ -1078,7 +2022,26 @@
             }
           }
 
+          // Track fall start for fall damage
+          if (!this.player.onGround && !this.isFlying && !this.player.inWater) {
+            if (this.player.fallStartY === null && this.player.velocity.y < 0) {
+              this.player.fallStartY = this.player.position.y;
+            }
+          }
+
+          const wasOnGround = this.player.onGround;
           this.moveWithCollision(dt);
+
+          // Calculate fall damage when landing
+          if (this.player.onGround && !wasOnGround && this.player.fallStartY !== null) {
+            const fallDistance = this.player.fallStartY - this.player.position.y;
+            this.applyFallDamage(fallDistance);
+            this.player.fallStartY = null;
+          }
+
+          if (this.player.onGround || this.player.inWater || this.isFlying) {
+            this.player.fallStartY = null;
+          }
 
           const headBlock = this.getBlock(
             Math.floor(this.player.position.x),
@@ -1087,24 +2050,75 @@
           );
           this.player.inWater = headBlock === BLOCK.WATER;
 
-          // Update camera
           this.camera.position.copy(this.player.position);
           this.camera.rotation.order = 'YXZ';
           this.camera.rotation.y = this.player.yaw;
           this.camera.rotation.x = this.player.pitch;
 
-          // Update sun position to follow player
           this.sun.position.set(
             this.player.position.x + 100,
             this.player.position.y + 200,
             this.player.position.z + 50
           );
           this.sunTarget.position.copy(this.player.position);
-          //this.sun.shadow.camera.updateProjectionMatrix();
 
           const p = this.player.position;
           document.getElementById('position').textContent = 
             `XYZ: ${p.x.toFixed(1)} / ${p.y.toFixed(1)} / ${p.z.toFixed(1)}`;
+        }
+
+        applyFallDamage(fallDistance) {
+          if (this.gameMode === 'creative') return;
+          
+          // Minecraft fall damage: damage = floor(fallDistance) - 3
+          // You take damage after falling more than 3 blocks
+          const damage = Math.floor(fallDistance) - 3;
+          
+          if (damage > 0) {
+            this.player.health -= damage;
+            this.updateHealthBar();
+            
+            // Screen shake effect could be added here
+            
+            if (this.player.health <= 0) {
+              this.playerDie();
+            }
+          }
+        }
+
+        playerDie() {
+          this.player.isDead = true;
+          this.player.health = 0;
+          this.updateHealthBar();
+          
+          // Drop all items (simplified - just clear inventory)
+          // In a full implementation, items would drop as entities
+          
+          document.getElementById('death-screen').classList.add('visible');
+          document.exitPointerLock();
+        }
+
+        respawn() {
+          this.player.isDead = false;
+          this.player.health = MAX_HEALTH;
+          this.player.fallStartY = null;
+          this.player.velocity.set(0, 0, 0);
+          
+          // Find new spawn point
+          this.findSpawnPoint();
+          
+          // Clear inventory on death (Minecraft behavior)
+          this.hotbarSlots.fill(null);
+          this.inventorySlots.fill(null);
+          
+          this.updateHealthBar();
+          this.updateHotbar();
+          
+          document.getElementById('death-screen').classList.remove('visible');
+          
+          setTimeout(() => {
+            this.renderer.domElement.requestPointerLock();
+          }, 100);
         }
 
         moveWithCollision(dt) {
@@ -1112,7 +2126,6 @@
           const vel = this.player.velocity;
 
           if (this.isFlying) {
-            // Simpler collision for flying
             pos.x += vel.x * dt;
             pos.y += vel.y * dt;
             pos.z += vel.z * dt;
@@ -1197,15 +2210,75 @@
           }
         }
 
+        canMineBlock(blockData, tool) {
+          if (!blockData.minTool) return true;
+          if (!tool) return false;
+          
+          const minTierIndex = TOOL_TIERS.indexOf(blockData.minTool);
+          const toolTierIndex = TOOL_TIERS.indexOf(tool.toolTier);
+          
+          return toolTierIndex >= minTierIndex;
+        }
+
+        getMiningSpeed(blockData, tool) {
+          if (!tool) return 1;
+          
+          // Check if this is the right tool type
+          if (tool.toolType === blockData.toolType) {
+            return tool.miningSpeed;
+          }
+          
+          return 1;
+        }
+
         breakBlock() {
           if (!this.targetBlock) return;
 
           const { x, y, z } = this.targetBlock;
           const block = this.getBlock(x, y, z);
+          const blockData = BLOCK_DATA[block];
+          
           if (block === BLOCK.BEDROCK) return;
+          if (!blockData) return;
 
-          this.spawnParticles(x + 0.5, y + 0.5, z + 0.5, BLOCK_DATA[block].side);
+          const tool = this.getHeldTool();
+          
+          // Check if we can mine this block
+          if (!this.canMineBlock(blockData, tool)) {
+            // Can't mine, don't drop anything
+            this.setBlock(x, y, z, BLOCK.AIR);
+            this.spawnParticles(x + 0.5, y + 0.5, z + 0.5, blockData.side);
+            return;
+          }
+
+          // Damage tool
+          if (tool && this.gameMode === 'survival') {
+            this.damageTool(tool.slotIndex);
+          }
+
+          // Determine what to drop
+          let dropItem = block;
+          let dropCount = 1;
+          
+          if (blockData.drops !== undefined) {
+            if (blockData.drops === null) {
+              // No drop (like glass)
+              dropItem = null;
+            } else {
+              dropItem = blockData.drops;
+            }
+          } else if (block === BLOCK.STONE) {
+            dropItem = BLOCK.COBBLE;
+          }
+
+          this.spawnParticles(x + 0.5, y + 0.5, z + 0.5, blockData.side);
           this.setBlock(x, y, z, BLOCK.AIR);
+          
+          // Add to inventory in survival mode
+          if (this.gameMode === 'survival' && dropItem !== null) {
+            this.addToInventory(dropItem, dropCount);
+          }
+          
           this.breakProgress = 0;
           this.currentBreakingBlock = null;
           this.updateBreakIndicator(0);
@@ -1213,6 +2286,12 @@
 
         placeBlock() {
           if (!this.placementBlock) return;
+          
+          const heldItem = this.getHeldItem();
+          if (!heldItem) return;
+          
+          // Check if held item is a placeable block
+          if (!BLOCK_DATA[heldItem.id]) return;
 
           const { x, y, z } = this.placementBlock;
           const px = this.player.position.x;
@@ -1226,7 +2305,17 @@
             return;
           }
 
-          this.setBlock(x, y, z, this.hotbarBlocks[this.selectedSlot]);
+          // Remove from inventory in survival
+          if (this.gameMode === 'survival') {
+            if (heldItem.count <= 1) {
+              this.hotbarSlots[this.selectedSlot] = null;
+            } else {
+              heldItem.count--;
+            }
+            this.updateHotbar();
+          }
+
+          this.setBlock(x, y, z, heldItem.id);
           this.placeCooldown = PLACE_COOLDOWN;
         }
 
@@ -1245,7 +2334,7 @@
               Math.random() * 3 + 1,
               (Math.random() - 0.5) * 3
             );
-            particle.life = 2.0 + Math.random() * 1.0; // 2-3 seconds lifespan
+            particle.life = 2.0 + Math.random() * 1.0;
             particle.maxLife = particle.life;
             this.scene.add(particle);
             this.particleSystem.push(particle);
@@ -1256,22 +2345,18 @@
           for (let i = this.particleSystem.length - 1; i >= 0; i--) {
             const p = this.particleSystem[i];
             
-            // Apply gravity
             p.velocity.y -= 15 * dt;
             
-            // Calculate new position
             const newX = p.position.x + p.velocity.x * dt;
             const newY = p.position.y + p.velocity.y * dt;
             const newZ = p.position.z + p.velocity.z * dt;
             
-            // Check collision with blocks
             const blockX = Math.floor(newX);
             const blockY = Math.floor(newY);
             const blockZ = Math.floor(newZ);
             
             const block = this.getBlock(blockX, blockY, blockZ);
             if (block !== BLOCK.AIR && BLOCK_DATA[block]?.solid) {
-              // Bounce with damping
               if (this.getBlock(Math.floor(p.position.x), blockY, Math.floor(p.position.z)) !== BLOCK.AIR) {
                 p.velocity.y = -p.velocity.y * 0.3;
                 p.velocity.x *= 0.7;
@@ -1287,7 +2372,6 @@
             
             p.life -= dt;
             
-            // Fade out
             const lifeRatio = p.life / p.maxLife;
             p.scale.setScalar(0.5 + lifeRatio * 0.5);
             p.material.opacity = lifeRatio;
@@ -1308,12 +2392,11 @@
           const pcx = Math.floor(this.player.position.x / CHUNK_SIZE);
           const pcz = Math.floor(this.player.position.z / CHUNK_SIZE);
 
-          // Generate chunks in render distance (prioritize closer chunks)
           const chunksNeeded = [];
-          for (let dx = -RENDER_DISTANCE; dx <= RENDER_DISTANCE; dx++) {
-            for (let dz = -RENDER_DISTANCE; dz <= RENDER_DISTANCE; dz++) {
+          for (let dx = -this.settings.renderDistance; dx <= this.settings.renderDistance; dx++) {
+            for (let dz = -this.settings.renderDistance; dz <= this.settings.renderDistance; dz++) {
               const distSq = dx*dx + dz*dz;
-              if (distSq <= RENDER_DISTANCE * RENDER_DISTANCE) {
+              if (distSq <= this.settings.renderDistance * this.settings.renderDistance) {
                 const cx = pcx + dx;
                 const cz = pcz + dz;
                 const key = `${cx},${cz}`;
@@ -1324,15 +2407,13 @@
             }
           }
           
-          // Sort by distance and generate closest first (limit per frame for performance)
           chunksNeeded.sort((a, b) => a.dist - b.dist);
           const maxChunksPerFrame = 2;
           for (let i = 0; i < Math.min(chunksNeeded.length, maxChunksPerFrame); i++) {
             this.generateChunk(chunksNeeded[i].cx, chunksNeeded[i].cz);
           }
 
-          // Unload distant chunks
-          const maxDist = RENDER_DISTANCE + 2;
+          const maxDist = this.settings.renderDistance + 2;
           this.chunkMeshes.forEach((group, key) => {
             const [cx, cz] = key.split(',').map(Number);
             if (Math.abs(cx - pcx) > maxDist || Math.abs(cz - pcz) > maxDist) {
@@ -1366,15 +2447,13 @@
             document.getElementById('fps').textContent = `FPS: ${this.fps}`;
           }
 
-          if (document.pointerLockElement && !this.isPaused) {
+          if (document.pointerLockElement && !this.isPaused && !this.inventoryOpen && !this.player.isDead) {
             this.updatePlayer(dt);
             this.updateBlockSelection();
 
-            // Block breaking
             if (this.breaking && this.targetBlock) {
               const blockKey = `${this.targetBlock.x},${this.targetBlock.y},${this.targetBlock.z}`;
               
-              // Reset progress if targeting different block
               if (this.currentBreakingBlock !== blockKey) {
                 this.breakProgress = 0;
                 this.currentBreakingBlock = blockKey;
@@ -1385,11 +2464,12 @@
               
               if (blockData && blockData.hardness > 0) {
                 if (this.gameMode === 'creative') {
-                  // Instant break in creative
                   this.breakBlock();
                 } else {
-                  // Calculate break speed based on hardness
-                  const breakSpeed = 1 / blockData.hardness;
+                  const tool = this.getHeldTool();
+                  const miningSpeed = this.getMiningSpeed(blockData, tool);
+                  const breakSpeed = miningSpeed / blockData.hardness;
+                  
                   this.breakProgress += dt * breakSpeed;
                   this.updateBreakIndicator(this.breakProgress);
                   
@@ -1398,7 +2478,6 @@
                   }
                 }
               } else if (blockData && blockData.hardness === -1) {
-                // Unbreakable block
                 this.breakProgress = 0;
                 this.updateBreakIndicator(0);
               }
@@ -1410,7 +2489,6 @@
               }
             }
 
-            // Continuous block placement
             if (this.placing) {
               this.placeCooldown -= dt;
               if (this.placeCooldown <= 0) {
