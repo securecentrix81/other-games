@@ -1444,6 +1444,7 @@ class MinecraftGame {
 
     // Fallback: generate on main thread
     this.generateChunkMainThread(cx, cz);
+    console.error("fallback")
   }
 
   /* Put generateChunkMainThread method here - fallback for when workers aren't available */
@@ -1477,8 +1478,6 @@ class MinecraftGame {
             else if (biome === 'snow') chunk[idx] = BLOCK.SNOW;
             else if (height <= WATER_LEVEL + 2) chunk[idx] = BLOCK.SAND;
             else chunk[idx] = BLOCK.GRASS;
-          } else if (y <= WATER_LEVEL) {
-            chunk[idx] = BLOCK.WATER;
           }
         }
 
@@ -1536,24 +1535,17 @@ class MinecraftGame {
   generateInitialChunks() {
       const pcx = Math.floor(this.player.position.x / CHUNK_SIZE);
       const pcz = Math.floor(this.player.position.z / CHUNK_SIZE);
-  
-      // Load extra chunks beyond render distance on startup
-      const loadDistance = this.settings.renderDistance + 2;
-  
-      const chunksToGenerate = [];
+
+      // Only load a very small 3x3 area immediately
+      const loadDistance = 1; 
+
       for (let dx = -loadDistance; dx <= loadDistance; dx++) {
         for (let dz = -loadDistance; dz <= loadDistance; dz++) {
-          if (dx*dx + dz*dz <= loadDistance * loadDistance) {
-            chunksToGenerate.push({cx: pcx + dx, cz: pcz + dz, dist: dx*dx + dz*dz});
+          const cx = pcx + dx;
+          const cz = pcz + dz;
+          if (!this.chunks.has(`${cx},${cz}`)) {
+            this.generateChunkMainThread(cx, cz);
           }
-        }
-      }
-      
-      chunksToGenerate.sort((a, b) => a.dist - b.dist);
-      
-      for (const {cx, cz} of chunksToGenerate) {
-        if (!this.chunks.has(`${cx},${cz}`)) {
-          this.generateChunkMainThread(cx, cz);
         }
       }
   }
@@ -1561,14 +1553,14 @@ class MinecraftGame {
   findSpawnPoint() {
     let x = 8, z = 8;
     let y = this.getTerrainHeight(x, z) + 2;
-    while (y <= WATER_LEVEL + 1) {
+    /*while (y <= WATER_LEVEL + 1) {
       x += 16;
       y = this.getTerrainHeight(x, z) + 2;
-    }
+    }*/
     this.player.position.set(x + 0.5, y, z + 0.5);
   }
 
-    getBlock(x, y, z) {
+  getBlock(x, y, z) {
     const key = `${x},${y},${z}`;
     if (this.modifiedBlocks.has(key)) return this.modifiedBlocks.get(key);
 
