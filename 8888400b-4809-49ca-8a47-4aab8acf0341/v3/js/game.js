@@ -800,7 +800,7 @@ class MinecraftGame {
     }
   }
   // Add method to class:
-  updateHeldItemCursor() {
+  updateHeldItemCursor(e) {
     const cursor = document.getElementById('held-item-cursor');
     if (cursor) {
       cursor.style.left = e.clientX + 'px';
