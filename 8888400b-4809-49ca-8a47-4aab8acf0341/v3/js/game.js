@@ -2742,5 +2742,31 @@ class MinecraftGame {
       }
     }
   }
-  
+  spawnDroppedItem(x, y, z, itemId, count, velocity = null) {
+    const geo = new THREE.BoxGeometry(0.25, 0.25, 0.25);
+    const data = BLOCK_DATA[itemId] || ITEM_DATA[itemId];
+    const color = data ? (data.side || data.top || data.color || 0xffffff) : 0xffffff;
+    const mat = new THREE.MeshStandardMaterial({ color });
+    const mesh = new THREE.Mesh(geo, mat);
+    
+    mesh.position.set(x, y, z);
+    this.scene.add(mesh);
+    
+    const item = {
+      mesh,
+      itemId,
+      count,
+      velocity: velocity ? velocity.clone() : new THREE.Vector3(
+        (Math.random() - 0.5) * 2,
+        3 + Math.random() * 2,
+        (Math.random() - 0.5) * 2
+      ),
+      pickupDelay: 0.5,  // seconds before can be picked up
+      lifetime: 300,      // despawn after 5 minutes
+      onGround: false
+    };
+    
+    this.droppedItems.push(item);
+    return item;
+  }
 }
