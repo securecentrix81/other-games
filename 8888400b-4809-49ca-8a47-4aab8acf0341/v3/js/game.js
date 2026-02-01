@@ -82,6 +82,9 @@ class MinecraftGame {
 
     this.autosaveTimer = null;
     this.lastAutosave = 0;
+    
+    this.droppedItems = [];
+    this.heldInventoryItem = null;  // For inventory drag/drop
 
     this.init();
   }
@@ -748,6 +751,46 @@ class MinecraftGame {
         recipeList.appendChild(recipeEl);
       });
     }
+    // Show held item cursor
+    const existingCursor = document.getElementById('held-item-cursor');
+    if (existingCursor) existingCursor.remove();
+    
+    if (this.heldInventoryItem) {
+      const cursor = document.createElement('div');
+      cursor.id = 'held-item-cursor';
+      cursor.style.cssText = `
+        position: fixed;
+        pointer-events: none;
+        z-index: 10000;
+        transform: translate(-50%, -50%);
+      `;
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = 32;
+      canvas.height = 32;
+      this.drawItemIcon(canvas, this.heldInventoryItem.id);
+      cursor.appendChild(canvas);
+      
+      if (this.heldInventoryItem.count > 1) {
+        const count = document.createElement('span');
+        count.style.cssText = 'position:absolute;bottom:0;right:0;color:#fff;font-size:12px;text-shadow:1px 1px #000;';
+        count.textContent = this.heldInventoryItem.count;
+        cursor.appendChild(count);
+      }
+      
+      document.body.appendChild(cursor);
+      
+      document.addEventListener('mousemove', this.updateHeldItemCursor);
+    }
+    
+    // Add method to class:
+    updateHeldItemCursor = (e) => {
+      const cursor = document.getElementById('held-item-cursor');
+      if (cursor) {
+        cursor.style.left = e.clientX + 'px';
+        cursor.style.top = e.clientY + 'px';
+      }
+    }
   }
 
   getCreativeItems() {
@@ -764,6 +807,11 @@ class MinecraftGame {
   createInventorySlot(slotData, type, index) {
     const slot = document.createElement('div');
     slot.className = 'inv-slot';
+    
+    // Add holding indicator
+    if (this.heldInventoryItem !== null) {
+      slot.classList.add('can-place');
+    }
     
     if (slotData) {
       const canvas = document.createElement('canvas');
@@ -804,8 +852,47 @@ class MinecraftGame {
   }
 
   handleInventoryClick(type, index) {
-    if (this.gameMode === 'creative') return;
-    console.log('Clicked', type, index);
+    const slots = type === 'hotbar' ? this.hotbarSlots : this.inventorySlots;
+    const clickedSlot = slots[index];
+    
+    if (this.heldInventoryItem === null) {
+      // Pick up item from slot
+      if (clickedSlot) {
+        this.heldInventoryItem = { ...clickedSlot, sourceType: type, sourceIndex: index };
+        slots[index] = null;
+        this.updateInventoryUI();
+      }
+    } else {
+      // Place or swap item
+      if (clickedSlot === null) {
+        // Place in empty slot
+        slots[index] = { id: this.heldInventoryItem.id, count: this.heldInventoryItem.count };
+        if (this.heldInventoryItem.durability !== undefined) {
+          slots[index].durability = this.heldInventoryItem.durability;
+        }
+        this.heldInventoryItem = null;
+      } else if (clickedSlot.id === this.heldInventoryItem.id && 
+                 !ITEM_DATA[clickedSlot.id]?.isTool) {
+        // Stack same items
+        const canAdd = MAX_STACK_SIZE - clickedSlot.count;
+        const toAdd = Math.min(canAdd, this.heldInventoryItem.count);
+        clickedSlot.count += toAdd;
+        this.heldInventoryItem.count -= toAdd;
+        if (this.heldInventoryItem.count <= 0) {
+          this.heldInventoryItem = null;
+        }
+      } else {
+        // Swap items
+        const temp = { ...clickedSlot };
+        slots[index] = { id: this.heldInventoryItem.id, count: this.heldInventoryItem.count };
+        if (this.heldInventoryItem.durability !== undefined) {
+          slots[index].durability = this.heldInventoryItem.durability;
+        }
+        this.heldInventoryItem = { ...temp, sourceType: type, sourceIndex: index };
+      }
+      this.updateInventoryUI();
+      this.updateHotbar();
+    }
   }
 
   // ==================== HOTBAR ====================
@@ -1140,6 +1227,27 @@ class MinecraftGame {
       this.updateInventoryUI();
     } else {
       invScreen.classList.remove('visible');
+      
+      // Drop held item if closing inventory while holding something
+      if (this.heldInventoryItem) {
+        const throwDir = new THREE.Vector3(0, 0, -1);
+        throwDir.applyQuaternion(this.camera.quaternion);
+        throwDir.multiplyScalar(3);
+        throwDir.y += 2;
+        
+        const spawnPos = this.player.position.clone();
+        this.spawnDroppedItem(
+          spawnPos.x, spawnPos.y, spawnPos.z,
+          this.heldInventoryItem.id,
+          this.heldInventoryItem.count,
+          throwDir
+        );
+        this.heldInventoryItem = null;
+        
+        const cursor = document.getElementById('held-item-cursor');
+        if (cursor) cursor.remove();
+      }
+      
       if (this.isPlaying && !this.isPaused) {
         this.renderer.domElement.requestPointerLock();
       }
@@ -1209,6 +1317,41 @@ class MinecraftGame {
         this.saveGame(false);
         document.getElementById('settings-panel').classList.add('visible');
         document.exitPointerLock();
+      }
+
+      if (e.code === 'KeyQ' && this.isPlaying && !this.isPaused && !this.inventoryOpen && !this.player.isDead) {
+        const heldItem = this.getHeldItem();
+        if (heldItem) {
+          // Calculate throw direction from camera
+          const throwDir = new THREE.Vector3(0, 0, -1);
+          throwDir.applyQuaternion(this.camera.quaternion);
+          throwDir.multiplyScalar(5);  // Throw speed
+          throwDir.y += 2;  // Arc upward slightly
+          
+          // Spawn in front of player
+          const spawnPos = this.player.position.clone();
+          spawnPos.y -= 0.5;
+          spawnPos.addScaledVector(throwDir.clone().normalize(), 0.5);
+          
+          // Drop one item (or all if shift held)
+          const dropCount = this.keys['ShiftLeft'] ? heldItem.count : 1;
+          
+          this.spawnDroppedItem(
+            spawnPos.x,
+            spawnPos.y,
+            spawnPos.z,
+            heldItem.id,
+            dropCount,
+            throwDir
+          );
+          
+          // Remove from hotbar
+          heldItem.count -= dropCount;
+          if (heldItem.count <= 0) {
+            this.hotbarSlots[this.selectedSlot] = null;
+          }
+          this.updateHotbar();
+        }
       }
       
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
@@ -2246,8 +2389,14 @@ class MinecraftGame {
     this.spawnParticles(x + 0.5, y + 0.5, z + 0.5, blockData.side);
     this.setBlock(x, y, z, BLOCK.AIR);
     
-    if (this.gameMode === 'survival' && dropItem !== null) {
-      this.addToInventory(dropItem, dropCount);
+    if (dropItem !== null) {
+      this.spawnDroppedItem(
+        x + 0.5, 
+        y + 0.5, 
+        z + 0.5, 
+        dropItem, 
+        dropCount
+      );
     }
     
     this.breakProgress = 0;
@@ -2485,7 +2634,92 @@ class MinecraftGame {
     }
 
     this.updateParticles(dt);
+    this.updateDroppedItems(dt);
     this.renderer.render(this.scene, this.camera);
     requestAnimationFrame(() => this.gameLoop());
   }
+
+  updateDroppedItems(dt) {
+    const playerPos = this.player.position;
+    const pickupRadius = 1.5;
+    
+    for (let i = this.droppedItems.length - 1; i >= 0; i--) {
+      const item = this.droppedItems[i];
+      
+      // Update timers
+      item.pickupDelay -= dt;
+      item.lifetime -= dt;
+      
+      // Despawn if too old
+      if (item.lifetime <= 0) {
+        this.scene.remove(item.mesh);
+        item.mesh.geometry.dispose();
+        item.mesh.material.dispose();
+        this.droppedItems.splice(i, 1);
+        continue;
+      }
+      
+      // Apply gravity
+      if (!item.onGround) {
+        item.velocity.y -= GRAVITY * dt;
+      }
+      
+      // Move with collision
+      const pos = item.mesh.position;
+      
+      // X movement
+      pos.x += item.velocity.x * dt;
+      if (this.getBlock(Math.floor(pos.x), Math.floor(pos.y), Math.floor(pos.z)) !== BLOCK.AIR) {
+        pos.x -= item.velocity.x * dt;
+        item.velocity.x *= -0.3;
+      }
+      
+      // Z movement
+      pos.z += item.velocity.z * dt;
+      if (this.getBlock(Math.floor(pos.x), Math.floor(pos.y), Math.floor(pos.z)) !== BLOCK.AIR) {
+        pos.z -= item.velocity.z * dt;
+        item.velocity.z *= -0.3;
+      }
+      
+      // Y movement
+      pos.y += item.velocity.y * dt;
+      const blockBelow = this.getBlock(Math.floor(pos.x), Math.floor(pos.y - 0.125), Math.floor(pos.z));
+      if (blockBelow !== BLOCK.AIR && BLOCK_DATA[blockBelow]?.solid) {
+        pos.y = Math.floor(pos.y) + 0.25;
+        item.velocity.y = 0;
+        item.velocity.x *= 0.8;  // Friction
+        item.velocity.z *= 0.8;
+        item.onGround = true;
+      } else {
+        item.onGround = false;
+      }
+      
+      // Rotate for visual effect
+      item.mesh.rotation.y += dt * 2;
+      
+      // Bob up and down slightly when on ground
+      if (item.onGround) {
+        item.mesh.position.y += Math.sin(performance.now() * 0.003) * 0.002;
+      }
+      
+      // Check pickup
+      if (item.pickupDelay <= 0) {
+        const dx = pos.x - playerPos.x;
+        const dy = pos.y - (playerPos.y - PLAYER_HEIGHT / 2);
+        const dz = pos.z - playerPos.z;
+        const distSq = dx * dx + dy * dy + dz * dz;
+        
+        if (distSq < pickupRadius * pickupRadius) {
+          // Try to add to inventory
+          if (this.addToInventory(item.itemId, item.count)) {
+            this.scene.remove(item.mesh);
+            item.mesh.geometry.dispose();
+            item.mesh.material.dispose();
+            this.droppedItems.splice(i, 1);
+          }
+        }
+      }
+    }
+  }
+  
 }
