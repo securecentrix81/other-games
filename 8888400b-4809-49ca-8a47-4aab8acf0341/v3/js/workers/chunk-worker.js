@@ -1,90 +1,21 @@
 // ==================== CHUNK GENERATION WORKER ====================
-// This worker handles terrain generation off the main thread
+// This worker handles terrain generation AND mesh geometry building
 
-// Import SimplexNoise (inline for worker)
-class SimplexNoise {
-  constructor(seed = Math.random() * 10000) {
-    this.seed = seed;
-    this.p = new Uint8Array(256);
-    for (let i = 0; i < 256; i++) this.p[i] = i;
-    let n = seed;
-    for (let i = 255; i > 0; i--) {
-      n = ((n * 16807) % 2147483647);
-      const j = n % (i + 1);
-      [this.p[i], this.p[j]] = [this.p[j], this.p[i]];
-    }
-    this.perm = new Uint8Array(512);
-    this.permMod12 = new Uint8Array(512);
-    for (let i = 0; i < 512; i++) {
-      this.perm[i] = this.p[i & 255];
-      this.permMod12[i] = this.perm[i] % 12;
-    }
-  }
-
-  noise2D(x, y) {
-    const F2 = 0.5 * (Math.sqrt(3) - 1);
-    const G2 = (3 - Math.sqrt(3)) / 6;
-    const grad3 = [[1,1],[-1,1],[1,-1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]];
-    let s = (x + y) * F2;
-    let i = Math.floor(x + s);
-    let j = Math.floor(y + s);
-    let t = (i + j) * G2;
-    let X0 = i - t, Y0 = j - t;
-    let x0 = x - X0, y0 = y - Y0;
-    let i1, j1;
-    if (x0 > y0) { i1 = 1; j1 = 0; } else { i1 = 0; j1 = 1; }
-    let x1 = x0 - i1 + G2, y1 = y0 - j1 + G2;
-    let x2 = x0 - 1 + 2 * G2, y2 = y0 - 1 + 2 * G2;
-    let ii = i & 255, jj = j & 255;
-    let n0 = 0, n1 = 0, n2 = 0;
-    let t0 = 0.5 - x0*x0 - y0*y0;
-    if (t0 >= 0) {
-      let gi0 = this.permMod12[ii + this.perm[jj]];
-      t0 *= t0; n0 = t0 * t0 * (grad3[gi0][0] * x0 + grad3[gi0][1] * y0);
-    }
-    let t1 = 0.5 - x1*x1 - y1*y1;
-    if (t1 >= 0) {
-      let gi1 = this.permMod12[ii + i1 + this.perm[jj + j1]];
-      t1 *= t1; n1 = t1 * t1 * (grad3[gi1][0] * x1 + grad3[gi1][1] * y1);
-    }
-    let t2 = 0.5 - x2*x2 - y2*y2;
-    if (t2 >= 0) {
-      let gi2 = this.permMod12[ii + 1 + this.perm[jj + 1]];
-      t2 *= t2; n2 = t2 * t2 * (grad3[gi2][0] * x2 + grad3[gi2][1] * y2);
-    }
-    return 70 * (n0 + n1 + n2);
-  }
-
-  octave(x, y, octaves, persistence = 0.5, lacunarity = 2) {
-    let total = 0, frequency = 1, amplitude = 1, maxValue = 0;
-    for (let i = 0; i < octaves; i++) {
-      total += this.noise2D(x * frequency, y * frequency) * amplitude;
-      maxValue += amplitude;
-      amplitude *= persistence;
-      frequency *= lacunarity;
-    }
-    return total / maxValue;
-  }
-}
-
-// Constants (duplicated for worker context)
-const CHUNK_SIZE = 16;
-const WORLD_HEIGHT = 1000;
-const WATER_LEVEL = 0;
-
-const BLOCK = {
-  AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, WOOD: 4, LEAVES: 5,
-  SAND: 6, WATER: 7, COBBLE: 8, PLANKS: 9, BEDROCK: 10,
-  GRAVEL: 11, COAL_ORE: 12, IRON_ORE: 13, SNOW: 14, GLASS: 15,
-  DIAMOND_ORE: 16, GOLD_ORE: 17, CRAFTING_TABLE: 18
-};
+importScripts('../noise.js');
+importScripts('../constants.js');
 
 let noise = null;
 let noiseDetail = null;
+let currentSeed = null;
 
-// Seeded random for tree generation
+// Seeded random for deterministic generation
 function seededRandom(x, z, seed) {
   const n = Math.sin(x * 12.9898 + z * 78.233 + seed) * 43758.5453;
+  return n - Math.floor(n);
+}
+
+function seededRandom3D(x, y, z, seed) {
+  const n = Math.sin(x * 12.9898 + y * 4.1414 + z * 78.233 + seed) * 43758.5453;
   return n - Math.floor(n);
 }
 
@@ -116,13 +47,14 @@ function getBiome(x, z) {
 }
 
 function generateChunkData(cx, cz, seed) {
-  if (!noise) {
+  if (!noise || currentSeed !== seed) {
     noise = new SimplexNoise(seed);
     noiseDetail = new SimplexNoise(seed + 1000);
+    currentSeed = seed;
   }
 
   const chunk = new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
-  const trees = []; // Store tree positions for later processing
+  const trees = [];
 
   for (let lx = 0; lx < CHUNK_SIZE; lx++) {
     for (let lz = 0; lz < CHUNK_SIZE; lz++) {
@@ -137,7 +69,7 @@ function generateChunkData(cx, cz, seed) {
         if (y === 0) {
           chunk[idx] = BLOCK.BEDROCK;
         } else if (y < height - 4) {
-          const rand = seededRandom(wx, y * 1000 + wz, seed);
+          const rand = seededRandom3D(wx, y, wz, seed);
           if (rand < 0.008) chunk[idx] = BLOCK.COAL_ORE;
           else if (rand < 0.012 && y < 40) chunk[idx] = BLOCK.IRON_ORE;
           else if (rand < 0.014 && y < 20) chunk[idx] = BLOCK.GOLD_ORE;
@@ -155,7 +87,7 @@ function generateChunkData(cx, cz, seed) {
         }
       }
 
-      // Tree check
+      // Tree placement (deterministic)
       if (height > WATER_LEVEL + 2 && biome !== 'desert') {
         const treeRand = seededRandom(wx, wz, seed + 5000);
         if (treeRand < 0.015) {
@@ -168,7 +100,9 @@ function generateChunkData(cx, cz, seed) {
   // Generate trees
   for (const tree of trees) {
     const { lx, lz, height } = tree;
-    const treeHeight = 4 + Math.floor(seededRandom(lx, lz, seed + 9999) * 2);
+    const wx = cx * CHUNK_SIZE + lx;
+    const wz = cz * CHUNK_SIZE + lz;
+    const treeHeight = 4 + Math.floor(seededRandom(wx, wz, seed + 9999) * 2);
     
     // Trunk
     for (let ty = 0; ty < treeHeight; ty++) {
@@ -182,11 +116,12 @@ function generateChunkData(cx, cz, seed) {
     for (let dx = -2; dx <= 2; dx++) {
       for (let dz = -2; dz <= 2; dz++) {
         for (let dy = treeHeight - 1; dy <= treeHeight + 1; dy++) {
-          if (Math.abs(dx) === 2 && Math.abs(dz) === 2 && seededRandom(dx + lx, dz + lz, seed) > 0.5) continue;
+          if (Math.abs(dx) === 2 && Math.abs(dz) === 2 && seededRandom(dx + wx, dz + wz, seed + 3333) > 0.5) continue;
           const nx = lx + dx, nz = lz + dz, ny = height + dy;
           if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE && ny < WORLD_HEIGHT) {
-            if (chunk[nx + ny * CHUNK_SIZE + nz * CHUNK_SIZE * WORLD_HEIGHT] === BLOCK.AIR) {
-              chunk[nx + ny * CHUNK_SIZE + nz * CHUNK_SIZE * WORLD_HEIGHT] = BLOCK.LEAVES;
+            const leafIdx = nx + ny * CHUNK_SIZE + nz * CHUNK_SIZE * WORLD_HEIGHT;
+            if (chunk[leafIdx] === BLOCK.AIR) {
+              chunk[leafIdx] = BLOCK.LEAVES;
             }
           }
         }
@@ -197,24 +132,217 @@ function generateChunkData(cx, cz, seed) {
   return chunk;
 }
 
-// Handle messages from main thread
+// ==================== MESH GEOMETRY BUILDING ====================
+
+function buildMeshGeometry(cx, cz, chunk, neighbors, modifiedBlocks) {
+  const opaque = { pos: [], col: [] };
+  const trans = { pos: [], col: [] };
+
+  // Helper to get block at world position
+  const getBlock = (wx, y, wz) => {
+    if (y < 0 || y >= WORLD_HEIGHT) return BLOCK.AIR;
+    
+    // Check modified blocks first
+    const modKey = `${wx},${y},${wz}`;
+    if (modifiedBlocks && modifiedBlocks[modKey] !== undefined) {
+      return modifiedBlocks[modKey];
+    }
+    
+    // Calculate which chunk this position is in
+    const targetCx = Math.floor(wx / CHUNK_SIZE);
+    const targetCz = Math.floor(wz / CHUNK_SIZE);
+    const lx = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+    const lz = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+    
+    if (targetCx === cx && targetCz === cz) {
+      return chunk[lx + y * CHUNK_SIZE + lz * CHUNK_SIZE * WORLD_HEIGHT];
+    }
+    
+    // Check neighbor chunks
+    const nkey = `${targetCx},${targetCz}`;
+    if (neighbors[nkey]) {
+      return neighbors[nkey][lx + y * CHUNK_SIZE + lz * CHUNK_SIZE * WORLD_HEIGHT];
+    }
+    
+    return BLOCK.AIR;
+  };
+
+  const isOccluder = (x, y, z) => {
+    const block = getBlock(x, y, z);
+    return block !== BLOCK.AIR && BLOCK_DATA[block] && !BLOCK_DATA[block].transparent;
+  };
+
+  const vertexAO = (s1, s2, c) => (s1 && s2) ? 0 : 3 - (s1 + s2 + c);
+  const aoLevels = [0.5, 0.7, 0.85, 1.0];
+
+  const addFace = (wx, y, wz, dir, color, target) => {
+    const r = ((color >> 16) & 255) / 255;
+    const g = ((color >> 8) & 255) / 255;
+    const b = (color & 255) / 255;
+
+    const face = FACE_DATA[dir];
+
+    // Calculate ambient occlusion for each corner
+    const ao = face.corners.map(c => {
+      const n = c.neighbors;
+      const s1 = isOccluder(wx + n[0][0], y + n[0][1], wz + n[0][2]) ? 1 : 0;
+      const s2 = isOccluder(wx + n[1][0], y + n[1][1], wz + n[1][2]) ? 1 : 0;
+      const corner = isOccluder(wx + n[2][0], y + n[2][1], wz + n[2][2]) ? 1 : 0;
+      return vertexAO(s1, s2, corner);
+    });
+
+    // Flip quad diagonal for better AO interpolation
+    const flip = ao[0] + ao[2] < ao[1] + ao[3];
+    const indices = flip ? [1, 2, 3, 1, 3, 0] : [0, 1, 2, 0, 2, 3];
+
+    // Add subtle variation to prevent flat look
+    const noise = (Math.sin(wx * 12.9898 + wz * 78.233) * 43758.5453) % 1;
+    const v = 1 - (Math.abs(noise) * 0.08);
+
+    indices.forEach(i => {
+      const corner = face.corners[i];
+      target.pos.push(wx + corner.pos[0], y + corner.pos[1], wz + corner.pos[2]);
+      const m = aoLevels[ao[i]] * face.shade * v;
+      target.col.push(r * m, g * m, b * m);
+    });
+  };
+
+  // Iterate through all blocks in chunk
+  for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+    for (let y = 0; y < WORLD_HEIGHT; y++) {
+      for (let lz = 0; lz < CHUNK_SIZE; lz++) {
+        const wx = cx * CHUNK_SIZE + lx;
+        const wz = cz * CHUNK_SIZE + lz;
+        
+        // Check modified blocks first
+        const modKey = `${wx},${y},${wz}`;
+        let block;
+        if (modifiedBlocks && modifiedBlocks[modKey] !== undefined) {
+          block = modifiedBlocks[modKey];
+        } else {
+          const idx = lx + y * CHUNK_SIZE + lz * CHUNK_SIZE * WORLD_HEIGHT;
+          block = chunk[idx];
+        }
+
+        if (block === BLOCK.AIR) continue;
+
+        const data = BLOCK_DATA[block];
+        if (!data) continue;
+
+        const target = data.transparent ? trans : opaque;
+
+        // Check if face should be rendered
+        const shouldRender = (nx, ny, nz) => {
+          const neighbor = getBlock(nx, ny, nz);
+          if (neighbor === BLOCK.AIR) return true;
+          const nData = BLOCK_DATA[neighbor];
+          if (!nData) return true;
+          if (nData.transparent && !data.transparent) return true;
+          if (data.transparent && nData.transparent && neighbor !== block) return true;
+          return false;
+        };
+
+        if (shouldRender(wx, y + 1, wz)) addFace(wx, y, wz, 'top', data.top, target);
+        if (shouldRender(wx, y - 1, wz)) addFace(wx, y, wz, 'bottom', data.bottom, target);
+        if (shouldRender(wx, y, wz + 1)) addFace(wx, y, wz, 'front', data.side, target);
+        if (shouldRender(wx, y, wz - 1)) addFace(wx, y, wz, 'back', data.side, target);
+        if (shouldRender(wx + 1, y, wz)) addFace(wx, y, wz, 'right', data.side, target);
+        if (shouldRender(wx - 1, y, wz)) addFace(wx, y, wz, 'left', data.side, target);
+      }
+    }
+  }
+
+  return {
+    opaque: {
+      positions: new Float32Array(opaque.pos),
+      colors: new Float32Array(opaque.col)
+    },
+    transparent: {
+      positions: new Float32Array(trans.pos),
+      colors: new Float32Array(trans.col)
+    }
+  };
+}
+
+// ==================== MESSAGE HANDLER ====================
+
 self.onmessage = function(e) {
   const { type, cx, cz, seed, id } = e.data;
-  
-  if (type === 'generate') {
-    const chunkData = generateChunkData(cx, cz, seed);
-    
-    // Transfer the ArrayBuffer for performance
-    self.postMessage({
-      type: 'chunk',
-      id: id,
-      cx: cx,
-      cz: cz,
-      data: chunkData.buffer
-    }, [chunkData.buffer]);
-  } else if (type === 'init') {
+
+  if (type === 'init') {
     noise = new SimplexNoise(seed);
     noiseDetail = new SimplexNoise(seed + 1000);
+    currentSeed = seed;
     self.postMessage({ type: 'ready' });
+  }
+  else if (type === 'generate') {
+    // Generate chunk data only
+    const chunkData = generateChunkData(cx, cz, seed);
+    self.postMessage({
+      type: 'chunk',
+      id, cx, cz,
+      data: chunkData.buffer
+    }, [chunkData.buffer]);
+  }
+  else if (type === 'generateAndBuild') {
+    // Generate chunk AND build mesh in one go
+    const { neighbors, modifiedBlocks } = e.data;
+    
+    // Convert neighbor ArrayBuffers to Uint8Arrays
+    const neighborArrays = {};
+    if (neighbors) {
+      for (const [key, buf] of Object.entries(neighbors)) {
+        neighborArrays[key] = new Uint8Array(buf);
+      }
+    }
+    
+    // Generate chunk
+    const chunkData = generateChunkData(cx, cz, seed);
+    
+    // Build mesh geometry
+    const geometry = buildMeshGeometry(cx, cz, chunkData, neighborArrays, modifiedBlocks || {});
+    
+    // Transfer all buffers
+    const transferList = [
+      chunkData.buffer,
+      geometry.opaque.positions.buffer,
+      geometry.opaque.colors.buffer,
+      geometry.transparent.positions.buffer,
+      geometry.transparent.colors.buffer
+    ];
+    
+    self.postMessage({
+      type: 'chunkWithMesh',
+      id, cx, cz,
+      chunkData: chunkData.buffer,
+      geometry
+    }, transferList);
+  }
+  else if (type === 'buildMesh') {
+    // Build mesh for existing chunk data
+    const { chunk, neighbors, modifiedBlocks } = e.data;
+    
+    const chunkArray = new Uint8Array(chunk);
+    const neighborArrays = {};
+    if (neighbors) {
+      for (const [key, buf] of Object.entries(neighbors)) {
+        neighborArrays[key] = new Uint8Array(buf);
+      }
+    }
+    
+    const geometry = buildMeshGeometry(cx, cz, chunkArray, neighborArrays, modifiedBlocks || {});
+    
+    const transferList = [
+      geometry.opaque.positions.buffer,
+      geometry.opaque.colors.buffer,
+      geometry.transparent.positions.buffer,
+      geometry.transparent.colors.buffer
+    ];
+    
+    self.postMessage({
+      type: 'mesh',
+      id, cx, cz,
+      geometry
+    }, transferList);
   }
 };
