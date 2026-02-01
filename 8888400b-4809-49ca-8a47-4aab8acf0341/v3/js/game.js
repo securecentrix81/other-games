@@ -1534,26 +1534,28 @@ class MinecraftGame {
   }
 
   generateInitialChunks() {
-    const pcx = Math.floor(this.player.position.x / CHUNK_SIZE);
-    const pcz = Math.floor(this.player.position.z / CHUNK_SIZE);
-
-    const chunksToGenerate = [];
-    for (let dx = -this.settings.renderDistance; dx <= this.settings.renderDistance; dx++) {
-      for (let dz = -this.settings.renderDistance; dz <= this.settings.renderDistance; dz++) {
-        if (dx*dx + dz*dz <= this.settings.renderDistance * this.settings.renderDistance) {
-          chunksToGenerate.push({cx: pcx + dx, cz: pcz + dz, dist: dx*dx + dz*dz});
+      const pcx = Math.floor(this.player.position.x / CHUNK_SIZE);
+      const pcz = Math.floor(this.player.position.z / CHUNK_SIZE);
+  
+      // Load extra chunks beyond render distance on startup
+      const loadDistance = this.settings.renderDistance + 2;
+  
+      const chunksToGenerate = [];
+      for (let dx = -loadDistance; dx <= loadDistance; dx++) {
+        for (let dz = -loadDistance; dz <= loadDistance; dz++) {
+          if (dx*dx + dz*dz <= loadDistance * loadDistance) {
+            chunksToGenerate.push({cx: pcx + dx, cz: pcz + dz, dist: dx*dx + dz*dz});
+          }
         }
       }
-    }
-    
-    chunksToGenerate.sort((a, b) => a.dist - b.dist);
-    
-    for (const {cx, cz} of chunksToGenerate) {
-      // For initial generation, use main thread to ensure chunks are ready
-      if (!this.chunks.has(`${cx},${cz}`)) {
-        this.generateChunkMainThread(cx, cz);
+      
+      chunksToGenerate.sort((a, b) => a.dist - b.dist);
+      
+      for (const {cx, cz} of chunksToGenerate) {
+        if (!this.chunks.has(`${cx},${cz}`)) {
+          this.generateChunkMainThread(cx, cz);
+        }
       }
-    }
   }
 
   findSpawnPoint() {
@@ -2146,45 +2148,51 @@ class MinecraftGame {
   // ==================== CHUNK MANAGEMENT ====================
 
   updateChunks() {
-    const pcx = Math.floor(this.player.position.x / CHUNK_SIZE);
-    const pcz = Math.floor(this.player.position.z / CHUNK_SIZE);
-
-    const chunksNeeded = [];
-    for (let dx = -this.settings.renderDistance; dx <= this.settings.renderDistance; dx++) {
-      for (let dz = -this.settings.renderDistance; dz <= this.settings.renderDistance; dz++) {
-        const distSq = dx*dx + dz*dz;
-        if (distSq <= this.settings.renderDistance * this.settings.renderDistance) {
-          const cx = pcx + dx;
-          const cz = pcz + dz;
-          const key = `${cx},${cz}`;
-          if (!this.chunks.has(key) && !this.pendingChunks.has(key)) {
-            chunksNeeded.push({cx, cz, dist: distSq});
+      const pcx = Math.floor(this.player.position.x / CHUNK_SIZE);
+      const pcz = Math.floor(this.player.position.z / CHUNK_SIZE);
+  
+      // Generate chunks beyond view distance to prevent pop-in
+      // They'll be hidden by fog until player gets closer
+      const loadDistance = this.settings.renderDistance + 2;
+  
+      const chunksNeeded = [];
+      for (let dx = -loadDistance; dx <= loadDistance; dx++) {
+        for (let dz = -loadDistance; dz <= loadDistance; dz++) {
+          const distSq = dx*dx + dz*dz;
+          if (distSq <= loadDistance * loadDistance) {
+            const cx = pcx + dx;
+            const cz = pcz + dz;
+            const key = `${cx},${cz}`;
+            if (!this.chunks.has(key) && !this.pendingChunks.has(key)) {
+              chunksNeeded.push({cx, cz, dist: distSq});
+            }
           }
         }
       }
-    }
-    
-    chunksNeeded.sort((a, b) => a.dist - b.dist);
-    const maxChunksPerFrame = 2;
-    for (let i = 0; i < Math.min(chunksNeeded.length, maxChunksPerFrame); i++) {
-      this.generateChunk(chunksNeeded[i].cx, chunksNeeded[i].cz);
-    }
-
-    const maxDist = this.settings.renderDistance + 2;
-    this.chunkMeshes.forEach((group, key) => {
-      const [cx, cz] = key.split(',').map(Number);
-      if (Math.abs(cx - pcx) > maxDist || Math.abs(cz - pcz) > maxDist) {
-        this.scene.remove(group);
-        group.children.forEach(child => {
-          if (child.geometry) child.geometry.dispose();
-          if (child.material) child.material.dispose();
-        });
-        this.chunkMeshes.delete(key);
-        this.chunks.delete(key);
+      
+      chunksNeeded.sort((a, b) => a.dist - b.dist);
+      const maxChunksPerFrame = 2;
+      for (let i = 0; i < Math.min(chunksNeeded.length, maxChunksPerFrame); i++) {
+        this.generateChunk(chunksNeeded[i].cx, chunksNeeded[i].cz);
       }
-    });
-
-    document.getElementById('chunk-info').textContent = `Chunks: ${this.chunkMeshes.size}`;
+  
+      // Unload chunks that are beyond the load distance + buffer
+      const maxDist = loadDistance + 2;
+      this.chunkMeshes.forEach((group, key) => {
+        const [cx, cz] = key.split(',').map(Number);
+        if (Math.abs(cx - pcx) > maxDist || Math.abs(cz - pcz) > maxDist) {
+          this.scene.remove(group);
+          group.children.forEach(child => {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) child.material.dispose();
+          });
+          this.chunkMeshes.delete(key);
+          this.chunks.delete(key);
+          this.pendingChunks.delete(key);
+        }
+      });
+  
+      document.getElementById('chunk-info').textContent = `Chunks: ${this.chunkMeshes.size}`;
   }
 
   // ==================== GAME LOOP ====================
