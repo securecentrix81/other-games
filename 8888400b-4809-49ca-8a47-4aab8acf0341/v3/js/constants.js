@@ -1,6 +1,6 @@
 // ==================== CONSTANTS ====================
 const CHUNK_SIZE = 16;
-const WORLD_HEIGHT = 1000;
+const WORLD_HEIGHT = 256;
 const GRAVITY = 28;
 const JUMP_FORCE = 9;
 const PLAYER_HEIGHT = 1.62;
