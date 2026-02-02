@@ -7,7 +7,7 @@ class MinecraftGame {
     this.worldName = 'World';
     
     this.settings = {
-      renderDistance: 2,
+      renderDistance: 6,
       shadowsEnabled: false,
       shadowDistance: 50,
       shadowResolution: 4096,
@@ -145,12 +145,12 @@ class MinecraftGame {
   }
 
   init() {
+    this.loadSettings(); // Moved up: Must load data before building UI
     this.setupLighting();
     this.setupHighlight();
     this.setupHotbar();
     this.setupHealthBar();
     this.setupEventListeners();
-    this.loadSettings(); // Moved up: Must load data before building UI
     this.setupSettingsUI(); 
     this.setupInventoryUI();
     this.setupSaveUI();
@@ -1973,11 +1973,7 @@ class MinecraftGame {
   findSpawnPoint() {
     let x = 8, z = 8;
     let y = this.getTerrainHeight(x, z) + 2;
-    /*while (y <= WATER_LEVEL + 1) {
-      x += 16;
-      y = this.getTerrainHeight(x, z) + 2;
-    }*/
-    this.player.position.set(x + 0.5, y, z + 0.5);
+    this.player.position.set(x + 0.5, y+0.1, z + 0.5);
   }
 
   getBlock(x, y, z) {
