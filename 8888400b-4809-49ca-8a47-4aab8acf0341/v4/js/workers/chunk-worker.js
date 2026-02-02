@@ -128,11 +128,117 @@ function generateChunkData(cx, cz, seed) {
       }
     }
   }
+  // Generate grass and flowers
+  for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+    for (let lz = 0; lz < CHUNK_SIZE; lz++) {
+      const wx = cx * CHUNK_SIZE + lx;
+      const wz = cz * CHUNK_SIZE + lz;
+      const height = getTerrainHeight(wx, wz);
+      const biome = getBiome(wx, wz);
+      
+      // Skip if underwater
+      if (height <= WATER_LEVEL) continue;
+      
+      const surfaceIdx = lx + height * CHUNK_SIZE + lz * CHUNK_SIZE * WORLD_HEIGHT;
+      const aboveIdx = lx + (height + 1) * CHUNK_SIZE + lz * CHUNK_SIZE * WORLD_HEIGHT;
+      
+      // Only place on grass or sand, and only if above is air
+      const surfaceBlock = chunk[surfaceIdx];
+      if (chunk[aboveIdx] !== BLOCK.AIR) continue;
+      
+      const rand = seededRandom(wx + 1000, wz + 1000, seed);
+      
+      if (surfaceBlock === BLOCK.GRASS) {
+        // Plains and forest get tall grass and flowers
+        if (biome === 'plains' || biome === 'forest') {
+          if (rand < 0.15) {
+            // 15% chance for tall grass
+            chunk[aboveIdx] = BLOCK.TALL_GRASS;
+          } else if (rand < 0.18) {
+            // 3% chance for flowers
+            const flowerRand = seededRandom(wx + 2000, wz + 2000, seed);
+            if (flowerRand < 0.33) {
+              chunk[aboveIdx] = BLOCK.FLOWER_RED;
+            } else if (flowerRand < 0.66) {
+              chunk[aboveIdx] = BLOCK.FLOWER_YELLOW;
+            } else {
+              chunk[aboveIdx] = BLOCK.FLOWER_BLUE;
+            }
+          }
+        }
+      } else if (surfaceBlock === BLOCK.SAND && biome === 'desert') {
+        // Desert gets dead bushes
+        if (rand < 0.02) {
+          chunk[aboveIdx] = BLOCK.DEAD_BUSH;
+        }
+      }
+    }
+  }
 
   return chunk;
 }
 
 // ==================== MESH GEOMETRY BUILDING ====================
+function addCrossGeometry(wx, y, wz, color, target) {
+  const r = ((color >> 16) & 255) / 255;
+  const g = ((color >> 8) & 255) / 255;
+  const b = (color & 255) / 255;
+
+  // Offset to center the X in the block
+  const offset = 0.15;
+  const height = 0.9;  // Slightly shorter than full block
+
+  // Two diagonal planes forming an X shape
+  // Each plane needs front and back faces (6 vertices each = 2 triangles)
+  
+  // Plane 1: Goes from (0,0,0) to (1,0,1) corner
+  const plane1 = [
+    // Front face
+    { pos: [offset, 0, offset], norm: [-0.707, 0, 0.707] },
+    { pos: [1 - offset, 0, 1 - offset], norm: [-0.707, 0, 0.707] },
+    { pos: [1 - offset, height, 1 - offset], norm: [-0.707, 0, 0.707] },
+    { pos: [offset, 0, offset], norm: [-0.707, 0, 0.707] },
+    { pos: [1 - offset, height, 1 - offset], norm: [-0.707, 0, 0.707] },
+    { pos: [offset, height, offset], norm: [-0.707, 0, 0.707] },
+    // Back face
+    { pos: [1 - offset, 0, 1 - offset], norm: [0.707, 0, -0.707] },
+    { pos: [offset, 0, offset], norm: [0.707, 0, -0.707] },
+    { pos: [offset, height, offset], norm: [0.707, 0, -0.707] },
+    { pos: [1 - offset, 0, 1 - offset], norm: [0.707, 0, -0.707] },
+    { pos: [offset, height, offset], norm: [0.707, 0, -0.707] },
+    { pos: [1 - offset, height, 1 - offset], norm: [0.707, 0, -0.707] }
+  ];
+
+  // Plane 2: Goes from (1,0,0) to (0,0,1) corner
+  const plane2 = [
+    // Front face
+    { pos: [1 - offset, 0, offset], norm: [0.707, 0, 0.707] },
+    { pos: [offset, 0, 1 - offset], norm: [0.707, 0, 0.707] },
+    { pos: [offset, height, 1 - offset], norm: [0.707, 0, 0.707] },
+    { pos: [1 - offset, 0, offset], norm: [0.707, 0, 0.707] },
+    { pos: [offset, height, 1 - offset], norm: [0.707, 0, 0.707] },
+    { pos: [1 - offset, height, offset], norm: [0.707, 0, 0.707] },
+    // Back face
+    { pos: [offset, 0, 1 - offset], norm: [-0.707, 0, -0.707] },
+    { pos: [1 - offset, 0, offset], norm: [-0.707, 0, -0.707] },
+    { pos: [1 - offset, height, offset], norm: [-0.707, 0, -0.707] },
+    { pos: [offset, 0, 1 - offset], norm: [-0.707, 0, -0.707] },
+    { pos: [1 - offset, height, offset], norm: [-0.707, 0, -0.707] },
+    { pos: [offset, height, 1 - offset], norm: [-0.707, 0, -0.707] }
+  ];
+
+  // Add slight random rotation/offset per block for variety
+  const variation = (Math.sin(wx * 12.9898 + wz * 78.233) * 43758.5453) % 1;
+  const colorMult = 0.85 + Math.abs(variation) * 0.15;
+
+  const allVerts = [...plane1, ...plane2];
+  
+  for (const vert of allVerts) {
+    target.pos.push(wx + vert.pos[0], y + vert.pos[1], wz + vert.pos[2]);
+    target.col.push(r * colorMult, g * colorMult, b * colorMult);
+    target.norm.push(vert.norm[0], vert.norm[1], vert.norm[2]);
+  }
+}
 
 function buildMeshGeometry(cx, cz, chunk, neighbors, modifiedBlocks) {
   const opaque = { pos: [], col: [], norm: [] };  // Added norm array
@@ -232,11 +338,17 @@ function buildMeshGeometry(cx, cz, chunk, neighbors, modifiedBlocks) {
         }
 
         if (block === BLOCK.AIR) continue;
-
+        
         const data = BLOCK_DATA[block];
         if (!data) continue;
-
+        
         const target = data.transparent ? trans : opaque;
+        
+        // Handle cross-type blocks (flowers, grass, etc.)
+        if (data.type === BLOCK_TYPE.CROSS) {
+          addCrossGeometry(wx, y, wz, data.color || data.side, trans);
+          continue; // Skip cube face logic
+        }
 
         const shouldRender = (nx, ny, nz) => {
           const neighbor = getBlock(nx, ny, nz);
