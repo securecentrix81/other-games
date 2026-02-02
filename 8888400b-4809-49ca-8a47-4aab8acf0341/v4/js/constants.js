@@ -481,3 +481,29 @@ const FACE_DATA = {
   right:  { dir: [1,0,0],  shade: 0.85,corners: [{pos:[1,0,0],neighbors:[[1,0,-1],[1,-1,0],[1,-1,-1]]},{pos:[1,1,0],neighbors:[[1,0,-1],[1,1,0],[1,1,-1]]},{pos:[1,1,1],neighbors:[[1,0,1],[1,1,0],[1,1,1]]},{pos:[1,0,1],neighbors:[[1,0,1],[1,-1,0],[1,-1,1]]}]},
   left:   { dir: [-1,0,0], shade: 0.65,corners: [{pos:[0,0,1],neighbors:[[-1,0,1],[-1,-1,0],[-1,-1,1]]},{pos:[0,1,1],neighbors:[[-1,0,1],[-1,1,0],[-1,1,1]]},{pos:[0,1,0],neighbors:[[-1,0,-1],[-1,1,0],[-1,1,-1]]},{pos:[0,0,0],neighbors:[[-1,0,-1],[-1,-1,0],[-1,-1,-1]]}]}
 };
+
+const RECIPES = [
+  { result: BLOCK.PLANKS, resultCount: 4, ingredients: [{ item: BLOCK.WOOD, count: 1 }], name: 'Oak Planks' },
+  { result: ITEM.STICK, resultCount: 4, ingredients: [{ item: BLOCK.PLANKS, count: 2 }], name: 'Sticks' },
+  { result: BLOCK.CRAFTING_TABLE, resultCount: 1, ingredients: [{ item: BLOCK.PLANKS, count: 4 }], name: 'Crafting Table' },
+  { result: ITEM.WOODEN_PICKAXE, resultCount: 1, ingredients: [{ item: BLOCK.PLANKS, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Wooden Pickaxe' },
+  { result: ITEM.WOODEN_AXE, resultCount: 1, ingredients: [{ item: BLOCK.PLANKS, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Wooden Axe' },
+  { result: ITEM.WOODEN_SHOVEL, resultCount: 1, ingredients: [{ item: BLOCK.PLANKS, count: 1 }, { item: ITEM.STICK, count: 2 }], name: 'Wooden Shovel' },
+  { result: ITEM.WOODEN_SWORD, resultCount: 1, ingredients: [{ item: BLOCK.PLANKS, count: 2 }, { item: ITEM.STICK, count: 1 }], name: 'Wooden Sword' },
+  { result: ITEM.STONE_PICKAXE, resultCount: 1, ingredients: [{ item: BLOCK.COBBLE, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Stone Pickaxe' },
+  { result: ITEM.STONE_AXE, resultCount: 1, ingredients: [{ item: BLOCK.COBBLE, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Stone Axe' },
+  { result: ITEM.STONE_SHOVEL, resultCount: 1, ingredients: [{ item: BLOCK.COBBLE, count: 1 }, { item: ITEM.STICK, count: 2 }], name: 'Stone Shovel' },
+  { result: ITEM.STONE_SWORD, resultCount: 1, ingredients: [{ item: BLOCK.COBBLE, count: 2 }, { item: ITEM.STICK, count: 1 }], name: 'Stone Sword' },
+  { result: ITEM.IRON_PICKAXE, resultCount: 1, ingredients: [{ item: ITEM.IRON_INGOT, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Iron Pickaxe' },
+  { result: ITEM.IRON_AXE, resultCount: 1, ingredients: [{ item: ITEM.IRON_INGOT, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Iron Axe' },
+  { result: ITEM.IRON_SHOVEL, resultCount: 1, ingredients: [{ item: ITEM.IRON_INGOT, count: 1 }, { item: ITEM.STICK, count: 2 }], name: 'Iron Shovel' },
+  { result: ITEM.IRON_SWORD, resultCount: 1, ingredients: [{ item: ITEM.IRON_INGOT, count: 2 }, { item: ITEM.STICK, count: 1 }], name: 'Iron Sword' },
+  { result: ITEM.DIAMOND_PICKAXE, resultCount: 1, ingredients: [{ item: ITEM.DIAMOND, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Diamond Pickaxe' },
+  { result: ITEM.DIAMOND_AXE, resultCount: 1, ingredients: [{ item: ITEM.DIAMOND, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Diamond Axe' },
+  { result: ITEM.DIAMOND_SHOVEL, resultCount: 1, ingredients: [{ item: ITEM.DIAMOND, count: 1 }, { item: ITEM.STICK, count: 2 }], name: 'Diamond Shovel' },
+  { result: ITEM.DIAMOND_SWORD, resultCount: 1, ingredients: [{ item: ITEM.DIAMOND, count: 2 }, { item: ITEM.STICK, count: 1 }], name: 'Diamond Sword' },
+  { result: ITEM.IRON_INGOT, resultCount: 1, ingredients: [{ item: BLOCK.IRON_ORE, count: 1 }, { item: ITEM.COAL, count: 1 }], name: 'Smelt Iron' },
+  { result: ITEM.GOLD_INGOT, resultCount: 1, ingredients: [{ item: BLOCK.GOLD_ORE, count: 1 }, { item: ITEM.COAL, count: 1 }], name: 'Smelt Gold' },
+  { result: BLOCK.GLASS, resultCount: 1, ingredients: [{ item: BLOCK.SAND, count: 1 }, { item: ITEM.COAL, count: 1 }], name: 'Smelt Glass' },
+  { result: BLOCK.STONE, resultCount: 1, ingredients: [{ item: BLOCK.COBBLE, count: 1 }, { item: ITEM.COAL, count: 1 }], name: 'Smelt Stone' }
+];
