@@ -2717,7 +2717,7 @@ class MinecraftGame {
     const loader = new THREE.TextureLoader();
     
     loader.load(
-      '../assets/atlas.png',
+      'assets/atlas.png',
       (texture) => {
         // Configure texture for pixelated look
         texture.magFilter = THREE.NearestFilter;
