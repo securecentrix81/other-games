@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minecraft - Secure Centrix81</title>
+    <title>Minecraft Clone</title>
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
@@ -26,7 +26,7 @@
         <h1>⛏ MINECRAFT</h1>
         <p class="subtitle">A Voxel Sandbox Adventure</p>
         
-        <div class="controls" id="controls-panel">
+        <!--<div class="controls" id="controls-panel">
           <p><span class="key">W A S D</span> Move around</p>
           <p><span class="key">SPACE</span> Jump / Fly up</p>
           <p><span class="key">SHIFT</span> Sprint / Fly down</p>
@@ -39,7 +39,7 @@
           <p><span class="key">C</span> Toggle Creative/Survival</p>
           <p><span class="key">F5</span> Quick Save</p>
           <p><span class="key">ESC</span> Settings / Menu</p>
-        </div>
+        </div>-->
 
         <h3 style="color: #fff; margin-bottom: 10px;">Select World</h3>
         <div class="world-slots" id="world-slots"></div>
@@ -80,9 +80,14 @@
             <input type="checkbox" id="setting-shadows">
           </div>
           <div class="setting-row" id="shadow-distance-row" style="display:none">
-            <label>Shadow Distance</label>
-            <input type="range" id="setting-shadow-distance" min="100" max="500" value="200">
+            <label>Shadow Range</label>
+            <input type="range" id="setting-shadow-distance" min="50" max="500" step="10" value="200">
             <span class="setting-value" id="shadow-distance-value">200</span>
+          </div>
+          <div class="setting-row" id="shadow-resolution-row" style="display:none">
+            <label>Shadow Resolution</label>
+            <input type="range" id="setting-shadow-resolution" min="0" max="16384" step="1" value="4096">
+            <span class="setting-value" id="shadow-resolution-value">4096</span>
           </div>
           <div class="setting-row">
             <label>FOV</label>
