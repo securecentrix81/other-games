@@ -528,10 +528,10 @@ class MinecraftGame {
   updateShadows() {
     if (this.settings.shadowsEnabled) {
       this.renderer.shadowMap.enabled = true;
-      this.renderer.shadowMap.type = THREE.VSMShadowMap;
+      this.renderer.shadowMap.type = THREE.VSMShadowMap; // the only shadow that effectively avoids peter panning
       this.sun.castShadow = true;
 
-      const res = this.settings.shadowDistance * CHUNK_SIZE * this.settings.renderDistance;
+      const res = 4096
       this.sun.shadow.mapSize.set(res, res);
       
       const d = CHUNK_SIZE * this.settings.renderDistance;
