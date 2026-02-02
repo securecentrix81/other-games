@@ -2263,10 +2263,7 @@ class MinecraftGame {
         return;
       }
     }
-    
-    if (!BLOCK_DATA[heldItem.id]) return;
 
-    const { x, y, z } = this.placementBlock;
     const px = this.player.position.x;
     const py = this.player.position.y;
     const pz = this.player.position.z;
