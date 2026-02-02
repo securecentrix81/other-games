@@ -365,7 +365,7 @@ class MinecraftGame {
     if (save.player) {
       this.player.position.set(
         save.player.position.x,
-        save.player.position.y+0.01,
+        save.player.position.y+0.1,
         save.player.position.z
       );
       this.player.yaw = save.player.yaw || 0;
