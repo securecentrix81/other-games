@@ -19,7 +19,7 @@ const AUTOSAVE_INTERVAL = 30000;
 // Block types
 const BLOCK = {
   AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, WOOD: 4, LEAVES: 5,
-  SAND: 6, WATER: 7, COBBLE: 8, PLANKS: 9, BEDROCK: 10,
+  SAND: 6, /*WATER: 7,*/ COBBLE: 8, PLANKS: 9, BEDROCK: 10,
   GRAVEL: 11, COAL_ORE: 12, IRON_ORE: 13, SNOW: 14, GLASS: 15,
   DIAMOND_ORE: 16, GOLD_ORE: 17, CRAFTING_TABLE: 18
 };
@@ -41,7 +41,7 @@ const BLOCK_DATA = {
   [BLOCK.WOOD]:     { name: 'Oak Log',     hardness: 2.0,  top: 0x9c7f4a, side: 0x5b3413, bottom: 0x9c7f4a, solid: true, toolType: 'axe' },
   [BLOCK.LEAVES]:   { name: 'Leaves',      hardness: 0.2,  top: 0x3d8c40, side: 0x3d8c40, bottom: 0x3d8c40, solid: true },
   [BLOCK.SAND]:     { name: 'Sand',        hardness: 0.75, top: 0xdbd3a0, side: 0xdbd3a0, bottom: 0xdbd3a0, solid: true, toolType: 'shovel' },
-  [BLOCK.WATER]:    { name: 'Water',       hardness: -1,   top: 0x3498db, side: 0x3498db, bottom: 0x3498db, solid: false, transparent: true },
+  /* [BLOCK.WATER]:    { name: 'Water',       hardness: -1,   top: 0x3498db, side: 0x3498db, bottom: 0x3498db, solid: false, transparent: true }, */
   [BLOCK.COBBLE]:   { name: 'Cobblestone', hardness: 10.0, top: 0x6a6a6a, side: 0x6a6a6a, bottom: 0x6a6a6a, solid: true, toolType: 'pickaxe', minTool: 'wooden' },
   [BLOCK.PLANKS]:   { name: 'Oak Planks',  hardness: 2.0,  top: 0xb8945f, side: 0xb8945f, bottom: 0xb8945f, solid: true, toolType: 'axe' },
   [BLOCK.BEDROCK]:  { name: 'Bedrock',     hardness: -1,   top: 0x333333, side: 0x333333, bottom: 0x333333, solid: true },
