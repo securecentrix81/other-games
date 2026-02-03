@@ -46,51 +46,51 @@ const ITEM = {
 
 // ==================== TEXTURE ATLAS CONFIG ====================
 
-const ATLAS_SIZE = 16;  // 16x16 grid of textures
+const ATLAS_SIZE = 250;  // 16x16 grid of textures
 const TILE_SIZE = 1 / ATLAS_SIZE;  // UV size of one tile (0.0625)
 
 // Texture positions in atlas [column, row] (0-indexed from bottom-left)
 // Row 0 is BOTTOM of image, Row 15 is TOP
 const TEX = {
   // Basic blocks
-  GRASS_TOP:      [0, 15],
-  GRASS_SIDE:     [1, 15],
-  DIRT:           [2, 15],
-  STONE:          [3, 15],
-  COBBLESTONE:    [4, 15],
-  BEDROCK:        [5, 15],
-  SAND:           [6, 15],
-  GRAVEL:         [7, 15],
-  SNOW:           [8, 15],
+  GRASS_TOP:      [0, 0],
+  GRASS_SIDE:     [0, 0],
+  DIRT:           [0, 0],
+  STONE:          [0, 0],
+  COBBLESTONE:    [0, 0],
+  BEDROCK:        [0, 0],
+  SAND:           [0, 0],
+  GRAVEL:         [0, 0],
+  SNOW:           [0, 0],
   
   // Wood and trees
-  WOOD_SIDE:      [0, 14],
-  WOOD_TOP:       [1, 14],
-  LEAVES:         [2, 14],
-  PLANKS:         [3, 14],
+  WOOD_SIDE:      [0, 0],
+  WOOD_TOP:       [0, 0],
+  LEAVES:         [0, 0],
+  PLANKS:         [0, 0],
   
   // Ores
-  COAL_ORE:       [0, 13],
-  IRON_ORE:       [1, 13],
-  GOLD_ORE:       [2, 13],
-  DIAMOND_ORE:    [3, 13],
+  COAL_ORE:       [0, 0],
+  IRON_ORE:       [0, 0],
+  GOLD_ORE:       [0, 0],
+  DIAMOND_ORE:    [0, 0],
   
   // Other blocks
-  WATER:          [0, 12],
-  GLASS:          [1, 12],
-  BRICK:          [2, 12],
-  BOOKSHELF:      [3, 12],
+  WATER:          [0, 0],
+  GLASS:          [0, 0],
+  BRICK:          [0, 0],
+  BOOKSHELF:      [0, 0],
   
   // Cross-type (flowers, grass)
-  TALL_GRASS:     [0, 11],
-  FLOWER_RED:     [1, 11],
-  FLOWER_YELLOW:  [2, 11],
-  FLOWER_BLUE:    [3, 11],
-  DEAD_BUSH:      [4, 11],
-  SAPLING:        [5, 11],
+  TALL_GRASS:     [0, 0],
+  FLOWER_RED:     [0, 0],
+  FLOWER_YELLOW:  [0, 0],
+  FLOWER_BLUE:    [0, 0],
+  DEAD_BUSH:      [0, 0],
+  SAPLING:        [0, 0],
   
   // Fallback/debug
-  MISSING:        [15, 0]
+  MISSING:        [0, 0]
 };
 
 // Helper to get UV coordinates for a texture slot
