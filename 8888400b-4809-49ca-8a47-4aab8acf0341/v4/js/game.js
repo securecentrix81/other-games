@@ -1,4 +1,4 @@
-// ==================== GAME CLASS ==================== 
+// ==================== GAME CLASS ====================
 class MinecraftGame {
   constructor() {
     this.saveManager = new SaveManager();
