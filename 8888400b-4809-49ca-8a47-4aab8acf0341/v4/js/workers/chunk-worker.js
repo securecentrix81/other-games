@@ -294,8 +294,8 @@ function buildMeshGeometry(cx, cz, chunk, neighbors, modifiedBlocks) {
     bottom: [[0, 1], [0, 0], [1, 0], [1, 1]],
     front:  [[0, 0], [1, 0], [1, 1], [0, 1]],
     back:   [[1, 0], [0, 0], [0, 1], [1, 1]],
-    right:  [[0, 0], [1, 0], [1, 1], [0, 1]],
-    left:   [[1, 0], [0, 0], [0, 1], [1, 1]]
+    right:  [[0, 0], [0, 1], [1, 1], [1, 0]],
+    left:   [[1, 0], [1, 1], [0, 1], [0, 0]]
   };
 
   const addFace = (wx, y, wz, dir, texSlot, target) => {
