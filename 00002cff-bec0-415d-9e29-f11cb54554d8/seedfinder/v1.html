@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TI-84 randInt Seed Finder</title>
+    <style>
+        :root {
+            --bg-grad-start: #111827;
+            --bg-grad-mid: #1f2937;
+            --bg-grad-end: #111827;
+            --card-bg: rgba(31, 41, 55, 0.6);
+            --border-color: rgba(75, 85, 99, 0.5);
+            --text-main: #ffffff;
+            --text-muted: #9ca3af;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --error-bg: rgba(127, 29, 29, 0.3);
+            --error-text: #f87171;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(to bottom right, var(--bg-grad-start), var(--bg-grad-mid), var(--bg-grad-end));
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .icon-box {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 3rem;
+            height: 3rem;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 0.75rem;
+            margin-right: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .title-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #60a5fa, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            max-width: 40rem;
+            margin: 0 auto;
+            line-height: 1.5;
+        }
+
+        code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            color: #60a5fa;
+            background: rgba(0,0,0,0.2);
+            padding: 0.1rem 0.3rem;
+            border-radius: 0.25rem;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            border: 1px solid transparent;
+            margin-bottom: 1.5rem;
+        }
+        .status-dot {
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: 50%;
+        }
+        .status-supported {
+            background-color: rgba(6, 78, 59, 0.5);
+            color: #4ade80;
+            border-color: rgba(21, 128, 61, 0.5);
+        }
+        .status-supported .status-dot { background-color: #4ade80; }
+        .status-unsupported {
+            background-color: rgba(69, 26, 3, 0.5);
+            color: #facc15;
+            border-color: rgba(161, 98, 7, 0.5);
+        }
+        .status-unsupported .status-dot { background-color: #facc15; }
+
+        /* Card */
+        .card {
+            background-color: var(--card-bg);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #d1d5db;
+            margin-bottom: 0.5rem;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .input-wrapper {
+            flex: 1;
+        }
+
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            background-color: #111827;
+            border: 1px solid #4b5563;
+            border-radius: 0.5rem;
+            padding: 0.625rem 1rem;
+            color: white;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+        input:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 1.5rem;
+        }
+        .radio-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            color: #d1d5db;
+        }
+        .radio-label.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Buttons */
+        .btn-row {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: white;
+            font-size: 1rem;
+        }
+        .btn-primary {
+            flex: 1;
+            background: linear-gradient(to right, #2563eb, #9333ea);
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: linear-gradient(to right, #1d4ed8, #7e22ce);
+        }
+        .btn-primary:disabled {
+            background: #4b5563;
+            cursor: not-allowed;
+        }
+        .btn-danger {
+            background-color: #dc2626;
+        }
+        .btn-danger:hover {
+            background-color: #b91c1c;
+        }
+
+        /* Error Box */
+        .error-box {
+            background-color: var(--error-bg);
+            border: 1px solid var(--error-text);
+            color: var(--error-text);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            display: none; /* hidden by default */
+        }
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+        .progress-track {
+            width: 100%;
+            height: 0.75rem;
+            background-color: #374151;
+            border-radius: 9999px;
+            overflow: hidden;
+            margin-bottom: 0.75rem;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(to right, var(--accent-blue), var(--accent-purple));
+            width: 0%;
+            transition: width 0.2s;
+        }
+        .progress-fill.cancelled { background: #eab308; }
+        .progress-fill.complete { background: #22c55e; }
+
+        /* Results */
+        .results-container {
+            display: none;
+        }
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.75rem;
+        }
+        .seed-item {
+            background-color: rgba(17, 24, 39, 0.5);
+            border: 1px solid #374151;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .seed-val {
+            font-family: monospace;
+            font-size: 1.125rem;
+            color: #60a5fa;
+        }
+        .btn-verify {
+            font-size: 0.75rem;
+            background: transparent;
+            border: 1px solid #4b5563;
+            color: var(--text-muted);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+        }
+        .btn-verify:hover {
+            background-color: #374151;
+            color: white;
+        }
+
+        /* Verification Box */
+        .verify-box {
+            display: none;
+            margin-top: 1.5rem;
+            background-color: rgba(31, 41, 55, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 1.5rem;
+        }
+        .seq-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .badge {
+            padding: 0.35rem 0.75rem;
+            border-radius: 0.5rem;
+            font-family: monospace;
+            font-size: 0.875rem;
+            border: 1px solid;
+        }
+        .badge-match {
+            background-color: rgba(6, 78, 59, 0.5);
+            color: #4ade80;
+            border-color: rgba(21, 128, 61, 0.5);
+        }
+        .badge-normal {
+            background-color: rgba(17, 24, 39, 0.5);
+            color: #9ca3af;
+            border-color: #374151;
+        }
+
+        /* Info Footer */
+        .info-footer {
+            margin-top: 2rem;
+            background-color: rgba(31, 41, 55, 0.3);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            font-size: 0.875rem;
+            color: #9ca3af;
+        }
+        .info-footer p { margin: 0.25rem 0; }
+        .highlight { color: #60a5fa; }
+        
+        /* Loading Spinner */
+        .spinner {
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+            height: 1.25rem;
+            width: 1.25rem;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 640px) {
+            .input-row { flex-direction: column; gap: 0.5rem; }
+            .radio-group { flex-direction: column; gap: 0.5rem; }
+            .container { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div class="title-row">
+            <div class="icon-box">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                </svg>
+            </div>
+            <h1>TI-84 randInt Seed Finder</h1>
+        </div>
+        <p class="subtitle">
+            Find seeds for TI-84's L'Ecuyer PRNG that produce a specific sequence.
+        </p>
+    </div>
+
+    <!-- WebGPU Status -->
+    <div style="text-align: center;">
+        <div id="statusBadge" class="status-badge status-unsupported">
+            <span class="status-dot"></span>
+            <span id="statusText">Checking WebGPU...</span>
+        </div>
+    </div>
+
+    <!-- Search Form -->
+    <div class="card">
+
+        <!-- Range Inputs -->
+        <div class="form-group">
+            <div class="input-row">
+                <div class="input-wrapper">
+                    <label>Range Min</label>
+                    <input type="number" id="rangeMin" value="1" placeholder="Min">
+                </div>
+                <div class="input-wrapper">
+                    <label>Range Max</label>
+                    <input type="number" id="rangeMax" value="6" placeholder="Max">
+                </div>
+            </div>
+        </div>
+
+        <!-- Max Seed -->
+        <div class="form-group">
+            <label>Max Seed to Search</label>
+            <input type="number" id="maxSeed" value="100000000" placeholder="100000000">
+        </div>
+
+        <!-- Sequence -->
+        <div class="form-group">
+            <label>Target Sequence (comma or space separated)</label>
+            <input type="text" id="targetSequence" value="1, 2, 3" placeholder="e.g. 1, 2, 3">
+        </div>
+
+        <!-- Compute Device -->
+        <div class="form-group">
+            <label>Compute Device</label>
+            <div class="radio-group">
+                <label class="radio-label" id="gpuLabel">
+                    <input type="radio" name="computeMode" value="webgpu" checked>
+                    <span>WebGPU (Fast)</span>
+                </label>
+                <label class="radio-label">
+                    <input type="radio" name="computeMode" value="cpu">
+                    <span>CPU (Slower, Compatible)</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Error Msg -->
+        <div id="errorBox" class="error-box"></div>
+
+        <!-- Buttons -->
+        <div class="btn-row">
+            <button id="searchBtn" class="btn btn-primary">Find Seeds</button>
+            <button id="cancelBtn" class="btn btn-danger" style="display: none;">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Progress -->
+    <div id="progressContainer" class="card progress-container">
+        <div class="progress-header">
+            <span id="progressStatus">Searching...</span>
+            <span id="progressPercent">0%</span>
+        </div>
+        <div class="progress-track">
+            <div id="progressBar" class="progress-fill"></div>
+        </div>
+        <div class="progress-header">
+            <span id="progressCount">0 / 0 seeds</span>
+            <span id="progressSpeed">0 M seeds checked</span>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div id="resultsContainer" class="card results-container">
+        <h2 style="margin-top: 0; margin-bottom: 1rem; font-size: 1.25rem;">Found Seeds (<span id="foundCount">0</span>)</h2>
+        <div id="noResults" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+            No matching seeds found yet.
+        </div>
+        <div id="resultsGrid" class="results-grid">
+            <!-- Items injected via JS -->
+        </div>
+    </div>
+
+    <!-- Verification -->
+    <div id="verifyBox" class="verify-box">
+        <h3 style="margin-top: 0; margin-bottom: 0.5rem; font-size: 1.1rem; color: #fff;">
+            Verification for Seed <span id="verifySeedNum" class="highlight"></span>
+        </h3>
+        <p style="margin-bottom: 1rem; color: var(--text-muted); font-size: 0.9rem;" id="verifyDesc"></p>
+        <div id="verifyBadges" class="seq-badges">
+            <!-- Badges injected via JS -->
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="info-footer">
+        <h3 style="color: #fff; margin-bottom: 0.5rem; font-size: 0.9rem;">Algorithm Details (L'Ecuyer's Combined LCG)</h3>
+        <p><span class="highlight">Seed n:</span> s₁ = (40014 × n) mod 2147483563, s₂ = n mod 2147483399</p>
+        <p><span class="highlight">Step:</span> s₁ = (40014 × s₁) mod M1, s₂ = (40692 × s₂) mod M2</p>
+        <p><span class="highlight">rand():</span> r = (s₁ - s₂) / M1 (if &lt; 0 add 1.0)</p>
+        <p><span class="highlight">randInt(a,b):</span> a + floor(rand() × (b - a + 1))</p>
+    </div>
+</div>
+
+<script>
+/**
+ * 1. LOGIC IMPLEMENTATION (Ported from TypeScript)
+ */
+
+// WebGPU Shader Code
+const SHADER_CODE = `
+struct Params {
+    range_min: i32,
+    range_max: i32,
+    sequence_length: u32,
+    batch_offset: u32,
+    batch_size: u32,
+    mode: u32, // 0 = randInt, 1 = randIntNoRep
+}
+
+struct Result {
+    found: atomic<u32>,
+    seed_count: atomic<u32>,
+}
+
+@group(0) @binding(0) var<uniform> params: Params;
+@group(0) @binding(1) var<storage, read> target_sequence: array<i32>;
+@group(0) @binding(2) var<storage, read_write> results: Result;
+@group(0) @binding(3) var<storage, read_write> found_seeds: array<u32>;
+
+const M1: u32 = 2147483563u;
+const M2: u32 = 2147483399u;
+const A1: u32 = 40014u;
+const A2: u32 = 40692u;
+
+// Multiply a * b mod m using 64-bit emulation
+fn mulmod(a: u32, b: u32, m: u32) -> u32 {
+    let b_lo = b & 0xFFFFu;
+    let b_hi = b >> 16u;
+    
+    let prod_lo = a * b_lo;
+    let prod_hi = a * b_hi;
+    
+    var hi_contrib = prod_hi;
+    for (var i = 0u; i < 16u; i++) {
+        hi_contrib = hi_contrib << 1u;
+        if (hi_contrib >= m) {
+            hi_contrib = hi_contrib - m;
+        }
+    }
+    
+    var lo_contrib = prod_lo;
+    while (lo_contrib >= m) {
+        lo_contrib = lo_contrib - m;
+    }
+    
+    var result = hi_contrib + lo_contrib;
+    if (result >= m) {
+        result = result - m;
+    }
+    
+    return result;
+}
+
+fn init_state(seed: u32) -> vec2<u32> {
+    if (seed == 0u) {
+        return vec2<u32>(12345u, 67890u);
+    }
+    let s1 = mulmod(A1, seed, M1);
+    var s2 = seed;
+    while (s2 >= M2) { s2 = s2 - M2; }
+    return vec2<u32>(s1, s2);
+}
+
+fn step_and_rand(s1: ptr<function, u32>, s2: ptr<function, u32>) -> f32 {
+    *s1 = mulmod(A1, *s1, M1);
+    *s2 = mulmod(A2, *s2, M2);
+    let diff = i32(*s1) - i32(*s2);
+    var r = f32(diff) / f32(M1);
+    if (r < 0.0) { r = r + 1.0; }
+    if (r >= 1.0) { r = 0.9999999; }
+    return r;
+}
+
+fn rand_int(s1: ptr<function, u32>, s2: ptr<function, u32>, lower: i32, upper: i32) -> i32 {
+    let r = step_and_rand(s1, s2);
+    let span = f32(upper - lower + 1);
+    var k = i32(floor(r * span));
+    let max_k = i32(span) - 1;
+    if (k < 0) { k = 0; }
+    if (k > max_k) { k = max_k; }
+    return lower + k;
+}
+
+@compute @workgroup_size(256)
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    let idx = global_id.x;
+    if (idx >= params.batch_size) { return; }
+    
+    let seed = params.batch_offset + idx;
+    let state = init_state(seed);
+    var s1 = state.x;
+    var s2 = state.y;
+    var matches = true;
+
+    if (params.mode == 0u) {
+        for (var i = 0u; i < params.sequence_length; i++) {
+            let val = rand_int(&s1, &s2, params.range_min, params.range_max);
+            if (val != target_sequence[i]) {
+                matches = false;
+                break;
+            }
+        }
+    } else {
+        var deck: array<i32, 64>;
+        let range_size = params.range_max - params.range_min + 1;
+        for (var k = 0; k < range_size; k++) { deck[k] = params.range_min + k; }
+        
+        for (var i = range_size - 1; i > 0; i--) {
+            let j = rand_int(&s1, &s2, 0, i);
+            let temp = deck[i];
+            deck[i] = deck[j];
+            deck[j] = temp;
+        }
+
+        for (var k = 0u; k < params.sequence_length; k++) {
+            if (deck[k] != target_sequence[k]) {
+                matches = false;
+                break;
+            }
+        }
+    }
+    
+    if (matches) {
+        let slot = atomicAdd(&results.seed_count, 1u);
+        if (slot < 1000u) { found_seeds[slot] = seed; }
+        atomicStore(&results.found, 1u);
+    }
+}
+`;
+
+// CPU-based TI-84 RNG implementation
+class TI84RNG {
+    static M1 = 2147483563n;
+    static M2 = 2147483399n;
+    static A1 = 40014n;
+    static A2 = 40692n;
+  
+    constructor(seed = 0) {
+        this.s1 = 12345n;
+        this.s2 = 67890n;
+        this.reseed(seed);
+    }
+  
+    reseed(seed) {
+        let n = BigInt(Math.abs(Math.floor(seed)));
+        if (n === 0n) {
+            this.s1 = 12345n;
+            this.s2 = 67890n;
+        } else {
+            this.s1 = (TI84RNG.A1 * n) % TI84RNG.M1;
+            this.s2 = n % TI84RNG.M2;
+            if (this.s2 < 0n) this.s2 += TI84RNG.M2;
+        }
+    }
+  
+    step() {
+        this.s1 = (TI84RNG.A1 * this.s1) % TI84RNG.M1;
+        this.s2 = (TI84RNG.A2 * this.s2) % TI84RNG.M2;
+    }
+  
+    rand() {
+        this.step();
+        let r = Number(this.s1 - this.s2) / Number(TI84RNG.M1);
+        if (r < 0) r += 1.0;
+        if (r >= 1.0) r = 1.0 - Number.EPSILON;
+        return r;
+    }
+  
+    randInt(lower, upper) {
+        if (lower > upper) [lower, upper] = [upper, lower];
+        const span = upper - lower + 1;
+        const u = this.rand();
+        let k = Math.floor(u * span);
+        if (k < 0) k = 0;
+        if (k >= span) k = span - 1;
+        return lower + k;
+    }
+
+    randIntNoRep(start, end) {
+        if (start > end) [start, end] = [end, start];
+        const n = end - start + 1;
+        const v = [];
+        for (let x = start; x <= end; x++) v.push(x);
+        for (let i = n - 1; i > 0; i--) {
+            const j = this.randInt(0, i);
+            [v[i], v[j]] = [v[j], v[i]];
+        }
+        return v;
+    }
+}
+
+// Verification Helper
+function verifySeed(seed, rangeMin, rangeMax, targetSequence, mode) {
+    const rng = new TI84RNG(seed);
+    if (mode === 'randInt') {
+        for (const target of targetSequence) {
+            const val = rng.randInt(rangeMin, rangeMax);
+            if (val !== target) return false;
+        }
+        return true;
+    } else {
+        const sequence = rng.randIntNoRep(rangeMin, rangeMax);
+        for (let i = 0; i < targetSequence.length; i++) {
+            if (sequence[i] !== targetSequence[i]) return false;
+        }
+        return true;
+    }
+}
+
+// Generate sequence for display
+function generateSequence(seed, rangeMin, rangeMax, length, mode) {
+    const rng = new TI84RNG(seed);
+    if (mode === 'randInt') {
+        const sequence = [];
+        for (let i = 0; i < length; i++) {
+            sequence.push(rng.randInt(rangeMin, rangeMax));
+        }
+        return sequence;
+    } else {
+        return rng.randIntNoRep(rangeMin, rangeMax);
+    }
+}
+
+// WebGPU Finder
+class SeedFinder {
+    constructor() {
+        this.device = null;
+        this.pipeline = null;
+        this.cancelled = false;
+    }
+
+    async initialize() {
+        if (!navigator.gpu) throw new Error('WebGPU not supported');
+        const adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) throw new Error('Failed to get GPU adapter');
+        this.device = await adapter.requestDevice();
+        
+        const shaderModule = this.device.createShaderModule({ code: SHADER_CODE });
+        this.pipeline = this.device.createComputePipeline({
+            layout: 'auto',
+            compute: { module: shaderModule, entryPoint: 'main' },
+        });
+        return true;
+    }
+
+    cancel() { this.cancelled = true; }
+
+    async search(config) {
+        if (!this.device || !this.pipeline) throw new Error('Not initialized');
+        this.cancelled = false;
+        const { mode, rangeMin, rangeMax, targetSequence, maxSeed, onProgress } = config;
+
+        // Validation for WebGPU array limit
+        if (mode === 'randIntNoRep') {
+            const rangeSize = rangeMax - rangeMin + 1;
+            if (rangeSize > 64) throw new Error('GPU limit: range size must be <= 64 for randIntNoRep');
+        }
+
+        const BATCH_SIZE = 1024 * 1024;
+        const MAX_RESULTS = 1000;
+        const verifiedSeeds = new Set();
+        let allFoundSeeds = [];
+
+        // Buffers
+        const paramsBuffer = this.device.createBuffer({ size: 24, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+        const sequenceBuffer = this.device.createBuffer({ size: Math.max(4, targetSequence.length * 4), usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+        const resultsBuffer = this.device.createBuffer({ size: 8, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST });
+        const foundSeedsBuffer = this.device.createBuffer({ size: MAX_RESULTS * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST });
+        const resultsReadBuffer = this.device.createBuffer({ size: 8, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
+        const seedsReadBuffer = this.device.createBuffer({ size: MAX_RESULTS * 4, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
+
+        // Upload Sequence
+        this.device.queue.writeBuffer(sequenceBuffer, 0, new Int32Array(targetSequence));
+
+        const bindGroup = this.device.createBindGroup({
+            layout: this.pipeline.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: { buffer: paramsBuffer } },
+                { binding: 1, resource: { buffer: sequenceBuffer } },
+                { binding: 2, resource: { buffer: resultsBuffer } },
+                { binding: 3, resource: { buffer: foundSeedsBuffer } },
+            ],
+        });
+
+        let totalProcessed = 0;
+
+        for (let batchOffset = 0; batchOffset <= maxSeed && !this.cancelled; batchOffset += BATCH_SIZE) {
+            const currentBatchSize = Math.min(BATCH_SIZE, maxSeed - batchOffset + 1);
+            
+            // Zero results
+            this.device.queue.writeBuffer(resultsBuffer, 0, new Uint32Array([0, 0]));
+
+            // Update Params
+            const paramsData = new ArrayBuffer(24);
+            const v = new DataView(paramsData);
+            v.setInt32(0, rangeMin, true);
+            v.setInt32(4, rangeMax, true);
+            v.setUint32(8, targetSequence.length, true);
+            v.setUint32(12, batchOffset, true);
+            v.setUint32(16, currentBatchSize, true);
+            v.setUint32(20, mode === 'randIntNoRep' ? 1 : 0, true);
+            this.device.queue.writeBuffer(paramsBuffer, 0, paramsData);
+
+            // Dispatch
+            const encoder = this.device.createCommandEncoder();
+            const pass = encoder.beginComputePass();
+            pass.setPipeline(this.pipeline);
+            pass.setBindGroup(0, bindGroup);
+            pass.dispatchWorkgroups(Math.ceil(currentBatchSize / 256));
+            pass.end();
+
+            encoder.copyBufferToBuffer(resultsBuffer, 0, resultsReadBuffer, 0, 8);
+            encoder.copyBufferToBuffer(foundSeedsBuffer, 0, seedsReadBuffer, 0, MAX_RESULTS * 4);
+            this.device.queue.submit([encoder.finish()]);
+
+            // Read
+            await resultsReadBuffer.mapAsync(GPUMapMode.READ);
+            const resData = new Uint32Array(resultsReadBuffer.getMappedRange());
+            const foundCount = resData[1];
+            resultsReadBuffer.unmap();
+
+            if (foundCount > 0) {
+                await seedsReadBuffer.mapAsync(GPUMapMode.READ);
+                const seedData = new Uint32Array(seedsReadBuffer.getMappedRange());
+                for (let i = 0; i < Math.min(foundCount, MAX_RESULTS); i++) {
+                    const s = seedData[i];
+                    if (!verifiedSeeds.has(s) && verifySeed(s, rangeMin, rangeMax, targetSequence, mode)) {
+                        verifiedSeeds.add(s);
+                        allFoundSeeds.push(s);
+                    }
+                }
+                seedsReadBuffer.unmap();
+            }
+
+            totalProcessed = Math.min(batchOffset + currentBatchSize, maxSeed + 1);
+            
+            onProgress({
+                current: totalProcessed,
+                total: maxSeed + 1,
+                foundSeeds: allFoundSeeds.sort((a,b) => a-b),
+                completed: false,
+                cancelled: false
+            });
+
+            // Yield to UI
+            await new Promise(r => setTimeout(r, 0));
+        }
+
+        // Cleanup
+        paramsBuffer.destroy();
+        sequenceBuffer.destroy();
+        resultsBuffer.destroy();
+        foundSeedsBuffer.destroy();
+        resultsReadBuffer.destroy();
+        seedsReadBuffer.destroy();
+
+        onProgress({
+            current: totalProcessed,
+            total: maxSeed + 1,
+            foundSeeds: allFoundSeeds.sort((a,b) => a-b),
+            completed: !this.cancelled,
+            cancelled: this.cancelled
+        });
+    }
+
+    destroy() {
+        if (this.device) this.device.destroy();
+    }
+}
+
+// CPU Finder
+class CPUSeedFinder {
+    constructor() { this.cancelled = false; }
+    cancel() { this.cancelled = true; }
+    
+    async search(config) {
+        this.cancelled = false;
+        const { mode, rangeMin, rangeMax, targetSequence, maxSeed, onProgress } = config;
+        let allFoundSeeds = [];
+        const BATCH_SIZE = 25000;
+
+        for (let batchStart = 0; batchStart <= maxSeed && !this.cancelled; batchStart += BATCH_SIZE) {
+            const batchEnd = Math.min(batchStart + BATCH_SIZE - 1, maxSeed);
+            for (let seed = batchStart; seed <= batchEnd; seed++) {
+                if (verifySeed(seed, rangeMin, rangeMax, targetSequence, mode)) {
+                    allFoundSeeds.push(seed);
+                }
+            }
+            onProgress({
+                current: batchEnd + 1,
+                total: maxSeed + 1,
+                foundSeeds: allFoundSeeds.sort((a,b)=>a-b),
+                completed: false,
+                cancelled: false
+            });
+            // Yield
+            await new Promise(r => setTimeout(r, 0));
+        }
+
+        onProgress({
+            current: this.cancelled ? 0 : maxSeed + 1,
+            total: maxSeed + 1,
+            foundSeeds: allFoundSeeds.sort((a,b)=>a-b),
+            completed: !this.cancelled,
+            cancelled: this.cancelled
+        });
+    }
+}
+
+/**
+ * 2. UI LOGIC
+ */
+
+const els = {
+    statusBadge: document.getElementById('statusBadge'),
+    statusText: document.getElementById('statusText'),
+    gpuLabel: document.getElementById('gpuLabel'),
+    gpuRadio: document.querySelector('input[value="webgpu"]'),
+    cpuRadio: document.querySelector('input[value="cpu"]'),
+    modeRadios: document.getElementsByName('searchMode'),
+    rangeMin: document.getElementById('rangeMin'),
+    rangeMax: document.getElementById('rangeMax'),
+    maxSeed: document.getElementById('maxSeed'),
+    targetSequence: document.getElementById('targetSequence'),
+    errorBox: document.getElementById('errorBox'),
+    searchBtn: document.getElementById('searchBtn'),
+    cancelBtn: document.getElementById('cancelBtn'),
+    progressContainer: document.getElementById('progressContainer'),
+    progressStatus: document.getElementById('progressStatus'),
+    progressPercent: document.getElementById('progressPercent'),
+    progressBar: document.getElementById('progressBar'),
+    progressCount: document.getElementById('progressCount'),
+    progressSpeed: document.getElementById('progressSpeed'),
+    resultsContainer: document.getElementById('resultsContainer'),
+    foundCount: document.getElementById('foundCount'),
+    noResults: document.getElementById('noResults'),
+    resultsGrid: document.getElementById('resultsGrid'),
+    verifyBox: document.getElementById('verifyBox'),
+    verifySeedNum: document.getElementById('verifySeedNum'),
+    verifyDesc: document.getElementById('verifyDesc'),
+    verifyBadges: document.getElementById('verifyBadges'),
+};
+
+let webGPUSupported = false;
+let currentFinder = null;
+let isSearching = false;
+
+// Initialization
+(async function init() {
+    if (navigator.gpu) {
+        try {
+            const adapter = await navigator.gpu.requestAdapter();
+            webGPUSupported = !!adapter;
+        } catch (e) { webGPUSupported = false; }
+    }
+
+    if (webGPUSupported) {
+        els.statusBadge.className = 'status-badge status-supported';
+        els.statusText.textContent = 'WebGPU Available';
+        els.gpuRadio.checked = true;
+    } else {
+        els.statusBadge.className = 'status-badge status-unsupported';
+        els.statusText.textContent = 'WebGPU Not Available - Using CPU';
+        els.gpuRadio.disabled = true;
+        els.gpuLabel.classList.add('disabled');
+        els.cpuRadio.checked = true;
+    }
+})();
+
+// Event Listeners
+els.searchBtn.addEventListener('click', startSearch);
+els.cancelBtn.addEventListener('click', () => currentFinder?.cancel());
+
+function showError(msg) {
+    els.errorBox.style.display = 'block';
+    els.errorBox.textContent = msg;
+}
+
+function clearError() {
+    els.errorBox.style.display = 'none';
+}
+
+function getSearchMode() {
+    for (const r of els.modeRadios) if (r.checked) return r.value;
+    return 'randInt';
+}
+
+function getComputeMode() {
+    return els.gpuRadio.checked ? 'webgpu' : 'cpu';
+}
+
+async function startSearch() {
+    clearError();
+    els.verifyBox.style.display = 'none';
+
+    // Validation
+    const min = parseInt(els.rangeMin.value, 10);
+    const max = parseInt(els.rangeMax.value, 10);
+    const maxS = parseInt(els.maxSeed.value, 10);
+    const seqStr = els.targetSequence.value;
+    const mode = getSearchMode();
+    const compute = getComputeMode();
+
+    if (isNaN(min) || isNaN(max) || min > max) return showError('Invalid range. Min must be <= Max.');
+    
+    const sequence = seqStr.split(/[,\s]+/).filter(s => s.trim().length > 0).map(n => parseInt(n, 10)).filter(n => !isNaN(n));
+    if (sequence.length === 0) return showError('Enter at least one number in target sequence.');
+    
+    for (const n of sequence) {
+        if (n < min || n > max) return showError(`Value ${n} is out of range [${min}, ${max}].`);
+    }
+
+    if (mode === 'randIntNoRep') {
+        const rangeSize = max - min + 1;
+        if (sequence.length > rangeSize) return showError(`Sequence length cannot be larger than range size for randIntNoRep.`);
+        if (new Set(sequence).size !== sequence.length) return showError('Sequence cannot contain duplicates for randIntNoRep.');
+        if (compute === 'webgpu' && rangeSize > 64) return showError('WebGPU randIntNoRep limited to range size 64. Use CPU.');
+    }
+
+    if (isNaN(maxS) || maxS < 1) return showError('Invalid Max Seed.');
+
+    // UI Reset
+    isSearching = true;
+    updateUIState(true);
+    els.progressContainer.style.display = 'block';
+    els.resultsContainer.style.display = 'block';
+    els.resultsGrid.innerHTML = '';
+    els.foundCount.textContent = '0';
+    els.noResults.style.display = 'block';
+
+    // Start
+    try {
+        if (compute === 'webgpu') {
+            currentFinder = new SeedFinder();
+            await currentFinder.initialize();
+        } else {
+            currentFinder = new CPUSeedFinder();
+        }
+
+        await currentFinder.search({
+            mode,
+            rangeMin: min,
+            rangeMax: max,
+            targetSequence: sequence,
+            maxSeed: maxS,
+            onProgress: handleProgress
+        });
+
+        if (compute === 'webgpu') currentFinder.destroy();
+
+    } catch (e) {
+        showError(e.message);
+        handleProgress({ cancelled: true, current: 0, total: 100, foundSeeds: [] }); // simple reset
+    } finally {
+        isSearching = false;
+        currentFinder = null;
+        updateUIState(false);
+    }
+}
+
+function handleProgress(p) {
+    const pct = (p.current / p.total) * 100;
+    els.progressBar.style.width = `${pct}%`;
+    els.progressPercent.textContent = `${pct.toFixed(1)}%`;
+    els.progressCount.textContent = `${p.current.toLocaleString()} / ${p.total.toLocaleString()} seeds`;
+    els.progressSpeed.textContent = `${(p.current / 1000000).toFixed(2)}M seeds`;
+    
+    els.progressBar.className = 'progress-fill';
+    if (p.cancelled) {
+        els.progressBar.classList.add('cancelled');
+        els.progressStatus.textContent = 'Search Cancelled';
+    } else if (p.completed) {
+        els.progressBar.classList.add('complete');
+        els.progressStatus.textContent = 'Search Complete';
+    } else {
+        els.progressStatus.textContent = 'Searching...';
+    }
+
+    if (p.foundSeeds.length > 0) {
+        els.noResults.style.display = 'none';
+        els.foundCount.textContent = p.foundSeeds.length;
+        renderResults(p.foundSeeds);
+    }
+}
+
+// Optimization: only render new seeds or full list if small changes
+// For simplicity here, re-rendering visible list (it's fast enough for DOM)
+function renderResults(seeds) {
+    // Limit to 100 for DOM performance
+    const limit = 50;
+    const visible = seeds.slice(0, limit);
+    
+    // Simple diffing by clearing only if count changed drastically to avoid flicker, 
+    // or just clear/rebuild. Given vanilla JS simplicity:
+    els.resultsGrid.innerHTML = '';
+    
+    visible.forEach(seed => {
+        const div = document.createElement('div');
+        div.className = 'seed-item';
+        div.innerHTML = `
+            <span class="seed-val">${seed}</span>
+            <button class="btn-verify" onclick="verify(${seed})">Verify</button>
+        `;
+        els.resultsGrid.appendChild(div);
+    });
+
+    if (seeds.length > limit) {
+        const more = document.createElement('div');
+        more.style.color = '#9ca3af';
+        more.style.fontSize = '0.8rem';
+        more.style.gridColumn = '1 / -1';
+        more.style.textAlign = 'center';
+        more.textContent = `...and ${seeds.length - limit} more`;
+        els.resultsGrid.appendChild(more);
+    }
+}
+
+function updateUIState(searching) {
+    els.searchBtn.style.display = searching ? 'none' : 'inline-block';
+    els.cancelBtn.style.display = searching ? 'inline-block' : 'none';
+    
+    const inputs = document.querySelectorAll('input');
+    inputs.forEach(i => i.disabled = searching);
+    els.modeRadios.forEach(r => r.disabled = searching);
+    
+    // Keep appropriate radio disabled state
+    if (!webGPUSupported) {
+        els.gpuRadio.disabled = true;
+    } else {
+        els.gpuRadio.disabled = searching;
+    }
+    els.cpuRadio.disabled = searching;
+}
+
+// Make global for onclick handler
+window.verify = function(seed) {
+    const min = parseInt(els.rangeMin.value, 10);
+    const max = parseInt(els.rangeMax.value, 10);
+    const mode = getSearchMode();
+    const targetStr = els.targetSequence.value;
+    const targetSeq = targetStr.split(/[,\s]+/).filter(s => s).map(Number);
+    
+    const len = mode === 'randIntNoRep' ? (max - min + 1) : 20;
+    const generated = generateSequence(seed, min, max, Math.min(len, 50), mode);
+    
+    els.verifyBox.style.display = 'block';
+    els.verifySeedNum.textContent = seed;
+    els.verifyDesc.textContent = mode === 'randInt' 
+        ? `First 20 values of randInt(${min}, ${max}):`
+        : `Result of randIntNoRep(${min}, ${max}):`;
+        
+    els.verifyBadges.innerHTML = '';
+    
+    generated.forEach((val, idx) => {
+        const isMatch = idx < targetSeq.length && val === targetSeq[idx];
+        const span = document.createElement('span');
+        span.className = `badge ${isMatch ? 'badge-match' : 'badge-normal'}`;
+        span.textContent = val;
+        els.verifyBadges.appendChild(span);
+    });
+    
+    els.verifyBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+</script>
+</body>
+</html>
