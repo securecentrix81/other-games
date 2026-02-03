@@ -1,7 +1,7 @@
 // ==================== SAVE MANAGER ====================
 class SaveManager {
   constructor() {
-    this.storageKey = 'minecraft_saves';
+    this.storageKey = 'minecraft_saves_saharsh_version';
   }
 
   getAllSaves() {
