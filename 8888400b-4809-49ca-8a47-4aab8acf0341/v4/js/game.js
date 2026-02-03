@@ -672,12 +672,12 @@ class MinecraftGame {
     };
 
     const resSlider = document.getElementById('setting-shadow-resolution');
-    resSlider.value = this.settings.shadowResolution;
+    resSlider.value = Math.log2(this.settings.shadowResolution);
     
     document.getElementById('shadow-resolution-value').textContent = this.settings.shadowResolution;
     
     resSlider.oninput = () => {
-      this.settings.shadowResolution = parseInt(resSlider.value);
+      this.settings.shadowResolution = 2**parseInt(resSlider.value);
       document.getElementById('shadow-resolution-value').textContent = this.settings.shadowResolution;
       if (this.isPlaying && this.settings.shadowsEnabled) this.updateShadows();
       this.saveSettings();
