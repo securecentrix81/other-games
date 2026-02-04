@@ -368,7 +368,8 @@ BLOCK_DATA[BLOCK.DIAMOND_ORE] = {
     top: TEX.DIAMOND_ORE,
     side: TEX.DIAMOND_ORE,
     bottom: TEX.DIAMOND_ORE
-  }
+  },
+  drops: ITEM.diamond
 };
 
 BLOCK_DATA[BLOCK.SNOW] = {
