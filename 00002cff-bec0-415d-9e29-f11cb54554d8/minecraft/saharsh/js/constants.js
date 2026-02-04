@@ -510,9 +510,9 @@ const RECIPES = [
   { result: ITEM.DIAMOND_SHOVEL, resultCount: 1, ingredients: [{ item: ITEM.DIAMOND, count: 1 }, { item: ITEM.STICK, count: 2 }], name: 'Diamond Shovel' },
   //{ result: ITEM.DIAMOND_SWORD, resultCount: 1, ingredients: [{ item: ITEM.DIAMOND, count: 2 }, { item: ITEM.STICK, count: 1 }], name: 'Diamond Sword' },
 
-  { result: ITEM.GOLD_PICKAXE, resultCount: 1, ingredients: [{ item: ITEM.GOLD, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Gold Pickaxe' },
-  { result: ITEM.GOLD_AXE, resultCount: 1, ingredients: [{ item: ITEM.GOLD, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Gold Axe' },
-  { result: ITEM.GOLD_SHOVEL, resultCount: 1, ingredients: [{ item: ITEM.GOLD, count: 1 }, { item: ITEM.STICK, count: 2 }], name: 'Gold Shovel' },
+  { result: ITEM.GOLD_PICKAXE, resultCount: 1, ingredients: [{ item: ITEM.GOLD_INGOT, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Gold Pickaxe' },
+  { result: ITEM.GOLD_AXE, resultCount: 1, ingredients: [{ item: ITEM.GOLD_INGOT, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Gold Axe' },
+  { result: ITEM.GOLD_SHOVEL, resultCount: 1, ingredients: [{ item: ITEM.GOLD_INGOT, count: 1 }, { item: ITEM.STICK, count: 2 }], name: 'Gold Shovel' },
   //{ result: ITEM.GOLD_SWORD, resultCount: 1, ingredients: [{ item: ITEM.DIAMOND, count: 2 }, { item: ITEM.STICK, count: 1 }], name: 'Diamond Sword' },
   
   
