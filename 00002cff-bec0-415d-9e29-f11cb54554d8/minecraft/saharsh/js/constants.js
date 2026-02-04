@@ -313,7 +313,8 @@ BLOCK_DATA[BLOCK.COAL_ORE] = {
     top: TEX.COAL_ORE,
     side: TEX.COAL_ORE,
     bottom: TEX.COAL_ORE
-  }
+  },
+  drops: ITEM.COAL
 };
 
 BLOCK_DATA[BLOCK.IRON_ORE] = {
