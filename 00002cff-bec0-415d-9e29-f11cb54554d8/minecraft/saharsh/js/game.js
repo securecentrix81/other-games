@@ -1920,7 +1920,7 @@ class MinecraftGame {
             // Blend the overlay: 
             // diffuseColor is the original block color.
             // we mix it with overlayCol at 50% (0.5) opacity.
-            diffuseColor.rgb = mix(diffuseColor.rgb, overlayCol.rgb, overlayCol.a * 0.5);
+            diffuseColor.rgb = mix(diffuseColor.rgb, overlayCol.rgb, overlayCol.a * 0.2);
             `
           );
         };
