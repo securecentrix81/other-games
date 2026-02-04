@@ -369,7 +369,7 @@ BLOCK_DATA[BLOCK.DIAMOND_ORE] = {
     side: TEX.DIAMOND_ORE,
     bottom: TEX.DIAMOND_ORE
   },
-  drops: ITEM.diamond
+  drops: ITEM.DIAMOND
 };
 
 BLOCK_DATA[BLOCK.SNOW] = {
