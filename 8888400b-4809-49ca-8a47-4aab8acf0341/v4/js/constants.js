@@ -39,9 +39,9 @@ const BLOCK = {
 const ITEM = {
   COAL: 100, IRON_INGOT: 101, GOLD_INGOT: 102, DIAMOND: 103, STICK: 104,
   WOODEN_PICKAXE: 200, STONE_PICKAXE: 201, IRON_PICKAXE: 202, DIAMOND_PICKAXE: 203, GOLD_PICKAXE: 204,
-  WOODEN_AXE: 210, STONE_AXE: 211, IRON_AXE: 212, DIAMOND_AXE: 213,
-  WOODEN_SHOVEL: 220, STONE_SHOVEL: 221, IRON_SHOVEL: 222, DIAMOND_SHOVEL: 223,
-  WOODEN_SWORD: 230, STONE_SWORD: 231, IRON_SWORD: 232, DIAMOND_SWORD: 233
+  WOODEN_AXE: 210, STONE_AXE: 211, IRON_AXE: 212, DIAMOND_AXE: 213, GOLD_AXE: 214,
+  WOODEN_SHOVEL: 220, STONE_SHOVEL: 221, IRON_SHOVEL: 222, DIAMOND_SHOVEL: 223, GOLD_SHOVEL: 224,
+  //WOODEN_SWORD: 230, STONE_SWORD: 231, IRON_SWORD: 232, DIAMOND_SWORD: 233
 };
 
 // ==================== TEXTURE ATLAS CONFIG ====================
@@ -489,23 +489,33 @@ const FACE_DATA = {
 const RECIPES = [
   { result: BLOCK.PLANKS, resultCount: 4, ingredients: [{ item: BLOCK.WOOD, count: 1 }], name: 'Oak Planks' },
   { result: ITEM.STICK, resultCount: 4, ingredients: [{ item: BLOCK.PLANKS, count: 2 }], name: 'Sticks' },
-  { result: BLOCK.CRAFTING_TABLE, resultCount: 1, ingredients: [{ item: BLOCK.PLANKS, count: 4 }], name: 'Crafting Table' },
+  //{ result: BLOCK.CRAFTING_TABLE, resultCount: 1, ingredients: [{ item: BLOCK.PLANKS, count: 4 }], name: 'Crafting Table' },
   { result: ITEM.WOODEN_PICKAXE, resultCount: 1, ingredients: [{ item: BLOCK.PLANKS, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Wooden Pickaxe' },
   { result: ITEM.WOODEN_AXE, resultCount: 1, ingredients: [{ item: BLOCK.PLANKS, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Wooden Axe' },
   { result: ITEM.WOODEN_SHOVEL, resultCount: 1, ingredients: [{ item: BLOCK.PLANKS, count: 1 }, { item: ITEM.STICK, count: 2 }], name: 'Wooden Shovel' },
-  { result: ITEM.WOODEN_SWORD, resultCount: 1, ingredients: [{ item: BLOCK.PLANKS, count: 2 }, { item: ITEM.STICK, count: 1 }], name: 'Wooden Sword' },
+  //{ result: ITEM.WOODEN_SWORD, resultCount: 1, ingredients: [{ item: BLOCK.PLANKS, count: 2 }, { item: ITEM.STICK, count: 1 }], name: 'Wooden Sword' },
+  
   { result: ITEM.STONE_PICKAXE, resultCount: 1, ingredients: [{ item: BLOCK.COBBLE, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Stone Pickaxe' },
   { result: ITEM.STONE_AXE, resultCount: 1, ingredients: [{ item: BLOCK.COBBLE, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Stone Axe' },
   { result: ITEM.STONE_SHOVEL, resultCount: 1, ingredients: [{ item: BLOCK.COBBLE, count: 1 }, { item: ITEM.STICK, count: 2 }], name: 'Stone Shovel' },
-  { result: ITEM.STONE_SWORD, resultCount: 1, ingredients: [{ item: BLOCK.COBBLE, count: 2 }, { item: ITEM.STICK, count: 1 }], name: 'Stone Sword' },
+  //{ result: ITEM.STONE_SWORD, resultCount: 1, ingredients: [{ item: BLOCK.COBBLE, count: 2 }, { item: ITEM.STICK, count: 1 }], name: 'Stone Sword' },
+  
   { result: ITEM.IRON_PICKAXE, resultCount: 1, ingredients: [{ item: ITEM.IRON_INGOT, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Iron Pickaxe' },
   { result: ITEM.IRON_AXE, resultCount: 1, ingredients: [{ item: ITEM.IRON_INGOT, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Iron Axe' },
   { result: ITEM.IRON_SHOVEL, resultCount: 1, ingredients: [{ item: ITEM.IRON_INGOT, count: 1 }, { item: ITEM.STICK, count: 2 }], name: 'Iron Shovel' },
-  { result: ITEM.IRON_SWORD, resultCount: 1, ingredients: [{ item: ITEM.IRON_INGOT, count: 2 }, { item: ITEM.STICK, count: 1 }], name: 'Iron Sword' },
+  //{ result: ITEM.IRON_SWORD, resultCount: 1, ingredients: [{ item: ITEM.IRON_INGOT, count: 2 }, { item: ITEM.STICK, count: 1 }], name: 'Iron Sword' },
+  
   { result: ITEM.DIAMOND_PICKAXE, resultCount: 1, ingredients: [{ item: ITEM.DIAMOND, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Diamond Pickaxe' },
   { result: ITEM.DIAMOND_AXE, resultCount: 1, ingredients: [{ item: ITEM.DIAMOND, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Diamond Axe' },
   { result: ITEM.DIAMOND_SHOVEL, resultCount: 1, ingredients: [{ item: ITEM.DIAMOND, count: 1 }, { item: ITEM.STICK, count: 2 }], name: 'Diamond Shovel' },
-  { result: ITEM.DIAMOND_SWORD, resultCount: 1, ingredients: [{ item: ITEM.DIAMOND, count: 2 }, { item: ITEM.STICK, count: 1 }], name: 'Diamond Sword' },
+  //{ result: ITEM.DIAMOND_SWORD, resultCount: 1, ingredients: [{ item: ITEM.DIAMOND, count: 2 }, { item: ITEM.STICK, count: 1 }], name: 'Diamond Sword' },
+
+  { result: ITEM.GOLD_PICKAXE, resultCount: 1, ingredients: [{ item: ITEM.GOLD, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Gold Pickaxe' },
+  { result: ITEM.GOLD_AXE, resultCount: 1, ingredients: [{ item: ITEM.GOLD, count: 3 }, { item: ITEM.STICK, count: 2 }], name: 'Gold Axe' },
+  { result: ITEM.GOLD_SHOVEL, resultCount: 1, ingredients: [{ item: ITEM.GOLD, count: 1 }, { item: ITEM.STICK, count: 2 }], name: 'Gold Shovel' },
+  //{ result: ITEM.GOLD_SWORD, resultCount: 1, ingredients: [{ item: ITEM.DIAMOND, count: 2 }, { item: ITEM.STICK, count: 1 }], name: 'Diamond Sword' },
+  
+  
   { result: ITEM.IRON_INGOT, resultCount: 1, ingredients: [{ item: BLOCK.IRON_ORE, count: 1 }, { item: ITEM.COAL, count: 1 }], name: 'Smelt Iron' },
   { result: ITEM.GOLD_INGOT, resultCount: 1, ingredients: [{ item: BLOCK.GOLD_ORE, count: 1 }, { item: ITEM.COAL, count: 1 }], name: 'Smelt Gold' },
   { result: BLOCK.GLASS, resultCount: 1, ingredients: [{ item: BLOCK.SAND, count: 1 }, { item: ITEM.COAL, count: 1 }], name: 'Smelt Glass' },
@@ -523,19 +533,23 @@ const ITEM_DATA = {
   [ITEM.STONE_PICKAXE]:   { name: 'Stone Pickaxe',   color: 0x7f7f7f, durability: 132, miningSpeed: 4, toolType: 'pickaxe', toolTier: 'stone', isTool: true },
   [ITEM.IRON_PICKAXE]:    { name: 'Iron Pickaxe',    color: 0xd8d8d8, durability: 251, miningSpeed: 6, toolType: 'pickaxe', toolTier: 'iron', isTool: true },
   [ITEM.DIAMOND_PICKAXE]: { name: 'Diamond Pickaxe', color: 0x4aedd9, durability: 1562, miningSpeed: 8, toolType: 'pickaxe', toolTier: 'diamond', isTool: true },
-  [ITEM.GOLD_PICKAXE]:    { name: 'Gold Pickaxe',    color: 0xfcee4b, durability: 33,  miningSpeed: 12, toolType: 'pickaxe', toolTier: 'gold', isTool: true },
+  [ITEM.GOLD_PICKAXE]:    { name: 'Gold Pickaxe',    color: 0xfcee4b, durability: 33,  miningSpeed: 14, toolType: 'pickaxe', toolTier: 'gold', isTool: true },
+  
   [ITEM.WOODEN_AXE]:  { name: 'Wooden Axe',  color: 0x8b6914, durability: 60,  miningSpeed: 2, toolType: 'axe', toolTier: 'wooden', isTool: true },
   [ITEM.STONE_AXE]:   { name: 'Stone Axe',   color: 0x7f7f7f, durability: 132, miningSpeed: 4, toolType: 'axe', toolTier: 'stone', isTool: true },
   [ITEM.IRON_AXE]:    { name: 'Iron Axe',    color: 0xd8d8d8, durability: 251, miningSpeed: 6, toolType: 'axe', toolTier: 'iron', isTool: true },
   [ITEM.DIAMOND_AXE]: { name: 'Diamond Axe', color: 0x4aedd9, durability: 1562, miningSpeed: 8, toolType: 'axe', toolTier: 'diamond', isTool: true },
+  [ITEM.GOLD_AXE]: { name: 'Gold Axe', color: 0x4aedd9, durability: 33, miningSpeed: 14, toolType: 'axe', toolTier: 'gold', isTool: true },
+  
   [ITEM.WOODEN_SHOVEL]:  { name: 'Wooden Shovel',  color: 0x8b6914, durability: 60,  miningSpeed: 2, toolType: 'shovel', toolTier: 'wooden', isTool: true },
   [ITEM.STONE_SHOVEL]:   { name: 'Stone Shovel',   color: 0x7f7f7f, durability: 132, miningSpeed: 4, toolType: 'shovel', toolTier: 'stone', isTool: true },
   [ITEM.IRON_SHOVEL]:    { name: 'Iron Shovel',    color: 0xd8d8d8, durability: 251, miningSpeed: 6, toolType: 'shovel', toolTier: 'iron', isTool: true },
   [ITEM.DIAMOND_SHOVEL]: { name: 'Diamond Shovel', color: 0x4aedd9, durability: 1562, miningSpeed: 8, toolType: 'shovel', toolTier: 'diamond', isTool: true },
-  [ITEM.WOODEN_SWORD]: { name: 'Wooden Sword', color: 0x8b6914, durability: 60,  damage: 4, isTool: true },
+  [ITEM.GOLD_SHOVEL]: { name: 'Gold Shovel', color: 0x4aedd9, durability: 33, miningSpeed: 14, toolType: 'shovel', toolTier: 'gold', isTool: true },
+  /*[ITEM.WOODEN_SWORD]: { name: 'Wooden Sword', color: 0x8b6914, durability: 60,  damage: 4, isTool: true },
   [ITEM.STONE_SWORD]:  { name: 'Stone Sword',  color: 0x7f7f7f, durability: 132, damage: 5, isTool: true },
   [ITEM.IRON_SWORD]:   { name: 'Iron Sword',   color: 0xd8d8d8, durability: 251, damage: 6, isTool: true },
-  [ITEM.DIAMOND_SWORD]:{ name: 'Diamond Sword',color: 0x4aedd9, durability: 1562, damage: 7, isTool: true }
+  [ITEM.DIAMOND_SWORD]:{ name: 'Diamond Sword',color: 0x4aedd9, durability: 1562, damage: 7, isTool: true }*/
 };
 
 const TOOL_TIERS = ['wooden', 'stone', 'iron', 'diamond', 'gold'];
