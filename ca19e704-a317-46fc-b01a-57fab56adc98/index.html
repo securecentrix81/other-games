@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Body Builder Game</title>
+    <style>
+        body { margin: 0; background: #222; color: white; font-family: 'Courier New', Courier, monospace; overflow: hidden; }
+        canvas { display: block; margin: 0 auto; background: #f0f0f0; border-left: 2px solid #555; border-right: 2px solid #555;}
+        #ui { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); text-align: center; pointer-events: none; width: 600px;}
+        #instructions { background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    <h1>BODY BUILDER</h1>
+    <div id="instructions">
+        Move with <b>LEFT / RIGHT Arrows</b> or <b>Mouse</b>.<br>
+        Catch parts to build your body!<br>
+        Avoid the <b>RED BOMBS</b>.<br>
+        <small>(Make sure 'spritesheet.png' is in the same folder!)</small>
+    </div>
+    <h2 id="status">Waiting for image...</h2>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<!-- Hidden image loader -->
+<img id="sourceSprite" src="spritesheet.png" style="display:none">
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const sourceImg = document.getElementById('sourceSprite');
+    const statusEl = document.getElementById('status');
+
+    canvas.width = 600;
+    canvas.height = window.innerHeight;
+
+    // Game State
+    let gameRunning = false;
+    let score = 0;
+    let frame = 0;
+    
+    // The Player's current assembly status
+    const player = {
+        x: canvas.width / 2,
+        y: canvas.height - 150,
+        w: 60,
+        h: 100,
+        vx: 0,
+        parts: {
+            hips: true, // Start with hips
+            torso: false,
+            head: false,
+            lArm: false,
+            rArm: false,
+            lLeg: false,
+            rLeg: false
+        }
+    };
+
+    // Falling Objects
+    let enemies = [];
+    
+    // Sprite Definitions (Approximated cuts from the provided image)
+    // We calculate these based on the assumption the image is roughly 800-900px wide
+    // Source: x, y, w, h (normalized 0-1 relative to image width/height)
+    
+    // Note: These coordinate percentages are estimated based on the visual layout
+    const sprites = {
+        head:   { sx: 0.02, sy: 0.1, sw: 0.10, sh: 0.8 },
+        torso:  { sx: 0.14, sy: 0.1, sw: 0.10, sh: 0.8 },
+        hips:   { sx: 0.27, sy: 0.2, sw: 0.08, sh: 0.6 },
+        armU:   { sx: 0.41, sy: 0.2, sw: 0.03, sh: 0.6 }, // Scepter/Arm thing
+        armL:   { sx: 0.54, sy: 0.2, sw: 0.03, sh: 0.6 },
+        hand:   { sx: 0.65, sy: 0.3, sw: 0.05, sh: 0.4 }, // skipping fingers
+        legU:   { sx: 0.78, sy: 0.1, sw: 0.04, sh: 0.8 },
+        legL:   { sx: 0.89, sy: 0.1, sw: 0.06, sh: 0.8 }
+    };
+
+    let imgW = 0;
+    let imgH = 0;
+
+    sourceImg.onload = function() {
+        imgW = sourceImg.width;
+        imgH = sourceImg.height;
+        statusEl.innerText = "GET READY! Catch the PARTS!";
+        setTimeout(startGame, 1000);
+    };
+
+    sourceImg.onerror = function() {
+        statusEl.innerHTML = "<span style='color:red'>Error: 'spritesheet.png' not found.<br>Please save the image and reload.</span>";
+    };
+
+    // Input Handling
+    let keys = {};
+    window.addEventListener('keydown', e => keys[e.key] = true);
+    window.addEventListener('keyup', e => keys[e.key] = false);
+    
+    canvas.addEventListener('mousemove', e => {
+        if(!gameRunning) return;
+        const rect = canvas.getBoundingClientRect();
+        player.x = e.clientX - rect.left;
+    });
+
+    function startGame() {
+        gameRunning = true;
+        score = 0;
+        enemies = [];
+        // Reset parts
+        player.parts = { hips: true, torso: false, head: false, lArm: false, rArm: false, lLeg: false, rLeg: false };
+        loop();
+    }
+
+    function spawnEnemy() {
+        const types = ['head', 'torso', 'arm', 'leg', 'bomb'];
+        // Increase difficulty by making bombs more frequent
+        if (Math.random() > 0.7) types.push('bomb');
+        
+        const type = types[Math.floor(Math.random() * types.length)];
+        
+        enemies.push({
+            x: Math.random() * (canvas.width - 50),
+            y: -100,
+            type: type,
+            speed: 3 + Math.random() * 3 + (score * 0.1),
+            w: 40, 
+            h: 40
+        });
+    }
+
+    function drawSprite(key, dx, dy, dw, dh, flipX = false) {
+        if (!sprites[key]) return;
+        const s = sprites[key];
+        
+        ctx.save();
+        if (flipX) {
+            ctx.translate(dx + dw, dy);
+            ctx.scale(-1, 1);
+            dx = 0; 
+            dy = 0; // Relative to translate
+        } else {
+            ctx.translate(dx, dy);
+            dx = 0; dy = 0;
+        }
+
+        ctx.drawImage(
+            sourceImg,
+            s.sx * imgW, s.sy * imgH, s.sw * imgW, s.sh * imgH,
+            dx, dy, dw, dh
+        );
+        ctx.restore();
+    }
+
+    function update() {
+        if (!gameRunning) return;
+        frame++;
+
+        // Movement (Keyboard fallback)
+        if (keys['ArrowLeft']) player.x -= 7;
+        if (keys['ArrowRight']) player.x += 7;
+
+        // Boundaries
+        if (player.x < 30) player.x = 30;
+        if (player.x > canvas.width - 30) player.x = canvas.width - 30;
+
+        // Spawning
+        if (frame % 60 === 0) spawnEnemy();
+
+        // Enemies Logic
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            let e = enemies[i];
+            e.y += e.speed;
+
+            // Collision
+            // Simple distance check
+            const dist = Math.hypot(player.x - (e.x + e.w/2), (player.y - 40) - (e.y + e.h/2));
+            
+            if (dist < 50) {
+                handleCollection(e.type);
+                enemies.splice(i, 1);
+                continue;
+            }
+
+            // Remove off screen
+            if (e.y > canvas.height) enemies.splice(i, 1);
+        }
+
+        checkWin();
+    }
+
+    function handleCollection(type) {
+        if (type === 'bomb') {
+            gameOver("YOU EXPLODED!");
+            return;
+        }
+
+        // Logic for parts
+        if (type === 'head') {
+            if (!player.parts.torso) {
+                gameOver("NEED TORSO FIRST!"); // Hard mode rule!
+            } else if (player.parts.head) {
+                score += 10; // Extra points for duplicate parts
+            } else {
+                player.parts.head = true;
+                score += 100;
+            }
+        }
+        else if (type === 'torso') {
+            if (player.parts.torso) score += 10;
+            else {
+                player.parts.torso = true;
+                score += 100;
+            }
+        }
+        else if (type === 'arm') {
+            if (!player.parts.torso) return; // Can't attach arms to nothing
+            if (!player.parts.lArm) player.parts.lArm = true;
+            else if (!player.parts.rArm) player.parts.rArm = true;
+            else score += 10;
+        }
+        else if (type === 'leg') {
+             // Attach to hips
+            if (!player.parts.lLeg) player.parts.lLeg = true;
+            else if (!player.parts.rLeg) player.parts.rLeg = true;
+            else score += 10;
+        }
+    }
+
+    function checkWin() {
+        const p = player.parts;
+        if (p.head && p.torso && p.lArm && p.rArm && p.lLeg && p.rLeg) {
+            gameOver("YOU ARE COMPLETE! (Win)");
+        }
+    }
+
+    function gameOver(msg) {
+        gameRunning = false;
+        statusEl.innerHTML = msg + "<br>Click to restart";
+        statusEl.style.color = msg.includes("Win") ? "#4f4" : "#f44";
+        canvas.addEventListener('click', () => location.reload(), {once:true});
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Player (The Assembly)
+        const px = player.x;
+        const py = player.y;
+
+        // Bobbing animation
+        const bob = Math.sin(frame * 0.1) * 5;
+
+        // 1. Draw Legs (Behind)
+        if (player.parts.lLeg) {
+            drawSprite('legU', px - 25, py + 20, 20, 40); // Thigh
+            drawSprite('legL', px - 28, py + 50, 20, 50); // Calf
+        }
+        if (player.parts.rLeg) {
+            drawSprite('legU', px + 5, py + 20, 20, 40);
+            drawSprite('legL', px + 5, py + 50, 20, 50);
+        }
+
+        // 2. Draw Hips (Always there)
+        drawSprite('hips', px - 25, py, 50, 30);
+
+        // 3. Draw Torso
+        if (player.parts.torso) {
+            drawSprite('torso', px - 30, py - 60 + bob, 60, 70);
+            
+            // Arms attached to torso
+            if (player.parts.lArm) {
+                drawSprite('armU', px - 45, py - 60 + bob, 15, 30);
+                drawSprite('armL', px - 45, py - 35 + bob, 15, 30);
+                drawSprite('hand', px - 50, py - 10 + bob, 20, 20);
+            }
+            if (player.parts.rArm) {
+                drawSprite('armU', px + 30, py - 60 + bob, 15, 30, true);
+                drawSprite('armL', px + 30, py - 35 + bob, 15, 30, true);
+                drawSprite('hand', px + 30, py - 10 + bob, 20, 20, true);
+            }
+        }
+
+        // 4. Draw Head
+        if (player.parts.head) {
+             // If we have torso, head goes on top, otherwise it floats weirdly
+            let hy = player.parts.torso ? py - 110 + bob : py - 60 + bob;
+            drawSprite('head', px - 25, hy, 50, 60);
+        }
+
+
+        // Draw Enemies/Parts
+        enemies.forEach(e => {
+            if (e.type === 'bomb') {
+                ctx.fillStyle = 'red';
+                ctx.beginPath();
+                ctx.arc(e.x + e.w/2, e.y + e.h/2, 15, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = 'black';
+                ctx.font = '20px Arial';
+                ctx.fillText("!", e.x+15, e.y+25);
+            } else {
+                // Draw falling parts
+                // Map logical types to sprite keys
+                let spriteKey = e.type;
+                if(e.type === 'arm') spriteKey = 'armL';
+                if(e.type === 'leg') spriteKey = 'legL';
+                
+                drawSprite(spriteKey, e.x, e.y, e.w, e.h);
+            }
+        });
+
+        // UI
+        ctx.fillStyle = "black";
+        ctx.font = "20px Courier New";
+        ctx.fillText("Score: " + score, 10, 30);
+    }
+
+    function loop() {
+        if(gameRunning) requestAnimationFrame(loop);
+        update();
+        draw();
+    }
+
+</script>
+</body>
+</html>
