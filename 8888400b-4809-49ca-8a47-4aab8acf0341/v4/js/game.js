@@ -2577,30 +2577,35 @@ class MinecraftGame {
         }
       
         // Handle the universal break cooldown (0.05s)
+        // Inside gameLoop(), within the (this.breaking && this.targetBlock) block:
+
         if (this.breakCooldown > 0) {
           this.breakCooldown -= dt;
         } else {
+          // 1. Creative Mode: Bypass all hardness/progress checks
           if (this.gameMode === 'creative') {
-            // Creative: Break immediately and set the next cooldown
             this.breakBlock();
             this.breakCooldown = 0.05; 
-          } else {
-            // Survival: Calculate progress
+          } 
+          // 2. Survival Mode: Respect hardness and check for bedrock (-1)
+          else {
             const block = this.getBlock(this.targetBlock.x, this.targetBlock.y, this.targetBlock.z);
             const blockData = BLOCK_DATA[block];
-      
+        
             if (blockData && blockData.hardness >= 0) {
               const tool = this.getHeldTool();
               const miningSpeed = this.getMiningSpeed(blockData, tool);
-              const breakSpeed = miningSpeed / blockData.hardness;
-              
-              this.breakProgress += dt * breakSpeed;
+              this.breakProgress += dt * (miningSpeed / blockData.hardness);
               this.updateBreakIndicator(this.breakProgress);
               
               if (this.breakProgress >= 1) {
                 this.breakBlock();
-                this.breakCooldown = 0.05; // Set cooldown after successful break
+                this.breakCooldown = 0.05;
               }
+            } else if (blockData && blockData.hardness === -1) {
+              // In Survival, hardness -1 means we reset progress and do nothing
+              this.breakProgress = 0;
+              this.updateBreakIndicator(0);
             }
           }
         }
