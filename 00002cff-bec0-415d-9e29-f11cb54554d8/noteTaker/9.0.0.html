@@ -108,6 +108,10 @@
         background-color: #45a049;
       }
 
+      .section-tab--dragging {
+        opacity: 0.6;
+      }
+
       /* Note Area */
       .note-area {
         flex: 1;
@@ -555,6 +559,13 @@
           noteStartY: 0,
           noteStartWidth: 0,
           noteStartHeight: 0
+        };
+
+        const sectionDragState = {
+          active: false,
+          sectionId: null,
+          tabEl: null,
+          hasMoved: false
         };
 
         // ============ Section Class ============
@@ -1486,6 +1497,10 @@
                 const password = prompt("Enter password to encrypt this section:");
                 if (password) {
                   await section.encrypt(password);
+                  section.lock();
+                  if (currentSectionId === section.id) {
+                    showSectionLockOverlay(section.id);
+                  }
                   scheduleSave();
                 }
               }
@@ -1541,6 +1556,16 @@
           }
         }
 
+        function updateSectionOrder() {
+          const tabs = sectionBarEl.querySelectorAll(".section-tab:not(.section-tab--add)");
+          tabs.forEach((tab, index) => {
+            const sectionId = tab.dataset.sectionId;
+            if (sections[sectionId]) {
+              sections[sectionId].order = index;
+            }
+          });
+        }
+
         // ============ Event Handlers ============
 
         // Add section button
@@ -1552,13 +1577,19 @@
 
         // Section bar clicks
         sectionBarEl.addEventListener("mousedown", (e) => {
+          if (e.button !== 0) return;
           const tabEl = e.target.closest(".section-tab:not(.section-tab--add)");
-          if (tabEl) {
-            const sectionId = tabEl.dataset.sectionId;
-            if (sectionId) {
-              switchToSection(sectionId);
-            }
-          }
+          if (!tabEl) return;
+          
+          const sectionId = tabEl.dataset.sectionId;
+          if (!sectionId) return;
+        
+          e.preventDefault();
+          sectionDragState.active = true;
+          sectionDragState.sectionId = sectionId;
+          sectionDragState.tabEl = tabEl;
+          sectionDragState.hasMoved = false;
+          tabEl.classList.add("section-tab--dragging");
         });
 
         // Section bar context menu
@@ -1658,14 +1689,14 @@
         });
 
         document.addEventListener("mousemove", (e) => {
-          if (!dragState.active || !dragState.noteId) return;
-
+        // Note dragging
+        if (dragState.active && dragState.noteId) {
           const note = notes[dragState.noteId];
           if (!note) return;
-
+      
           const deltaX = e.clientX - dragState.startX;
           const deltaY = e.clientY - dragState.startY;
-
+      
           if (dragState.action === "move") {
             note.x = dragState.noteStartX + deltaX;
             note.y = dragState.noteStartY + deltaY;
@@ -1675,15 +1706,61 @@
             note.height = dragState.noteStartHeight + deltaY;
             note.updateLayout();
           }
-
+      
           e.preventDefault();
-        });
+        }
+      
+        // Section tab dragging
+        if (sectionDragState.active && sectionDragState.tabEl) {
+          sectionDragState.hasMoved = true;
+          document.body.classList.add("is-dragging");
+          
+          const tabs = Array.from(sectionBarEl.querySelectorAll(".section-tab:not(.section-tab--add)"));
+          const dragIndex = tabs.indexOf(sectionDragState.tabEl);
+          
+          for (let i = 0; i < tabs.length; i++) {
+            if (i === dragIndex) continue;
+            
+            const rect = tabs[i].getBoundingClientRect();
+            const midX = rect.left + rect.width / 2;
+            
+            if (e.clientX < midX && i < dragIndex) {
+              sectionBarEl.insertBefore(sectionDragState.tabEl, tabs[i]);
+              break;
+            } else if (e.clientX > midX && i > dragIndex) {
+              sectionBarEl.insertBefore(sectionDragState.tabEl, tabs[i].nextSibling);
+              break;
+            }
+          }
+          e.preventDefault();
+        }
+      });
 
         document.addEventListener("mouseup", () => {
+          // Note drag cleanup
           dragState.active = false;
           dragState.action = null;
           dragState.noteId = null;
           document.body.classList.remove("is-dragging");
+        
+          // Section drag cleanup
+          if (sectionDragState.active) {
+            if (sectionDragState.tabEl) {
+              sectionDragState.tabEl.classList.remove("section-tab--dragging");
+            }
+            
+            if (!sectionDragState.hasMoved) {
+              switchToSection(sectionDragState.sectionId);
+            } else {
+              updateSectionOrder();
+              scheduleSave();
+            }
+            
+            sectionDragState.active = false;
+            sectionDragState.sectionId = null;
+            sectionDragState.tabEl = null;
+            sectionDragState.hasMoved = false;
+          }
         });
 
         document.addEventListener("dblclick", (e) => {
