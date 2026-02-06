@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+  <script>let Q187235=true;addEventListener("error",(e)=>{if(Q187235){Q187235=false;alert(e.message)}})</script>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Bipedal Walker - Neuroevolution</title>
+    <!-- Import Matter.js for Physics -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <style>
+      body { margin: 0; padding: 0; background: #222; overflow: hidden; font-family: 'Courier New', Courier, monospace; color: white; }
+      canvas { display: block; margin: 0 auto; background: #333; border-bottom: 4px solid #555; }
+      #ui { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 8px; pointer-events: none; }
+      #controls { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 8px; }
+      button { cursor: pointer; padding: 5px 10px; background: #444; color: white; border: 1px solid #666; font-family: inherit; }
+      button:hover { background: #666; }
+    </style>
+  </head>
+  <body>
+
+    <div id="ui">
+      <div>Generation: <span id="gen-disp">1</span></div>
+      <div>Best Distance (All Time): <span id="dist-disp">0.0</span>m</div>
+      <div>Current Best: <span id="current-dist-disp">0.0</span>m</div>
+      <div>Alive: <span id="alive-disp">0</span></div>
+      <div style="font-size: 0.8em; color: #aaa; margin-top:5px;">State: <span id="status-disp">Initializing...</span></div>
+    </div>
+
+    <div id="controls">
+      <button onclick="toggleSpeed()">Toggle Fast Forward</button>
+    </div>
+
+    <script>
+      /* ==========================================
+           CONFIGURATION & CONSTANTS
+           ========================================== */
+      const SPRITE_SRC = './spritesheet.png'; 
+
+      // Sprite mappings
+      const SPRITES = {
+        head:  { x: 25,  y: 15, w: 54, h: 63 },
+        torso: { x: 128,  y: 16, w: 45, h: 81 },
+        hips:  { x: 230, y: 35, w: 39, h: 41 },
+        uLeg:  { x: 635, y: 26, w: 10, h: 48 },
+        lLeg:  { x: 732, y: 26, w: 21, h: 58 },
+        foot:  { x: 10, y: 60, w: 0, h: 0 },
+        uArm: {x:340, y:23, w:18, h:55},
+        lArm: {x:444, y:38, w:10, h:39},
+        hand: {x:508, y:41, w:82, h:41}
+      };
+
+      const POPULATION_SIZE = 40;
+      const MUTATION_RATE = 0.05 * 10;
+      const SPAWN_X = 150;
+      const GENERATION_DURATION = 10000;
+      const PIXELS_PER_METER = 20;
+
+      const CAT_GROUND = 0x0001;
+      const CAT_BODY   = 0x0002;
+
+      /* ==========================================
+           SIMPLE NEURAL NETWORK LIBRARY
+           ========================================== */
+      class NeuralNetwork {
+        constructor(inputNodes, hiddenNodes, outputNodes) {
+          this.inputNodes = inputNodes;
+          this.hiddenNodes = hiddenNodes;
+          this.outputNodes = outputNodes;
+
+          this.weightsIH = new Matrix(this.hiddenNodes, this.inputNodes);
+          this.weightsHO = new Matrix(this.outputNodes, this.hiddenNodes);
+          this.weightsIH.randomize();
+          this.weightsHO.randomize();
+
+          this.biasH = new Matrix(this.hiddenNodes, 1);
+          this.biasO = new Matrix(this.outputNodes, 1);
+          this.biasH.randomize();
+          this.biasO.randomize();
+        }
+
+        predict(inputArray) {
+          let inputs = Matrix.fromArray(inputArray);
+          let hidden = Matrix.multiply(this.weightsIH, inputs);
+          hidden.add(this.biasH);
+          hidden.map(Math.tanh);
+
+          let output = Matrix.multiply(this.weightsHO, hidden);
+          output.add(this.biasO);
+          output.map(Math.tanh);
+
+          return output.toArray();
+        }
+
+        copy() {
+          let newBrain = new NeuralNetwork(this.inputNodes, this.hiddenNodes, this.outputNodes);
+          newBrain.weightsIH = this.weightsIH.copy();
+          newBrain.weightsHO = this.weightsHO.copy();
+          newBrain.biasH = this.biasH.copy();
+          newBrain.biasO = this.biasO.copy();
+          return newBrain;
+        }
+
+        mutate(rate) {
+          const mutateFunc = (val) => {
+            if (Math.random() < rate) {
+              return val + (Math.random() * 2 - 1) * 0.5;
+            }
+            return val;
+          };
+          this.weightsIH.map(mutateFunc);
+          this.weightsHO.map(mutateFunc);
+          this.biasH.map(mutateFunc);
+          this.biasO.map(mutateFunc);
+        }
+      }
+
+      class Matrix {
+        constructor(rows, cols) {
+          this.rows = rows;
+          this.cols = cols;
+          this.data = Array(rows).fill().map(() => Array(cols).fill(0));
+        }
+        static fromArray(arr) {
+          let m = new Matrix(arr.length, 1);
+          for (let i = 0; i < arr.length; i++) m.data[i][0] = arr[i];
+          return m;
+        }
+        toArray() {
+          let arr = [];
+          for (let i = 0; i < this.rows; i++) {
+            for (let j = 0; j < this.cols; j++) arr.push(this.data[i][j]);
+          }
+          return arr;
+        }
+        randomize() {
+          this.map(() => Math.random() * 2 - 1);
+        }
+        add(n) {
+          if (n instanceof Matrix) {
+            for (let i = 0; i < this.rows; i++) 
+              for (let j = 0; j < this.cols; j++) this.data[i][j] += n.data[i][j];
+          } else {
+            this.map(x => x + n);
+          }
+        }
+        static multiply(a, b) {
+          let result = new Matrix(a.rows, b.cols);
+          for (let i = 0; i < result.rows; i++) {
+            for (let j = 0; j < result.cols; j++) {
+              let sum = 0;
+              for (let k = 0; k < a.cols; k++) sum += a.data[i][k] * b.data[k][j];
+              result.data[i][j] = sum;
+            }
+          }
+          return result;
+        }
+        map(func) {
+          for (let i = 0; i < this.rows; i++)
+            for (let j = 0; j < this.cols; j++) this.data[i][j] = func(this.data[i][j]);
+        }
+        copy() {
+          let m = new Matrix(this.rows, this.cols);
+          for (let i = 0; i < this.rows; i++)
+            for (let j = 0; j < this.cols; j++) m.data[i][j] = this.data[i][j];
+          return m;
+        }
+      }
+
+      /* ==========================================
+           THE WALKER AGENT
+           ========================================== */
+      class Walker {
+        constructor(brain) {
+          // Expanded NN: 14 inputs (added arm angles), 20 hidden, 8 outputs (4 legs + 4 arms)
+          this.brain = brain || new NeuralNetwork(14, 40, 8);
+          this.bodyParts = [];
+          this.constraints = [];
+          this.alive = true;
+          this.fitness = 0;
+          this.slowTimer = 0; // Track how long moving slowly
+          this.maxDistance = 0; // Track max distance reached
+
+          this.createRagdoll(SPAWN_X, 450);
+        }
+
+        createRagdoll(x, y) {
+          const { Body, Bodies, Composite, Constraint } = Matter;
+
+          const group = Body.nextGroup(true);
+          const limbOpt = { 
+            collisionFilter: { group: group, category: CAT_BODY, mask: CAT_GROUND },
+            friction: 0.8,
+            density: 0.05
+          };
+
+          // Core body
+          this.torso = Bodies.rectangle(x, y, 40, 60, limbOpt);
+          this.head = Bodies.circle(x, y - 50, 20, limbOpt);
+
+          // Left Leg
+          this.leftUL = Bodies.rectangle(x - 10, y + 40, 15, 50, limbOpt);
+          this.leftLL = Bodies.rectangle(x - 10, y + 90, 10, 50, limbOpt);
+          this.leftFoot = Bodies.rectangle(x - 15, y + 120, 30, 10, { ...limbOpt, friction: 1.0 });
+
+          // Right Leg
+          this.rightUL = Bodies.rectangle(x + 10, y + 40, 15, 50, limbOpt);
+          this.rightLL = Bodies.rectangle(x + 10, y + 90, 10, 50, limbOpt);
+          this.rightFoot = Bodies.rectangle(x + 15, y + 120, 30, 10, { ...limbOpt, friction: 1.0 });
+
+          // Left Arm
+          this.leftUA = Bodies.rectangle(x - 30, y - 15, 12, 40, { ...limbOpt, density: 0.02 });
+          this.leftLA = Bodies.rectangle(x - 30, y + 25, 10, 35, { ...limbOpt, density: 0.02 });
+          this.leftHand = Bodies.rectangle(x - 30, y + 50, 15, 15, { ...limbOpt, density: 0.01 });
+
+          // Right Arm
+          this.rightUA = Bodies.rectangle(x + 30, y - 15, 12, 40, { ...limbOpt, density: 0.02 });
+          this.rightLA = Bodies.rectangle(x + 30, y + 25, 10, 35, { ...limbOpt, density: 0.02 });
+          this.rightHand = Bodies.rectangle(x + 30, y + 50, 15, 15, { ...limbOpt, density: 0.01 });
+
+          const stiffness = 0.9;
+
+          // Head to Torso
+          this.constraints.push(Constraint.create({ 
+            bodyA: this.torso, bodyB: this.head, 
+            pointA: { x: 0, y: -30 }, pointB: { x: 0, y: 25 },
+            stiffness: stiffness, damping: 0.3, length: 0
+          }));
+
+          // Left Leg connections
+          this.constraints.push(Constraint.create({ 
+            bodyA: this.torso, bodyB: this.leftUL, 
+            pointA: { x: -10, y: 30 }, pointB: { x: 0, y: -25 },
+            stiffness: stiffness, damping: 0.3, length: 0
+          }));
+          this.constraints.push(Constraint.create({ 
+            bodyA: this.leftUL, bodyB: this.leftLL, 
+            pointA: { x: 0, y: 25 }, pointB: { x: 0, y: -25 },
+            stiffness: stiffness, damping: 0.3, length: 0
+          }));
+          this.constraints.push(Constraint.create({ 
+            bodyA: this.leftLL, bodyB: this.leftFoot, 
+            pointA: { x: 0, y: 25 }, pointB: { x: 5, y: -5 },
+            stiffness: stiffness, damping: 0.3, length: 0
+          }));
+
+          // Right Leg connections
+          this.constraints.push(Constraint.create({ 
+            bodyA: this.torso, bodyB: this.rightUL, 
+            pointA: { x: 10, y: 30 }, pointB: { x: 0, y: -25 },
+            stiffness: stiffness, damping: 0.3, length: 0
+          }));
+          this.constraints.push(Constraint.create({ 
+            bodyA: this.rightUL, bodyB: this.rightLL, 
+            pointA: { x: 0, y: 25 }, pointB: { x: 0, y: -25 },
+            stiffness: stiffness, damping: 0.3, length: 0
+          }));
+          this.constraints.push(Constraint.create({ 
+            bodyA: this.rightLL, bodyB: this.rightFoot, 
+            pointA: { x: 0, y: 25 }, pointB: { x: 5, y: -5 },
+            stiffness: stiffness, damping: 0.3, length: 0
+          }));
+
+          // Left Arm connections
+          this.constraints.push(Constraint.create({ 
+            bodyA: this.torso, bodyB: this.leftUA, 
+            pointA: { x: -20, y: -25 }, pointB: { x: 0, y: -20 },
+            stiffness: stiffness, damping: 0.3, length: 0
+          }));
+          this.constraints.push(Constraint.create({ 
+            bodyA: this.leftUA, bodyB: this.leftLA, 
+            pointA: { x: 0, y: 20 }, pointB: { x: 0, y: -17 },
+            stiffness: stiffness, damping: 0.3, length: 0
+          }));
+          this.constraints.push(Constraint.create({ 
+            bodyA: this.leftLA, bodyB: this.leftHand, 
+            pointA: { x: 0, y: 17 }, pointB: { x: 0, y: -7 },
+            stiffness: stiffness, damping: 0.3, length: 0
+          }));
+
+          // Right Arm connections
+          this.constraints.push(Constraint.create({ 
+            bodyA: this.torso, bodyB: this.rightUA, 
+            pointA: { x: 20, y: -25 }, pointB: { x: 0, y: -20 },
+            stiffness: stiffness, damping: 0.3, length: 0
+          }));
+          this.constraints.push(Constraint.create({ 
+            bodyA: this.rightUA, bodyB: this.rightLA, 
+            pointA: { x: 0, y: 20 }, pointB: { x: 0, y: -17 },
+            stiffness: stiffness, damping: 0.3, length: 0
+          }));
+          this.constraints.push(Constraint.create({ 
+            bodyA: this.rightLA, bodyB: this.rightHand, 
+            pointA: { x: 0, y: 17 }, pointB: { x: 0, y: -7 },
+            stiffness: stiffness, damping: 0.3, length: 0
+          }));
+
+          this.bodyParts = [
+            this.torso, this.head, 
+            this.leftUL, this.leftLL, this.leftFoot,
+            this.rightUL, this.rightLL, this.rightFoot,
+            this.leftUA, this.leftLA, this.leftHand,
+            this.rightUA, this.rightLA, this.rightHand
+          ];
+
+          this.composite = Composite.create();
+          Composite.add(this.composite, this.bodyParts);
+          Composite.add(this.composite, this.constraints);
+          Matter.World.add(engine.world, this.composite);
+        }
+
+        think() {
+          if (!this.alive) return;
+
+          let inputs = [];
+          inputs[0] = this.torso.angle / Math.PI;
+          inputs[1] = this.torso.angularVelocity;
+          inputs[2] = (this.leftUL.angle - this.torso.angle) / Math.PI;
+          inputs[3] = (this.rightUL.angle - this.torso.angle) / Math.PI;
+          inputs[4] = (this.leftLL.angle - this.leftUL.angle) / Math.PI;
+          inputs[5] = (this.rightLL.angle - this.rightUL.angle) / Math.PI;
+          inputs[6] = this.leftFoot.position.y > 580 ? 1 : 0;
+          inputs[7] = this.rightFoot.position.y > 580 ? 1 : 0;
+          inputs[8] = this.torso.velocity.x / 5;
+          inputs[9] = this.torso.velocity.y / 5;
+          // Arm angles
+          inputs[10] = (this.leftUA.angle - this.torso.angle) / Math.PI;
+          inputs[11] = (this.rightUA.angle - this.torso.angle) / Math.PI;
+          inputs[12] = (this.leftLA.angle - this.leftUA.angle) / Math.PI;
+          inputs[13] = (this.rightLA.angle - this.rightUA.angle) / Math.PI;
+
+          let output = this.brain.predict(inputs);
+
+          const strength = 0.1; 
+
+          // Hip Motors
+          this.applyJointTorque(this.torso, this.leftUL, output[0] * strength);
+          this.applyJointTorque(this.torso, this.rightUL, output[1] * strength);
+
+          // Knee Motors
+          this.applyJointTorque(this.leftUL, this.leftLL, output[2] * strength);
+          this.applyJointTorque(this.rightUL, this.rightLL, output[3] * strength);
+
+          // Shoulder Motors
+          this.applyJointTorque(this.torso, this.leftUA, output[4] * strength * 0.5);
+          this.applyJointTorque(this.torso, this.rightUA, output[5] * strength * 0.5);
+
+          // Elbow Motors
+          this.applyJointTorque(this.leftUA, this.leftLA, output[6] * strength * 0.5);
+          this.applyJointTorque(this.rightUA, this.rightLA, output[7] * strength * 0.5);
+        }
+
+        applyJointTorque(bodyA, bodyB, torque) {
+          Matter.Body.setAngularVelocity(bodyA, 
+            Matter.Common.clamp(bodyA.angularVelocity - torque, -0.2, 0.2));
+          Matter.Body.setAngularVelocity(bodyB, 
+            Matter.Common.clamp(bodyB.angularVelocity + torque, -0.2, 0.2));
+        }
+
+        update() {
+          if (!this.alive) return;
+      
+          // Angle limits for legs
+          this.enforceAngleLimit(this.torso, this.head, -0.3, 0.3);
+          this.enforceAngleLimit(this.torso, this.leftUL, -1.0, 0.8);
+          this.enforceAngleLimit(this.torso, this.rightUL, -1.0, 0.8);
+          this.enforceAngleLimit(this.leftUL, this.leftLL, -0.1, 2.0);
+          this.enforceAngleLimit(this.rightUL, this.rightLL, -0.1, 2.0);
+          this.enforceAngleLimit(this.leftLL, this.leftFoot, -0.5, 0.5);
+          this.enforceAngleLimit(this.rightLL, this.rightFoot, -0.5, 0.5);
+
+          // Angle limits for arms
+          this.enforceAngleLimit(this.torso, this.leftUA, -1.5, 1.5);
+          this.enforceAngleLimit(this.torso, this.rightUA, -1.5, 1.5);
+          this.enforceAngleLimit(this.leftUA, this.leftLA, -2.5, 0.1);
+          this.enforceAngleLimit(this.rightUA, this.rightLA, -2.5, 0.1);
+      
+          // Death conditions
+          if (this.head.position.y > 500) this.alive = false;
+          if (this.torso.position.y > 550) this.alive = false;
+          if (this.leftUL.position.y > 550 || this.rightUL.position.y > 550) this.alive = false;
+          if (this.torso.position.x < SPAWN_X - 100) this.alive = false;
+
+          // Anti-sliding: Track slow movement
+          let currentDistance = (this.torso.position.x - SPAWN_X) / PIXELS_PER_METER;
+          let speed = this.torso.velocity.x;
+          
+          // Update max distance
+          if (currentDistance > this.maxDistance) {
+            this.maxDistance = currentDistance;
+          }
+
+          // If moving very slowly forward or backward, increment slow timer
+          if (speed < 0.5 && timer > 120) {
+            this.slowTimer++;
+            // Kill if sliding too long (3 seconds at 60fps)
+            if (this.slowTimer > 180) {
+              this.alive = false;
+            }
+          } else {
+            this.slowTimer = Math.max(0, this.slowTimer - 2); // Reset timer if moving
+          }
+      
+          // Fitness calculation - heavily rewards actual movement speed
+          let distance = currentDistance;
+          let headHeight = Math.max(0, 580 - this.head.position.y);
+          let uprightBonus = headHeight * 0.2;
+          let anglePenalty = Math.abs(this.torso.angle) * 100;
+          let footDiff = Math.abs(this.leftFoot.position.y - this.rightFoot.position.y);
+          let steppingBonus = footDiff * 0.8;
+          
+          // Velocity bonus - strongly rewards forward movement
+          let velocityBonus = Math.max(0, speed) * 20;
+          
+          // Penalty for slow timer (discourages sliding)
+          let slidePenalty = this.slowTimer * 0.5;
+      
+          this.fitness = distance * 10
+              + uprightBonus
+              - anglePenalty
+              + steppingBonus
+              + velocityBonus
+              - slidePenalty
+              + (this.alive ? timer * 0.02 : 0);
+        }
+
+        enforceAngleLimit(bodyA, bodyB, minAngle, maxAngle) {
+          let relative = bodyB.angle - bodyA.angle;
+
+          while (relative >  Math.PI) relative -= 2 * Math.PI;
+          while (relative < -Math.PI) relative += 2 * Math.PI;
+
+          if (relative < minAngle) {
+            Matter.Body.setAngle(bodyB, bodyA.angle + minAngle);
+            Matter.Body.setAngularVelocity(bodyB, bodyA.angularVelocity);
+          } else if (relative > maxAngle) {
+            Matter.Body.setAngle(bodyB, bodyA.angle + maxAngle);
+            Matter.Body.setAngularVelocity(bodyB, bodyA.angularVelocity);
+          }
+        }
+
+        destroy() {
+          Matter.World.remove(engine.world, this.composite);
+        }
+
+        draw(ctx, spriteSheet) {
+          const drawPart = (body, spriteName, scaleW = 1, scaleH = 1) => {
+            ctx.save();
+            ctx.translate(body.position.x, body.position.y);
+            ctx.rotate(body.angle);
+
+            if (spriteSheet && spriteSheet.complete && spriteSheet.naturalHeight !== 0) {
+              const s = SPRITES[spriteName];
+              if (s.w > 0 && s.h > 0) {
+                ctx.drawImage(spriteSheet, s.x, s.y, s.w, s.h, 
+                  -s.w * scaleW / 2, -s.h * scaleH / 2, s.w * scaleW, s.h * scaleH);
+              }
+            } else {
+              ctx.fillStyle = this.alive ? '#5588cc' : '#444';
+              ctx.fillRect(-10, -15, 20, 30);
+            }
+            ctx.restore();
+          }
+
+          // Draw in correct order (back to front)
+          // Back arm
+          ctx.globalAlpha = this.alive ? 0.7 : 0.05;
+          drawPart(this.leftHand, 'hand', 0.3, 0.3);
+          drawPart(this.leftLA, 'lArm');
+          drawPart(this.leftUA, 'uArm');
+          
+          ctx.globalAlpha = this.alive ? 1.0 : 0.1;
+          // Legs (back)
+          drawPart(this.leftFoot, 'foot');
+          drawPart(this.leftLL, 'lLeg');
+          drawPart(this.leftUL, 'uLeg');
+
+          // Legs (front)
+          drawPart(this.rightFoot, 'foot');
+          drawPart(this.rightLL, 'lLeg');
+          drawPart(this.rightUL, 'uLeg');
+
+          // Torso and Head
+          drawPart(this.torso, 'torso');
+          drawPart(this.head, 'head');
+
+          // Front arm
+          drawPart(this.rightHand, 'hand', 0.3, 0.3);
+          drawPart(this.rightLA, 'lArm');
+          drawPart(this.rightUA, 'uArm');
+        }
+      }
+
+      /* ==========================================
+           MAIN SIMULATION LOOP
+           ========================================== */
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 800;
+      canvas.height = 600;
+      document.body.appendChild(canvas);
+      const ctx = canvas.getContext('2d');
+
+      const engine = Matter.Engine.create();
+
+      const ground = Matter.Bodies.rectangle(400, 600, 120000, 40, { 
+        isStatic: true,
+        collisionFilter: { category: CAT_GROUND }
+      });
+      Matter.World.add(engine.world, ground);
+
+      const spriteImg = new Image();
+      spriteImg.src = SPRITE_SRC;
+
+      let population = [];
+      let generation = 1;
+      let timer = 0;
+      let allTimeBestDistance = 0;
+      let speedMultiplier = 1;
+
+      function initGeneration() {
+        for (let w of population) w.destroy();
+        population = [];
+
+        for (let i = 0; i < POPULATION_SIZE; i++) {
+          population.push(new Walker());
+        }
+
+        document.getElementById('gen-disp').innerText = generation;
+        document.getElementById('alive-disp').innerText = POPULATION_SIZE;
+        document.getElementById('status-disp').innerText = "Running...";
+        timer = 0;
+      }
+
+      function nextGeneration() {
+        population.sort((a, b) => b.fitness - a.fitness);
+
+        const survivors = population.slice(0, Math.floor(POPULATION_SIZE * 0.2));
+
+        for (let w of population) w.destroy();
+        population = [];
+
+        for (let i = 0; i < POPULATION_SIZE; i++) {
+          function pickParent(survivors) {
+            let index = Math.floor(Math.pow(Math.random(), 2) * survivors.length);
+            return survivors[index];
+          }
+
+          let parentA = pickParent(survivors);
+
+          let childBrain = parentA.brain.copy();
+          childBrain.mutate(MUTATION_RATE);
+
+          population.push(new Walker(childBrain));
+        }
+
+        generation++;
+        timer = 0;
+        document.getElementById('gen-disp').innerText = generation;
+        document.getElementById('alive-disp').innerText = POPULATION_SIZE;
+      }
+
+      function update() {
+        for (let n = 0; n < speedMultiplier; n++) {
+          Matter.Engine.update(engine, 1000 / 60);
+
+          let aliveCount = 0;
+          let active = false;
+          let currentBestDistance = 0;
+
+          for (let w of population) {
+            w.think();
+            w.update();
+            if (w.alive) {
+              aliveCount++;
+              active = true;
+            }
+            // Track best distance (even from dead walkers - their max)
+            if (w.maxDistance > currentBestDistance) {
+              currentBestDistance = w.maxDistance;
+            }
+          }
+
+          // Update displays in real-time
+          document.getElementById('current-dist-disp').innerText = currentBestDistance.toFixed(1);
+          
+          if (currentBestDistance > allTimeBestDistance) {
+            allTimeBestDistance = currentBestDistance;
+            document.getElementById('dist-disp').innerText = allTimeBestDistance.toFixed(1);
+          }
+
+          document.getElementById('alive-disp').innerText = aliveCount;
+          timer++;
+
+          if (timer > GENERATION_DURATION || !active) {
+            nextGeneration();
+            break;
+          }
+        }
+      }
+
+      function draw() {
+        ctx.fillStyle = '#333';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+        let bestX = SPAWN_X;
+        for (let w of population) {
+          if (w.alive && w.torso.position.x > bestX) {
+            bestX = w.torso.position.x;
+          }
+        }
+        let cameraX = bestX - canvas.width / 3;
+        if (cameraX < 0) cameraX = 0;
+    
+        ctx.save();
+        ctx.translate(-cameraX, 0);
+    
+        ctx.fillStyle = '#222';
+        ctx.fillRect(cameraX, 580, canvas.width, 20);
+    
+        ctx.strokeStyle = '#666';
+        let startLine = Math.max(1, Math.floor(cameraX / 200));
+        let endLine = Math.ceil((cameraX + canvas.width) / 200) + 1;
+        for (let i = startLine; i <= endLine; i++) {
+          ctx.beginPath();
+          ctx.moveTo(i * 200, 580);
+          ctx.lineTo(i * 200, 550);
+          ctx.stroke();
+          ctx.fillStyle = '#888';
+          ctx.fillText(i * 10 + "m", i * 200 + 5, 570);
+        }
+    
+        population.sort((a, b) => a.fitness - b.fitness);
+        for (let w of population) {
+          w.draw(ctx, spriteImg);
+        }
+        ctx.globalAlpha = 1.0;
+    
+        ctx.restore();
+    
+        requestAnimationFrame(draw);
+      }
+
+      function toggleSpeed() {
+        speedMultiplier = (speedMultiplier === 1) ? 20 : 1;
+      }
+
+      draw();
+      initGeneration();
+      setInterval(update, 1000/60);
+
+    </script>
+  </body>
+</html>
