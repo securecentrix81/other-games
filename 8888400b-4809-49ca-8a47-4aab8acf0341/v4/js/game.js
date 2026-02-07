@@ -89,6 +89,12 @@ class MinecraftGame {
     
     this.mouse = {x:0,y:0}
 
+    this.textureAtlas = null;
+    this.textureLoaded = false;
+    this.loadTextureAtlas();
+
+    this.breakCooldown = 0; 
+
     this.init();
   }
 
@@ -365,7 +371,7 @@ class MinecraftGame {
     if (save.player) {
       this.player.position.set(
         save.player.position.x,
-        save.player.position.y+0.01,
+        save.player.position.y+0.1,
         save.player.position.z
       );
       this.player.yaw = save.player.yaw || 0;
@@ -668,12 +674,12 @@ class MinecraftGame {
     };
 
     const resSlider = document.getElementById('setting-shadow-resolution');
-    resSlider.value = this.settings.shadowResolution;
+    resSlider.value = Math.log2(this.settings.shadowResolution);
     
     document.getElementById('shadow-resolution-value').textContent = this.settings.shadowResolution;
     
     resSlider.oninput = () => {
-      this.settings.shadowResolution = parseInt(resSlider.value);
+      this.settings.shadowResolution = 2**parseInt(resSlider.value);
       document.getElementById('shadow-resolution-value').textContent = this.settings.shadowResolution;
       if (this.isPlaying && this.settings.shadowsEnabled) this.updateShadows();
       this.saveSettings();
@@ -963,23 +969,69 @@ class MinecraftGame {
     const ctx = canvas.getContext('2d');
     const data = BLOCK_DATA[type];
     if (!data) return;
-
+  
+    // If we have a texture atlas loaded and in a browser context
+    if (this.textureAtlas && this.textureAtlas.image) {
+      const tex = data.tex;
+      if (tex) {
+        const atlasImg = this.textureAtlas.image;
+        const tilePixels = atlasImg.width / ATLAS_SIZE;
+        
+        // Draw isometric block using texture
+        const topTex = tex.top || tex.side;
+        const sideTex = tex.side;
+        
+        // For simplicity, just draw the top texture
+        // You could enhance this to draw all 3 visible faces
+        const [col, row] = topTex || [0, 0];
+        const srcX = col * tilePixels;
+        // Flip Y since image Y is top-down but our rows are bottom-up
+        const srcY = atlasImg.height - (row + 1) * tilePixels;
+        
+        // Draw a simple representation
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        
+        // Top face
+        ctx.setTransform(1, 0.5, -1, 0.5, 16, 4);
+        ctx.drawImage(atlasImg, srcX, srcY, tilePixels, tilePixels, -8, -8, 16, 16);
+        
+        // Left face (darker)
+        const [sCol, sRow] = sideTex || topTex || [0, 0];
+        const sSrcX = sCol * tilePixels;
+        const sSrcY = atlasImg.height - (sRow + 1) * tilePixels;
+        
+        ctx.setTransform(1, 0.5, 0, 1, 4, 10);
+        ctx.globalAlpha = 0.8;
+        ctx.drawImage(atlasImg, sSrcX, sSrcY, tilePixels, tilePixels, 0, 0, 12, 14);
+        
+        // Right face (even darker)
+        ctx.setTransform(1, -0.5, 0, 1, 16, 16);
+        ctx.globalAlpha = 0.6;
+        ctx.drawImage(atlasImg, sSrcX, sSrcY, tilePixels, tilePixels, 0, 0, 12, 14);
+        
+        ctx.restore();
+        return;
+      }
+    }
+  
+    // Fallback to color-based drawing
     const toRGB = hex => `rgb(${(hex>>16)&255},${(hex>>8)&255},${hex&255})`;
     const darken = (hex, f) => {
       let r = ((hex>>16)&255)*f, g = ((hex>>8)&255)*f, b = (hex&255)*f;
       return `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
     };
-
+  
     ctx.fillStyle = toRGB(data.top);
     ctx.beginPath();
     ctx.moveTo(16, 4); ctx.lineTo(28, 10); ctx.lineTo(16, 16); ctx.lineTo(4, 10);
     ctx.closePath(); ctx.fill();
-
+  
     ctx.fillStyle = darken(data.side, 0.6);
     ctx.beginPath();
     ctx.moveTo(4, 10); ctx.lineTo(16, 16); ctx.lineTo(16, 28); ctx.lineTo(4, 22);
     ctx.closePath(); ctx.fill();
-
+  
     ctx.fillStyle = darken(data.side, 0.8);
     ctx.beginPath();
     ctx.moveTo(28, 10); ctx.lineTo(16, 16); ctx.lineTo(16, 28); ctx.lineTo(28, 22);
@@ -1328,6 +1380,40 @@ class MinecraftGame {
     })
 
     document.addEventListener('keydown', e => {
+      if (e.code === 'KeyQ' && this.isPlaying && !this.isPaused && !this.inventoryOpen && !this.player.isDead) {
+        const heldItem = this.getHeldItem();
+        if (heldItem) {
+          // Calculate throw direction from camera
+          const throwDir = new THREE.Vector3(0, 0, -1);
+          throwDir.applyQuaternion(this.camera.quaternion);
+          throwDir.multiplyScalar(5);  // Throw speed
+          throwDir.y += 2;  // Arc upward slightly
+          
+          // Spawn in front of player
+          const spawnPos = this.player.position.clone();
+          spawnPos.y -= 0.5;
+          spawnPos.addScaledVector(throwDir.clone().normalize(), 0.5);
+          
+          // Drop one item (or all if shift held)
+          const dropCount = this.keys['ShiftLeft'] ? heldItem.count : 1;
+          
+          this.spawnDroppedItem(
+            spawnPos.x,
+            spawnPos.y,
+            spawnPos.z,
+            heldItem.id,
+            dropCount,
+            throwDir
+          );
+          
+          // Remove from hotbar
+          heldItem.count -= dropCount;
+          if (heldItem.count <= 0) {
+            this.hotbarSlots[this.selectedSlot] = null;
+          }
+          this.updateHotbar();
+        }
+      }
       if (this.keys[e.code]) return;
       this.keys[e.code] = true;
       
@@ -1371,41 +1457,6 @@ class MinecraftGame {
         this.saveGame(false);
         document.getElementById('settings-panel').classList.add('visible');
         document.exitPointerLock();
-      }
-
-      if (e.code === 'KeyQ' && this.isPlaying && !this.isPaused && !this.inventoryOpen && !this.player.isDead) {
-        const heldItem = this.getHeldItem();
-        if (heldItem) {
-          // Calculate throw direction from camera
-          const throwDir = new THREE.Vector3(0, 0, -1);
-          throwDir.applyQuaternion(this.camera.quaternion);
-          throwDir.multiplyScalar(5);  // Throw speed
-          throwDir.y += 2;  // Arc upward slightly
-          
-          // Spawn in front of player
-          const spawnPos = this.player.position.clone();
-          spawnPos.y -= 0.5;
-          spawnPos.addScaledVector(throwDir.clone().normalize(), 0.5);
-          
-          // Drop one item (or all if shift held)
-          const dropCount = this.keys['ShiftLeft'] ? heldItem.count : 1;
-          
-          this.spawnDroppedItem(
-            spawnPos.x,
-            spawnPos.y,
-            spawnPos.z,
-            heldItem.id,
-            dropCount,
-            throwDir
-          );
-          
-          // Remove from hotbar
-          heldItem.count -= dropCount;
-          if (heldItem.count <= 0) {
-            this.hotbarSlots[this.selectedSlot] = null;
-          }
-          this.updateHotbar();
-        }
       }
       
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
@@ -1585,8 +1636,6 @@ class MinecraftGame {
       if (this.chunkWorker) {
         this.chunkWorker.postMessage({ type: 'init', seed: this.worldSeed });
       }
-
-      this.generateInitialChunks();
       
       if (isNewWorld) {
         this.findSpawnPoint();
@@ -1666,18 +1715,75 @@ class MinecraftGame {
     // Sort by distance (closer chunks first)
     this.meshBuildQueue.sort((a, b) => a.dist - b.dist);
   }
+  queueMeshBuildPriority(cx, cz) {
+    const key = `${cx},${cz}`;
+    if (this.pendingMeshes.has(key)) return;
+    if (!this.chunks.has(key)) return;
+    
+    // Remove from queue if already present
+    this.meshBuildQueue = this.meshBuildQueue.filter(q => !(q.cx === cx && q.cz === cz));
+    
+    // Insert at front of queue (highest priority)
+    this.meshBuildQueue.unshift({ cx, cz, dist: -1 });
+  }
+  rebuildChunkMeshNow(cx, cz) {
+    const key = `${cx},${cz}`;
+    
+    if (!this.chunks.has(key)) return;
+    if (!this.chunkWorker) return;
+    
+    // Remove from queue if present
+    this.meshBuildQueue = this.meshBuildQueue.filter(q => !(q.cx === cx && q.cz === cz));
+    
+    this.pendingMeshes.set(key, true);
+    
+    // Gather neighbor chunks
+    const neighbors = {};
+    const neighborOffsets = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 1]];
+    
+    for (const [dx, dz] of neighborOffsets) {
+      const nkey = `${cx + dx},${cz + dz}`;
+      if (this.chunks.has(nkey)) {
+        neighbors[nkey] = this.chunks.get(nkey).slice().buffer;
+      }
+    }
+    
+    // Get modifications
+    const modifiedBlocks = {};
+    this.modifiedBlocks.forEach((value, modKey) => {
+      const [mx, my, mz] = modKey.split(',').map(Number);
+      const mcx = Math.floor(mx / CHUNK_SIZE);
+      const mcz = Math.floor(mz / CHUNK_SIZE);
+      if (Math.abs(mcx - cx) <= 1 && Math.abs(mcz - cz) <= 1) {
+        modifiedBlocks[modKey] = value;
+      }
+    });
+    
+    const chunk = this.chunks.get(key);
+    const chunkBuffer = chunk.slice().buffer;
+    
+    const transferList = [chunkBuffer];
+    Object.values(neighbors).forEach(buf => transferList.push(buf));
+    
+    this.chunkWorker.postMessage({
+      type: 'buildMesh',
+      id: this.chunkRequestId++,
+      cx, cz,
+      chunk: chunkBuffer,
+      neighbors,
+      modifiedBlocks
+    }, transferList);
+  }
 
   processMeshBuildQueue() {
     if (this.meshBuildQueue.length === 0) return;
     if (!this.chunkWorker) {
-      // Fallback: process on main thread with time budget
-      alert("fallback: process on main thread")
-      this.processMeshQueueMainThread();
+      alert("ERROR: chunk worker not available")
       return;
     }
     
     // Send up to 2 mesh build requests per frame
-    const maxPerFrame = 1;
+    const maxPerFrame = 8;
     let processed = 0;
     
     while (this.meshBuildQueue.length > 0 && processed < maxPerFrame) {
@@ -1732,29 +1838,9 @@ class MinecraftGame {
     }
   }
 
-  processMeshQueueMainThread() {
-    // Fallback for when worker isn't available
-    alert("fallback pmqmt")
-    throw "fallback"
-    const startTime = performance.now();
-    const budgetMs = 8;
-    
-    while (this.meshBuildQueue.length > 0) {
-      if (performance.now() - startTime > budgetMs) break;
-      
-      const { cx, cz } = this.meshBuildQueue.shift();
-      const key = `${cx},${cz}`;
-      
-      if (this.chunks.has(key)) {
-        this.buildChunkMesh(cx, cz);
-      }
-    }
-  }
-
   createMeshFromGeometry(cx, cz, geometry) {
     const key = `${cx},${cz}`;
     
-    // Remove old mesh if exists
     if (this.chunkMeshes.has(key)) {
       const oldGroup = this.chunkMeshes.get(key);
       this.scene.remove(oldGroup);
@@ -1773,28 +1859,51 @@ class MinecraftGame {
       geo.setAttribute('position', new THREE.Float32BufferAttribute(data.positions, 3));
       geo.setAttribute('color', new THREE.Float32BufferAttribute(data.colors, 3));
       
-      // Use pre-computed normals instead of computing them!
       if (data.normals && data.normals.length > 0) {
         geo.setAttribute('normal', new THREE.Float32BufferAttribute(data.normals, 3));
       } else {
-        // Fallback only if normals not provided
         geo.computeVertexNormals();
       }
       
-      const mat = new THREE.MeshStandardMaterial({
-        vertexColors: true,
-        transparent: isTrans,
-        opacity: isTrans ? 0.6 : 1.0,
-        depthWrite: !isTrans,
-        roughness: 0.8,
-        side: THREE.FrontSide
-      });
+      // Add UV attribute if available
+      if (data.uvs && data.uvs.length > 0) {
+        geo.setAttribute('uv', new THREE.Float32BufferAttribute(data.uvs, 2));
+      }
+      
+      // Create material based on whether texture is loaded
+      let mat;
+      
+      if (this.textureLoaded && this.textureAtlas && data.uvs && data.uvs.length > 0) {
+        // Textured material
+        mat = new THREE.MeshStandardMaterial({
+          map: this.textureAtlas,
+          vertexColors: true,  // Colors are used for AO tinting
+          transparent: isTrans,
+          alphaTest: isTrans ? 0.5 : 0,  // Cut out transparent pixels
+          depthWrite: !isTrans || !this.textureAtlas,  // Write depth unless transparent texture
+          roughness: 0.9,
+          metalness: 0.0,
+          side: isTrans ? THREE.DoubleSide : THREE.FrontSide
+        });
+      } else {
+        // Fallback color-only material
+        mat = new THREE.MeshStandardMaterial({
+          vertexColors: true,
+          transparent: isTrans,
+          opacity: isTrans ? 0.8 : 1.0,
+          depthWrite: !isTrans,
+          roughness: 0.8,
+          side: isTrans ? THREE.DoubleSide : THREE.FrontSide
+        });
+      }
       
       const mesh = new THREE.Mesh(geo, mat);
+      
       if (this.settings.shadowsEnabled && !isTrans) {
         mesh.castShadow = true;
         mesh.receiveShadow = true;
       }
+      
       group.add(mesh);
     };
     
@@ -1803,6 +1912,39 @@ class MinecraftGame {
     
     this.scene.add(group);
     this.chunkMeshes.set(key, group);
+  }
+  
+  checkBlockSupport(x, y, z) {
+    const block = this.getBlock(x, y, z);
+    if (block === BLOCK.AIR) return;
+    
+    const blockData = BLOCK_DATA[block];
+    if (!blockData || !blockData.placedOn) return;
+    
+    const blockBelow = this.getBlock(x, y - 1, z);
+    
+    // Check if the block below is valid support
+    if (!blockData.placedOn.includes(blockBelow)) {
+      // Block loses support - break it and drop item
+      this.setBlock(x, y, z, BLOCK.AIR);
+      
+      // Handle drops
+      let dropItem = block;
+      if (blockData.drops === null) {
+        // Check for rare drops
+        if (blockData.rareDrops && Math.random() < blockData.rareDrops.chance) {
+          dropItem = blockData.rareDrops.item;
+        } else {
+          dropItem = null;
+        }
+      } else if (blockData.drops !== undefined) {
+        dropItem = blockData.drops;
+      }
+      
+      if (dropItem !== null) {
+        this.spawnDroppedItem(x + 0.5, y + 0.5, z + 0.5, dropItem, 1);
+      }
+    }
   }
 
   generateChunk(cx, cz) {
@@ -1860,76 +2002,6 @@ class MinecraftGame {
       }
       return;
     }
-
-    // Fallback: generate on main thread
-    //this.generateChunkMainThread(cx, cz);
-  }
-
-  /* Put generateChunkMainThread method here - fallback for when workers aren't available */
-  generateChunkMainThread(cx, cz) {
-    alert("fallback main thread")
-    throw "fallback"
-    const key = `${cx},${cz}`;
-    const chunk = new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
-
-    for (let lx = 0; lx < CHUNK_SIZE; lx++) {
-      for (let lz = 0; lz < CHUNK_SIZE; lz++) {
-        const wx = cx * CHUNK_SIZE + lx;
-        const wz = cz * CHUNK_SIZE + lz;
-        const height = this.getTerrainHeight(wx, wz);
-        const biome = this.getBiome(wx, wz);
-
-        for (let y = 0; y < WORLD_HEIGHT; y++) {
-          const idx = lx + y * CHUNK_SIZE + lz * CHUNK_SIZE * WORLD_HEIGHT;
-
-          if (y === 0) {
-            chunk[idx] = BLOCK.BEDROCK;
-          } else if (y < height - 4) {
-            const rand = Math.random();
-            if (rand < 0.008) chunk[idx] = BLOCK.COAL_ORE;
-            else if (rand < 0.012 && y < 40) chunk[idx] = BLOCK.IRON_ORE;
-            else if (rand < 0.014 && y < 20) chunk[idx] = BLOCK.GOLD_ORE;
-            else if (rand < 0.016 && y < 16) chunk[idx] = BLOCK.DIAMOND_ORE;
-            else chunk[idx] = BLOCK.STONE;
-          } else if (y < height - 1) {
-            chunk[idx] = biome === 'desert' ? BLOCK.SAND : BLOCK.DIRT;
-          } else if (y < height) {
-            if (biome === 'desert') chunk[idx] = BLOCK.SAND;
-            else if (biome === 'snow') chunk[idx] = BLOCK.SNOW;
-            else if (height <= WATER_LEVEL + 2) chunk[idx] = BLOCK.SAND;
-            else chunk[idx] = BLOCK.GRASS;
-          }
-        }
-
-        // Trees
-        if (height > WATER_LEVEL + 2 && biome !== 'desert' && Math.random() < 0.015) {
-          const treeHeight = 4 + Math.floor(Math.random() * 2);
-          for (let ty = 0; ty < treeHeight; ty++) {
-            const y = height + ty;
-            if (y < WORLD_HEIGHT) {
-              chunk[lx + y * CHUNK_SIZE + lz * CHUNK_SIZE * WORLD_HEIGHT] = BLOCK.WOOD;
-            }
-          }
-          for (let dx = -2; dx <= 2; dx++) {
-            for (let dz = -2; dz <= 2; dz++) {
-              for (let dy = treeHeight - 1; dy <= treeHeight + 1; dy++) {
-                if (Math.abs(dx) === 2 && Math.abs(dz) === 2 && Math.random() < 0.5) continue;
-                const nx = lx + dx, nz = lz + dz, ny = height + dy;
-                if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE && ny < WORLD_HEIGHT) {
-                  if (chunk[nx + ny * CHUNK_SIZE + nz * CHUNK_SIZE * WORLD_HEIGHT] === BLOCK.AIR) {
-                    chunk[nx + ny * CHUNK_SIZE + nz * CHUNK_SIZE * WORLD_HEIGHT] = BLOCK.LEAVES;
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
-    this.chunks.set(key, chunk);
-    this.applyModificationsToChunk(cx, cz);
-    this.buildChunkMesh(cx, cz);
   }
 
   applyModificationsToChunk(cx, cz) {
@@ -1950,24 +2022,6 @@ class MinecraftGame {
         }
       }
     }
-  }
-
-  generateInitialChunks() {
-      const pcx = Math.floor(this.player.position.x / CHUNK_SIZE);
-      const pcz = Math.floor(this.player.position.z / CHUNK_SIZE);
-
-      // Only load a very small 3x3 area immediately
-      const loadDistance = 1; 
-
-      for (let dx = -loadDistance; dx <= loadDistance; dx++) {
-        for (let dz = -loadDistance; dz <= loadDistance; dz++) {
-          const cx = pcx + dx;
-          const cz = pcz + dz;
-          if (!this.chunks.has(`${cx},${cz}`)) {
-            //this.generateChunkMainThread(cx, cz);
-          }
-        }
-      }
   }
 
   findSpawnPoint() {
@@ -1995,175 +2049,31 @@ class MinecraftGame {
 
   setBlock(x, y, z, type) {
     if (y < 0 || y >= WORLD_HEIGHT) return;
-
+  
     this.modifiedBlocks.set(`${x},${y},${z}`, type);
-
+  
     const cx = Math.floor(x / CHUNK_SIZE);
     const cz = Math.floor(z / CHUNK_SIZE);
     const chunk = this.chunks.get(`${cx},${cz}`);
-
+  
     if (chunk) {
       const lx = ((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
       const lz = ((z % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
       chunk[lx + y * CHUNK_SIZE + lz * CHUNK_SIZE * WORLD_HEIGHT] = type;
-
-      // Queue mesh rebuilds for affected chunks
-      this.queueMeshBuild(cx, cz);
+  
+      // Priority rebuild for the main chunk (insert at front of queue)
+      this.queueMeshBuildPriority(cx, cz);
+      
+      // Only rebuild adjacent chunks if block is on the edge (for AO correction)
       if (lx === 0) this.queueMeshBuild(cx - 1, cz);
       if (lx === CHUNK_SIZE - 1) this.queueMeshBuild(cx + 1, cz);
       if (lz === 0) this.queueMeshBuild(cx, cz - 1);
       if (lz === CHUNK_SIZE - 1) this.queueMeshBuild(cx, cz + 1);
     }
-  }
-
-  // ==================== MESH BUILDING ====================
-
-  /* 
-   * Put buildChunkMesh method here - this is a large method that:
-   * - Creates geometry for visible block faces
-   * - Handles ambient occlusion calculation
-   * - Separates opaque and transparent geometry
-   * - Creates THREE.js mesh objects
-   * 
-   * The full implementation is in the original file's buildChunkMesh method
-   */
-  buildChunkMesh(cx, cz) {
-    const key = `${cx},${cz}`;
-    const chunk = this.chunks.get(key);
-    if (!chunk) return;
-
-    if (this.chunkMeshes.has(key)) {
-      const oldGroup = this.chunkMeshes.get(key);
-      this.scene.remove(oldGroup);
-      oldGroup.children.forEach(mesh => {
-        mesh.geometry.dispose();
-        mesh.material.dispose();
-      });
+  
+    if (type === BLOCK.AIR) {
+      this.checkBlockSupport(x, y + 1, z);
     }
-
-    const opaque = { pos: [], col: [] };
-    const trans = { pos: [], col: [] };
-
-    const localGetBlock = (x, y, z) => {
-      if (y < 0 || y >= WORLD_HEIGHT) return BLOCK.AIR;
-      const lx = x - (cx * CHUNK_SIZE);
-      const lz = z - (cz * CHUNK_SIZE);
-      if (lx >= 0 && lx < CHUNK_SIZE && lz >= 0 && lz < CHUNK_SIZE) {
-        const modKey = `${x},${y},${z}`;
-        if (this.modifiedBlocks.has(modKey)) {
-          return this.modifiedBlocks.get(modKey);
-        }
-        return chunk[lx + y * CHUNK_SIZE + lz * CHUNK_SIZE * WORLD_HEIGHT];
-      }
-      return this.getBlock(x, y, z);
-    };
-
-    const isOccluder = (x, y, z) => {
-      const block = localGetBlock(x, y, z);
-      return block !== BLOCK.AIR && !BLOCK_DATA[block]?.transparent;
-    };
-
-    const vertexAO = (s1, s2, c) => (s1 && s2) ? 0 : 3 - (s1 + s2 + c);
-    const aoLevels = [0.5, 0.7, 0.85, 1.0];
-
-    const addFace = (x, y, z, dir, color, target) => {
-      const r = ((color >> 16) & 255) / 255;
-      const g = ((color >> 8) & 255) / 255;
-      const b = (color & 255) / 255;
-
-      const face = FACE_DATA[dir];
-
-      const ao = face.corners.map(c => {
-        const s1 = isOccluder(x + c.neighbors[0][0], y + c.neighbors[0][1], z + c.neighbors[0][2]) ? 1 : 0;
-        const s2 = isOccluder(x + c.neighbors[1][0], y + c.neighbors[1][1], z + c.neighbors[1][2]) ? 1 : 0;
-        const corner = isOccluder(x + c.neighbors[2][0], y + c.neighbors[2][1], z + c.neighbors[2][2]) ? 1 : 0;
-        return vertexAO(s1, s2, corner);
-      });
-
-      const flip = ao[0] + ao[2] < ao[1] + ao[3];
-      const indices = flip ? [1, 2, 3, 1, 3, 0] : [0, 1, 2, 0, 2, 3];
-
-      const noise = (Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1;
-      const v = 1 - (Math.abs(noise) * 0.08);
-
-      indices.forEach(i => {
-        const corner = face.corners[i];
-        target.pos.push(x + corner.pos[0], y + corner.pos[1], z + corner.pos[2]);
-        const m = aoLevels[ao[i]] * face.shade * v;
-        target.col.push(r * m, g * m, b * m);
-      });
-    };
-
-    for (let lx = 0; lx < CHUNK_SIZE; lx++) {
-      for (let y = 0; y < WORLD_HEIGHT; y++) {
-        for (let lz = 0; lz < CHUNK_SIZE; lz++) {
-          const wx = cx * CHUNK_SIZE + lx;
-          const wz = cz * CHUNK_SIZE + lz;
-          
-          const modKey = `${wx},${y},${wz}`;
-          let block;
-          if (this.modifiedBlocks.has(modKey)) {
-            block = this.modifiedBlocks.get(modKey);
-          } else {
-            const idx = lx + y * CHUNK_SIZE + lz * CHUNK_SIZE * WORLD_HEIGHT;
-            block = chunk[idx];
-          }
-          
-          if (block === BLOCK.AIR) continue;
-
-          const data = BLOCK_DATA[block];
-          if (!data) continue;
-          
-          const target = data.transparent ? trans : opaque;
-
-          const shouldRender = (nx, ny, nz) => {
-            const neighbor = localGetBlock(nx, ny, nz);
-            if (neighbor === BLOCK.AIR) return true;
-            const nData = BLOCK_DATA[neighbor];
-            if (!nData) return true;
-            if (nData.transparent && !data.transparent) return true;
-            if (data.transparent && nData.transparent && neighbor !== block) return true;
-            return false;
-          };
-
-          if (shouldRender(wx, y + 1, wz)) addFace(wx, y, wz, 'top', data.top, target);
-          if (shouldRender(wx, y - 1, wz)) addFace(wx, y, wz, 'bottom', data.bottom, target);
-          if (shouldRender(wx, y, wz + 1)) addFace(wx, y, wz, 'front', data.side, target);
-          if (shouldRender(wx, y, wz - 1)) addFace(wx, y, wz, 'back', data.side, target);
-          if (shouldRender(wx + 1, y, wz)) addFace(wx, y, wz, 'right', data.side, target);
-          if (shouldRender(wx - 1, y, wz)) addFace(wx, y, wz, 'left', data.side, target);
-        }
-      }
-    }
-
-    const group = new THREE.Group();
-    const createMesh = (data, isTrans) => {
-      if (data.pos.length === 0) return;
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.Float32BufferAttribute(data.pos, 3));
-      geo.setAttribute('color', new THREE.Float32BufferAttribute(data.col, 3));
-      geo.computeVertexNormals();
-      const mat = new THREE.MeshStandardMaterial({ 
-        vertexColors: true, 
-        transparent: isTrans, 
-        opacity: isTrans ? 0.6 : 1.0,
-        depthWrite: !isTrans,
-        roughness: 0.8,
-        side: THREE.FrontSide
-      });
-      const mesh = new THREE.Mesh(geo, mat);
-      
-      if (this.settings.shadowsEnabled) {
-        mesh.castShadow = !isTrans;
-        mesh.receiveShadow = !isTrans;
-      }
-      group.add(mesh);
-    };
-
-    createMesh(opaque, false);
-    createMesh(trans, true);
-    this.scene.add(group);
-    this.chunkMeshes.set(key, group);
   }
 
   // ==================== PLAYER & PHYSICS ====================
@@ -2400,6 +2310,7 @@ class MinecraftGame {
   }
 
   getMiningSpeed(blockData, tool) {
+    if (this.gameMode === 'creative') return 1000; // Arbitrary high number
     if (!tool) return 1;
     if (tool.toolType === blockData.toolType) {
       return tool.miningSpeed;
@@ -2414,7 +2325,6 @@ class MinecraftGame {
     const block = this.getBlock(x, y, z);
     const blockData = BLOCK_DATA[block];
     
-    if (block === BLOCK.BEDROCK) return;
     if (!blockData) return;
 
     const tool = this.getHeldTool();
@@ -2434,7 +2344,12 @@ class MinecraftGame {
     
     if (blockData.drops !== undefined) {
       if (blockData.drops === null) {
-        dropItem = null;
+        // Check for rare drops (like seeds from tall grass)
+        if (blockData.rareDrops && Math.random() < blockData.rareDrops.chance) {
+          dropItem = blockData.rareDrops.item;
+        } else {
+          dropItem = null;
+        }
       } else {
         dropItem = blockData.drops;
       }
@@ -2466,9 +2381,20 @@ class MinecraftGame {
     const heldItem = this.getHeldItem();
     if (!heldItem) return;
     
-    if (!BLOCK_DATA[heldItem.id]) return;
-
+    const blockData = BLOCK_DATA[heldItem.id];
+    if (!blockData) return;
+  
     const { x, y, z } = this.placementBlock;
+    
+    // Check if this block requires specific support
+    if (blockData.placedOn) {
+      const blockBelow = this.getBlock(x, y - 1, z);
+      if (!blockData.placedOn.includes(blockBelow)) {
+        // Can't place here - invalid support
+        return;
+      }
+    }
+
     const px = this.player.position.x;
     const py = this.player.position.y;
     const pz = this.player.position.z;
@@ -2490,7 +2416,7 @@ class MinecraftGame {
     }
 
     this.setBlock(x, y, z, heldItem.id);
-    this.placeCooldown = PLACE_COOLDOWN;
+    this.placeCooldown = this.gamemode === "creative" ? CREATIVE_PLACE_COOLDOWN : PLACE_COOLDOWN;
   }
 
   spawnParticles(x, y, z, color) {
@@ -2648,30 +2574,43 @@ class MinecraftGame {
           this.breakProgress = 0;
           this.currentBreakingBlock = blockKey;
         }
-        
-        const block = this.getBlock(this.targetBlock.x, this.targetBlock.y, this.targetBlock.z);
-        const blockData = BLOCK_DATA[block];
-        
-        if (blockData && blockData.hardness > 0) {
+      
+        // Handle the universal break cooldown (0.05s)
+        // Inside gameLoop(), within the (this.breaking && this.targetBlock) block:
+
+        if (this.breakCooldown > 0) {
+          this.breakCooldown -= dt;
+        } else {
+          // 1. Creative Mode: Bypass all hardness/progress checks
           if (this.gameMode === 'creative') {
             this.breakBlock();
-          } else {
-            const tool = this.getHeldTool();
-            const miningSpeed = this.getMiningSpeed(blockData, tool);
-            const breakSpeed = miningSpeed / blockData.hardness;
-            
-            this.breakProgress += dt * breakSpeed;
-            this.updateBreakIndicator(this.breakProgress);
-            
-            if (this.breakProgress >= 1) {
-              this.breakBlock();
+            this.breakCooldown = CREATIVE_BREAK_COOLDOWN; 
+          } 
+          // 2. Survival Mode: Respect hardness and check for bedrock (-1)
+          else {
+            const block = this.getBlock(this.targetBlock.x, this.targetBlock.y, this.targetBlock.z);
+            const blockData = BLOCK_DATA[block];
+        
+            if (blockData && blockData.hardness >= 0) {
+              const tool = this.getHeldTool();
+              const miningSpeed = this.getMiningSpeed(blockData, tool);
+              this.breakProgress += dt * (miningSpeed / blockData.hardness);
+              this.updateBreakIndicator(this.breakProgress);
+              
+              if (this.breakProgress >= 1) {
+                this.breakBlock();
+                this.breakCooldown = BREAK_COOLDOWN;
+              }
+            } else if (blockData && blockData.hardness === -1) {
+              // In Survival, hardness -1 means we reset progress and do nothing
+              this.breakProgress = 0;
+              this.updateBreakIndicator(0);
             }
           }
-        } else if (blockData && blockData.hardness === -1) {
-          this.breakProgress = 0;
-          this.updateBreakIndicator(0);
         }
       } else {
+        // If not holding break or no target, reset cooldown/progress
+        if (this.breakCooldown > 0) this.breakCooldown -= dt;
         if (this.breakProgress > 0) {
           this.breakProgress = 0;
           this.currentBreakingBlock = null;
@@ -2844,5 +2783,42 @@ class MinecraftGame {
     
     this.droppedItems.push(item);
     return item;
+  }
+
+  loadTextureAtlas() {
+    const loader = new THREE.TextureLoader();
+    
+    loader.load(
+      'assets/atlas.png',
+      (texture) => {
+        // Configure texture for pixelated look
+        texture.magFilter = THREE.NearestFilter;
+        texture.minFilter = THREE.NearestFilter;
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.colorSpace = THREE.SRGBColorSpace;
+        
+        this.textureAtlas = texture;
+        this.textureLoaded = true;
+        console.log('Texture atlas loaded');
+        
+        // Rebuild existing meshes with textures if game already started
+        if (this.isPlaying) {
+          this.rebuildAllChunkMeshes();
+        }
+      },
+      undefined,
+      (error) => {
+        console.warn('Failed to load texture atlas, using colors only:', error);
+        this.textureLoaded = false;
+      }
+    );
+  }
+  
+  rebuildAllChunkMeshes() {
+    this.chunkMeshes.forEach((group, key) => {
+      const [cx, cz] = key.split(',').map(Number);
+      this.queueMeshBuild(cx, cz);
+    });
   }
 }
