@@ -10,412 +10,617 @@
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     <style>
         * { box-sizing: border-box; }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 0;
+            margin: 0; padding: 0;
             background-color: #fafafa;
             min-height: 100vh;
+            overflow: hidden;
         }
-        
+
         /* Loading Screen */
         #loading-screen {
-            position: fixed; inset: 0; background: #fff; display: flex;
-            flex-direction: column; align-items: center; justify-content: center;
+            position: fixed; inset: 0; background: #fff;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
             z-index: 1000; transition: opacity 0.4s ease;
         }
-        
         #loading-screen.hidden { opacity: 0; pointer-events: none; }
-        
+
         .loading-icon {
-            width: 48px; height: 48px; border: 3px solid #e0e0e0;
-            border-top-color: #333; border-radius: 50%;
+            width: 48px; height: 48px;
+            border: 3px solid #e0e0e0; border-top-color: #333; border-radius: 50%;
             animation: spin 0.8s linear infinite; margin-bottom: 24px;
         }
-        
         @keyframes spin { to { transform: rotate(360deg); } }
-        
+
         .loading-title { font-size: 1.25rem; font-weight: 600; color: #333; margin-bottom: 8px; }
-        .loading-status { color: #666; font-size: 0.875rem; margin-bottom: 20px; }
+        .loading-status { color: #666; font-size: 0.875rem; max-width: 300px; text-align: center; margin-bottom: 20px; }
         .loading-progress { width: 240px; height: 4px; background: #e0e0e0; border-radius: 2px; overflow: hidden; }
         .loading-progress-bar { height: 100%; background: #333; width: 0%; transition: width 0.3s ease; }
-        
-        /* Main Layout */
+
+        /* Main Container */
         .container {
             max-width: 720px; margin: 0 auto; padding: 16px;
             height: 100vh; display: flex; flex-direction: column;
         }
-        
-        .header {
-            display: flex; justify-content: space-between; align-items: center; padding: 8px 0 16px;
-        }
-        
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 8px 0 16px; }
         h1 { margin: 0; color: #333; font-size: 1.125rem; font-weight: 600; }
-        
+
         .btn-clear {
             padding: 6px 12px; background: transparent; color: #666;
             border: 1px solid #ddd; border-radius: 6px; cursor: pointer;
             font-size: 0.8rem; transition: all 0.2s;
         }
-        
         .btn-clear:hover { background: #f0f0f0; }
-        
-        /* Chat Box */
+
+        /* Chat */
         #chat-box {
-            flex: 1; overflow-y: auto; display: flex;
-            flex-direction: column; gap: 12px; padding: 8px 0;
+            flex: 1; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 12px; padding: 8px 0;
         }
-        
         .message {
             max-width: 85%; padding: 10px 14px; border-radius: 16px;
             line-height: 1.55; word-wrap: break-word; font-size: 0.95rem;
         }
-        
-        .user-msg { align-self: flex-end; background: #333; color: #fff; border-bottom-right-radius: 4px; }
-        
+        .user-msg {
+            align-self: flex-end; background: #333; color: #fff;
+            border-bottom-right-radius: 4px;
+        }
         .bot-msg {
             align-self: flex-start; background: #fff; color: #333;
             border: 1px solid #e5e5e5; border-bottom-left-radius: 4px;
-            width: 100%; max-width: 95%;
         }
-        
-        /* Message Content */
+
+        /* Markdown inside bot messages */
         .bot-msg p { margin: 0 0 8px; }
         .bot-msg p:last-child { margin-bottom: 0; }
-        .bot-msg pre { background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 8px; overflow-x: auto; margin: 8px 0; }
-        .bot-msg code { background: #f4f4f4; padding: 2px 5px; border-radius: 4px; font-family: monospace; font-size: 0.85em; }
+        .bot-msg ul, .bot-msg ol { margin: 8px 0; padding-left: 20px; }
+        .bot-msg li { margin: 4px 0; }
+        .bot-msg code {
+            background: #f4f4f4; padding: 2px 5px; border-radius: 4px;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace; font-size: 0.85em;
+        }
+        .bot-msg pre {
+            background: #1e1e1e; color: #d4d4d4; padding: 12px;
+            border-radius: 8px; overflow-x: auto; margin: 8px 0;
+        }
         .bot-msg pre code { background: none; padding: 0; color: inherit; }
 
-        /* Thinking Block */
+        /* Think / Reasoning Blocks */
         .think-block {
-            margin: 6px 0 12px 0; border: 1px solid #e0e0e0; border-radius: 8px;
+            margin: 6px 0; border: 1px solid #e0e0e0; border-radius: 8px;
             overflow: hidden; background: #fafafa; font-size: 0.9em;
         }
-        .think-header {
-            padding: 6px 12px; background: #f0f0f0; color: #666;
-            font-weight: 500; font-size: 0.8rem; border-bottom: 1px solid #e0e0e0;
-        }
-        .think-content { padding: 10px 12px; color: #555; background: #fff; }
-
-        /* Function/Tool Blocks */
-        .function-block-wrapper { margin-top: 10px; border: 1px solid #dcdcdc; border-radius: 8px; overflow: hidden; }
-        .function-header {
-            background: #eef2ff; color: #4f46e5; padding: 6px 12px;
-            font-size: 0.8rem; font-weight: 600; border-bottom: 1px solid #e0e7ff;
+        .think-toggle {
             display: flex; align-items: center; gap: 6px;
+            padding: 8px 10px; cursor: pointer; user-select: none; color: #888;
         }
-        .function-header::before { content: '⚡'; }
-
-        .tool-result {
-            margin-top: 8px; padding: 10px 12px; background: #f0fdf4;
-            border: 1px solid #bbf7d0; border-radius: 8px; color: #166534;
-            font-size: 0.9em; font-family: monospace; white-space: pre-wrap;
+        .think-toggle:hover { background: #f0f0f0; }
+        .think-icon { font-size: 0.65rem; transition: transform 0.2s; display: inline-block; }
+        .think-block.expanded .think-icon { transform: rotate(90deg); }
+        .think-content {
+            display: none; padding: 10px 12px;
+            border-top: 1px solid #e0e0e0; color: #555; background: #fff;
+            white-space: pre-wrap; word-break: break-word;
         }
-        .tool-result.error { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
-        .tool-label { font-size: 0.75rem; text-transform: uppercase; font-weight: bold; opacity: 0.7; margin-bottom: 4px; }
+        .think-block.expanded .think-content { display: block; }
 
-        /* Typing Cursor */
-        .typing-cursor::after { content: '▋'; animation: blink 1s step-end infinite; color: #999; }
+        /* Tool-specific styling inside think blocks */
+        .think-block.tool-block { border-color: #c8e6c9; background: #f1f8e9; }
+        .think-block.tool-block .think-toggle { color: #558b2f; }
+        .think-block.tool-block .think-content { background: #f9fbe7; border-color: #c8e6c9; }
+
+        /* Streaming spinner for active think block */
+        .think-spinner {
+            width: 14px; height: 14px; border: 2px solid #ccc; border-top-color: #888;
+            border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0;
+        }
+
+        /* Phase indicator (replaces think-indicator) */
+        .phase-indicator {
+            color: #888; font-size: 0.85em; padding: 8px 0;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .phase-indicator::before {
+            content: ''; width: 14px; height: 14px;
+            border: 2px solid #ddd; border-top-color: #888;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+        }
+
+        /* Typing cursor */
+        .typing-cursor::after {
+            content: '▋'; animation: blink 1s step-end infinite; color: #999;
+        }
         @keyframes blink { 50% { opacity: 0; } }
-        
+
         /* Input Area */
         .input-area { display: flex; gap: 8px; padding-top: 12px; }
-        #user-input { flex: 1; padding: 12px 16px; border: 1px solid #ddd; border-radius: 24px; font-size: 0.95rem; outline: none; }
+        #user-input {
+            flex: 1; padding: 12px 16px; border: 1px solid #ddd;
+            border-radius: 24px; font-size: 0.95rem; outline: none;
+            transition: border-color 0.2s;
+        }
         #user-input:focus { border-color: #999; }
-        #send-btn { padding: 0 20px; background: #333; color: #fff; border: none; border-radius: 24px; cursor: pointer; }
+        #send-btn {
+            padding: 0 20px; background: #333; color: #fff; border: none;
+            border-radius: 24px; cursor: pointer; font-size: 0.9rem;
+            font-weight: 500; transition: background 0.2s;
+        }
         #send-btn:hover { background: #444; }
         #send-btn:disabled { background: #ccc; cursor: not-allowed; }
         #send-btn.stop { background: #c0392b; }
-        
-        .empty-state { flex: 1; display: flex; align-items: center; justify-content: center; color: #aaa; }
+        #send-btn.stop:hover { background: #a93226; }
+
+        .empty-state {
+            flex: 1; display: flex; align-items: center;
+            justify-content: center; color: #aaa;
+        }
     </style>
 </head>
 <body>
 
+<!-- Loading Screen -->
 <div id="loading-screen">
     <div class="loading-icon"></div>
     <div class="loading-title">Saharsh 3.0 Mini</div>
     <div class="loading-status" id="loading-status">Initializing...</div>
-    <div class="loading-progress"><div class="loading-progress-bar" id="loading-progress-bar"></div></div>
+    <div class="loading-progress">
+        <div class="loading-progress-bar" id="loading-progress-bar"></div>
+    </div>
 </div>
 
+<!-- Main Container -->
 <div class="container" id="main-container" style="display: none;">
     <div class="header">
         <h1>Saharsh 3.0 Mini</h1>
         <button class="btn-clear" id="clear-btn">Clear</button>
     </div>
-
     <div id="chat-box">
         <div class="empty-state" id="empty-state">Send a message to start</div>
     </div>
-
     <div class="input-area">
-        <input type="text" id="user-input" placeholder="Try 'Calculate 53 * 12' or 'Reverse the string Hello'" />
+        <input type="text" id="user-input" placeholder="Type a message..." />
         <button id="send-btn">Send</button>
     </div>
 </div>
+
 <script>addEventListener("error",(e)=>{alert(e.message)})</script>
 <script type="module">
-    import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm";
+import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm";
 
-    const SELECTED_MODEL = "Qwen3-4B-q4f16_1-MLC";
-    
-    // UI Elements
-    const loadingScreen = document.getElementById('loading-screen');
-    const loadingStatus = document.getElementById('loading-status');
-    const loadingProgressBar = document.getElementById('loading-progress-bar');
-    const mainContainer = document.getElementById('main-container');
-    const chatBox = document.getElementById('chat-box');
-    const userInput = document.getElementById('user-input');
-    const sendBtn = document.getElementById('send-btn');
-    const clearBtn = document.getElementById('clear-btn');
-    const emptyState = document.getElementById('empty-state');
+// const SELECTED_MODEL = "Qwen3-1.7B-q4f16_1-MLC";
+const SELECTED_MODEL = "Llama-3.2-3B-Instruct-q4f16_1-MLC"
+/* ─── DOM refs ─── */
+const loadingScreen    = document.getElementById('loading-screen');
+const loadingStatus    = document.getElementById('loading-status');
+const loadingBar       = document.getElementById('loading-progress-bar');
+const mainContainer    = document.getElementById('main-container');
+const chatBox          = document.getElementById('chat-box');
+const userInput        = document.getElementById('user-input');
+const sendBtn          = document.getElementById('send-btn');
+const clearBtn         = document.getElementById('clear-btn');
 
-    let engine;
-    let isGenerating = false;
-    let shouldStop = false;
-    
-    // Updated system prompt for Agentic Behavior
-    
-    function getSystemPrompt() {
-    	return `Current date: ${(new Date).toLocaleString()}\nYou are Saharsh 3.0 Mini, an AI language model hosted on Secure Centrix81, a gaming website. You can execute JavaScript to solve problems.
-1. When you need to calculate or process data, write code inside <function>...</function>. The code does not have to be optimal.
-2. STOP writing immediately after the </function> tag.
-3. The system will execute the code and return the logs to you in a system message.
-4. Read the system message result and then provide the final answer to the user.
-The user will not see the code or the <function>...</function> block.
-Logs are collected using the function \`console.log\`. Any code that does not go to \`console.log\` will not be outputted. `
+/* ─── State ─── */
+let engine;
+let isGenerating = false;
+let shouldStop   = false;
+
+marked.setOptions({ breaks: true, gfm: true });
+
+/* ─── Prompts ─── */
+const SYSTEM_PROMPT = `[SYSTEM] You are an AI assistant named Saharsh 3.0 Mini hosted on Secure Centrix81, a gaming website. You are helpful, concise, and friendly. Always follow the instructions given to you carefully.`;
+
+const TOOLS_DESCRIPTION = `You have access to the following tools.
+If you need to call the javascript tool, output ONLY a single JSON object or code block in these formats:
+
+{"tool": "name", "args": {"param": "value"}}
+
+Tools:
+  math: {"expr": "string"} — e.g. {"tool": "math", "args": {"expr": "5*4"}}
+  datetime: {} — e.g. {"tool": "datetime", "args": {}}
+  random: {"min": number, "max": number} — e.g. {"tool": "random", "args": {"min": 1, "max": 100}}
+  javascript: {"code": "string"} — e.g. {"tool": "random", "args": {"code": "const x = 10;return x * 5"}}
+
+Alternatively, you can execute javascript in this format:
+\`\`\`javascript
+// Write code here
+const x = 10;
+return x * 5;
+\`\`\``;
+
+const REASONING_PROMPT = `[SYSTEM] Repond chain-of-though process to answer the user's latest message. Provide clear, organized reasoning. If the question is simple, keep it brief — do NOT overthink. If you think you need a tool, say which one and why.
+
+${TOOLS_DESCRIPTION}
+
+If you do not need to use a tool, plan your final answer for the user without calling tools. 
+Output ONLY your reasoning. Do NOT output the final answer yet.`;
+
+const RESPOND_PROMPT = `[SYSTEM] Based on your reasoning above, now do ONE of the following:
+
+If you need to call a tool first, output ONLY the JSON object:
+{"tool": "name", "args": {...}}
+
+-OR-
+
+If you already have enough information, write your final answer directly for the user. Be natural and helpful. Do NOT mention your reasoning, these instructions, or the tool system.
+
+${TOOLS_DESCRIPTION}`;
+
+function makeToolResultPrompt(name, args, result) {
+    return `[SYSTEM] The tool ${name}(${args}) returned: ${result}
+
+Now think briefly about how to use this result to answer the user's original question.`;
+}
+
+/* ─── Conversation history (only real user/assistant turns) ─── */
+let history = [{ role: "system", content: SYSTEM_PROMPT }];
+
+/* ─── Tool execution ─── */
+function parseToolCall(text) {
+    // 1. First, check for a Javascript Markdown Block
+    const jsMatch = text.match(/```javascript\s*\n([\s\S]*?)\n```/);
+    if (jsMatch) {
+        return { name: 'javascript', args: { code: jsMatch[1].trim() } };
     }
 
-    let messages = [{ role: "system", content: getSystemPrompt() }];
-    marked.setOptions({ breaks: true, gfm: true });
-
-    async function init() {
-        try {
-            loadingStatus.textContent = "Downloading model...";
-            engine = await CreateMLCEngine(SELECTED_MODEL, {
-                initProgressCallback: (progress) => {
-                    const percent = Math.ceil(progress.progress * 100);
-                    loadingProgressBar.style.width = percent + '%';
-                    loadingStatus.textContent = progress.text;
-                }
-            });
-            loadingScreen.classList.add('hidden');
-            mainContainer.style.display = 'flex';
-            userInput.focus();
-        } catch (err) {
-            loadingStatus.textContent = "Error: " + err.message;
-            loadingProgressBar.style.background = '#c0392b';
+    // 2. Fallback to the existing JSON logic
+    try {
+        const start = text.indexOf('{');
+        const end = text.lastIndexOf('}');
+        if (start === -1 || end === -1) return null;
+        
+        const jsonStr = text.substring(start, end + 1);
+        const data = JSON.parse(jsonStr);
+        
+        if (data.tool && data.args) {
+            return { name: data.tool.toLowerCase(), args: data.args };
         }
+    } catch (e) {
+        return null; 
     }
-    
-    function parseResponse(text) {
-        // 1. Extract Think blocks
-        const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
-        let thinkBlocks = [];
-        let match;
-        while ((match = thinkRegex.exec(text)) !== null) thinkBlocks.push(match[1].trim());
-        let remaining = text.replace(thinkRegex, '').trim();
-        
-        // 2. Extract Function blocks
-        const funcRegex = /<function>([\s\S]*?)<\/function>/gi;
-        let functionBlocks = [];
-        while ((match = funcRegex.exec(remaining)) !== null) functionBlocks.push(match[1].trim());
+    return null;
+}
 
-        // 3. Content (Remove function blocks from visual display, we render them specially)
-        let content = remaining.replace(funcRegex, '').trim();
-        
-        // Handle streaming incomplete tags
-        if (!/<\/think>/.test(text) && /<think>/.test(text)) {
-             const parts = text.split('<think>');
-             if(parts.length > 1) { thinkBlocks.push(parts[1]); content = parts[0]; }
-        }
-
-        return { content, thinkBlocks, functionBlocks };
-    }
-
-    function renderFinalMessage(container, text) {
-        const { content, thinkBlocks, functionBlocks } = parseResponse(text);
-        container.innerHTML = '';
-        
-        // Thoughts
-        thinkBlocks.forEach(think => {
-            const block = document.createElement('div');
-            block.className = 'think-block';
-            block.innerHTML = `<div class="think-header"><span>Thought process</span></div><div class="think-content">${marked.parse(think)}</div>`;
-            container.appendChild(block);
-        });
-        
-        // Main Content
-        if (content) {
-            const contentDiv = document.createElement('div');
-            contentDiv.innerHTML = marked.parse(content);
-            container.appendChild(contentDiv);
-            if (typeof renderMathInElement !== 'undefined') {
-                renderMathInElement(contentDiv, { delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}], throwOnError: false });
-            }
-        }
-
-        // Code Blocks (Visual Only)
-        functionBlocks.forEach(code => {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'function-block-wrapper';
-            wrapper.innerHTML = `<div class="function-header">Calling Tool</div><div class="function-content" style="padding: 10px; background: #fafafa;"><pre><code class="language-javascript">${code}</code></pre></div>`;
-            container.appendChild(wrapper);
-        });
-    }
-
-    // Returns the text output of the tool execution
-    async function executeToolsAndGetOutput(functionBlocks, container) {
-        if (!functionBlocks || functionBlocks.length === 0) return null;
-
-        let totalOutput = [];
-
-        for (const code of functionBlocks) {
-            const resultDiv = document.createElement('div');
-            resultDiv.className = 'tool-result';
-            resultDiv.innerHTML = `<div class="tool-label">Executing...</div>`;
-            container.appendChild(resultDiv);
-
-            await new Promise(r => setTimeout(r, 200)); // UI Visual delay
-
+function executeTool(name, args) {
+    switch (name) {
+        case 'javascript': {
             try {
-                let logs = [];
-                const originalLog = console.log;
+                // We wrap the code in a function. 
+                // To get a result back, the AI should use 'return'
+                let realConsoleLog = console.log
+                let result = ""
                 console.log = (...args) => {
-                    logs.push(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '));
-                    originalLog.apply(console, args);
-                };
-
-                let result = undefined;
-                
-                result = eval(code)
-                console.log = originalLog;
-
-                let outputStr = "";
-                if (logs.length > 0) outputStr += "Logs: " + logs.join('; ') + "\n";
-                if (result !== undefined) outputStr += "Result: " + String(result);
-                if (outputStr === "") outputStr = "Executed successfully.";
-
-                totalOutput.push(outputStr);
-
-                // Show success in UI, but keep it technical
-                resultDiv.innerHTML = `<div class="tool-label">Tool Output (Sent to AI)</div>${outputStr}`;
-                
-            } catch (err) {
-                const errStr = "Error: " + err.message;
-                totalOutput.push(errStr);
-                resultDiv.className = 'tool-result error';
-                resultDiv.innerHTML = `<div class="tool-label">Tool Error</div>${errStr}`;
+                    result += args.join(" ") + "\n"
+                }
+                let execResult = eval(args.code);
+                if (execResult === undefined) execResult = ""
+                result += execResult;
+                if (result.trim() === "") return "Code executed successfully (no return value)";
+                return String(result)
+            } catch (e) {
+                return e.message;
             }
         }
-        
-        return totalOutput.join("\n\n");
-    }
-
-    async function sendMessage() {
-        const text = userInput.value.trim();
-        if (!text || isGenerating) return;
-
-        emptyState.style.display = 'none';
-        appendUserMessage(text);
-        userInput.value = '';
-        
-        isGenerating = true;
-        shouldStop = false;
-        sendBtn.textContent = 'Stop';
-        sendBtn.classList.add('stop');
-        userInput.disabled = true;
-
-        messages.push({ role: "user", content: text });
-        messages[0] = { role: "system", content: getSystemPrompt() }
-
-        // LOOP FOR AGENTIC BEHAVIOR (Tool Call -> Tool Result -> Final Answer)
-        let toolLoopCount = 0;
-
-        try {
-            while (!shouldStop) {
-                
-                // Create a container for this turn
-                const botDiv = document.createElement('div');
-                botDiv.className = 'message bot-msg';
-                chatBox.appendChild(botDiv);
-                chatBox.scrollTop = chatBox.scrollHeight;
-
-                let currentResponse = "";
-                
-                // 1. Generate Response
-                const completion = await engine.chat.completions.create({
-                    messages,
-                    stream: true,
-                    temperature: 0
-                });
-
-                for await (const chunk of completion) {
-                    if (shouldStop) break;
-                    const content = chunk.choices[0]?.delta?.content || "";
-                    currentResponse += content;
-                    renderFinalMessage(botDiv, currentResponse);
-                    chatBox.scrollTop = chatBox.scrollHeight;
-                }
-
-                renderFinalMessage(botDiv, currentResponse);
-                messages.push({ role: "assistant", content: currentResponse });
-
-                // 2. Check for Tools
-                const { functionBlocks } = parseResponse(currentResponse);
-                
-                if (functionBlocks.length > 0 && !shouldStop) {
-                    const toolOutput = await executeToolsAndGetOutput(functionBlocks, botDiv);
-                    
-                    // 3. Feed result back to AI
-                    messages.push({ 
-                        role: "user", 
-                        content: `Tool Execution Result:\n${toolOutput}` 
-                    });
-                    
-                    // Loop continues to generate the NEXT response based on this result
-                    continue; 
-                } else {
-                    // No tools found, we are done.
-                    break;
-                }
+        case 'math': {
+            try {
+                const expr = args.expr.replace(/\^/g, '**'); // Access .expr
+                const round = Math.round
+                const floor = Math.floor
+                const ceil = Math.ceil
+                const sqrt = Math.sqrt
+                const sin = Math.sin
+                const cos = Math.cos
+                const pi = Math.PI
+                const PI = Math.PI
+                const e = Math.E
+                const E = Math.E
+                const cbrt = Math.cbrt
+                const abs = Math.abs
+                const asin = Math.asin
+                const acos = Math.acos
+                const acosh = Math.acosh
+                const asinh = Math.asinh
+                const atan = Math.atan
+                const atanh = Math.atanh
+                const cosh = Math.cosh
+                const exp = Math.exp
+                const ln = Math.log
+                const log = Math.log10
+                const log2 = Math.log2
+                const log10 = Math.log10
+                const max = Math.max
+                const min = Math.min
+                const pow = Math.pow
+                const tan = Math.tan
+                const tanh = Math.tanh
+                const random = Math.random
+                const val = eval('return (' + expr + ')');
+                return String(val);
+            } catch (e) { return "Error: " + e.message; }
+        }
+        case 'datetime':
+            return new Date().toLocaleString();
+        case 'random': {
+            const lo = parseInt(args.min); // Access .min
+            const hi = parseInt(args.max); // Access .max
+            if (!isNaN(lo) && !isNaN(hi)) {
+                const min = Math.min(lo, hi);
+                const max = Math.max(lo, hi);
+                return String(Math.floor(Math.random() * (max - min + 1)) + min);
             }
-            
-        } catch (err) {
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'message bot-msg';
-            errorDiv.textContent = "Error: " + err.message;
-            chatBox.appendChild(errorDiv);
-        } finally {
-            isGenerating = false;
-            sendBtn.textContent = 'Send';
-            sendBtn.classList.remove('stop');
-            userInput.disabled = false;
-            userInput.focus();
-            chatBox.scrollTop = chatBox.scrollHeight;
+            return "Error: use args {min: number, max: number}";
+        }
+        default:
+            return "Error: unknown tool '" + name + "'";
+    }
+}
+
+/* ─── Streaming helper ─── */
+async function streamGenerate(msgs, onToken) {
+    let text = "";
+    const stream = await engine.chat.completions.create({
+        messages: msgs,
+        stream: true,
+        max_tokens: 1024,
+        temperature: 0.7,
+        top_p: 0.9,
+        chat_template_kwargs: { enable_thinking: false },
+    });
+    for await (const chunk of stream) {
+        if (shouldStop) break;
+        text += chunk.choices[0]?.delta?.content || "";
+        if (onToken) onToken(text);
+    }
+    if (shouldStop) throw { stopped: true };
+    return text;
+}
+
+/* ─── Display helpers ─── */
+function scrollBottom() { chatBox.scrollTop = chatBox.scrollHeight; }
+
+function createThinkBlockEl(label, content, expanded, isLive) {
+    const block = document.createElement('div');
+    block.className = 'think-block' + (expanded ? ' expanded' : '');
+    if (label.startsWith('Tool:')) block.classList.add('tool-block');
+
+    const toggle = document.createElement('div');
+    toggle.className = 'think-toggle';
+
+    if (isLive) {
+        const spinner = document.createElement('span');
+        spinner.className = 'think-spinner';
+        toggle.appendChild(spinner);
+    } else {
+        const icon = document.createElement('span');
+        icon.className = 'think-icon';
+        icon.textContent = '▶';
+        toggle.appendChild(icon);
+    }
+    const lbl = document.createElement('span');
+    lbl.textContent = ' ' + label;
+    toggle.appendChild(lbl);
+    toggle.onclick = () => block.classList.toggle('expanded');
+
+    const body = document.createElement('div');
+    body.className = 'think-content';
+    body.textContent = content;               // plain text during streaming
+    if (!isLive) body.innerHTML = marked.parse(content);  // markdown after done
+
+    block.appendChild(toggle);
+    block.appendChild(body);
+    return block;
+}
+
+/** Rebuild the bot bubble during streaming */
+function renderLive(container, steps, phase, streamText) {
+    container.innerHTML = '';
+
+    // Completed reasoning/tool steps → collapsed blocks
+    steps.forEach(s => {
+        container.appendChild(createThinkBlockEl(s.label, s.content, false, false));
+    });
+
+    if (phase === 'thinking') {
+        if (streamText) {
+            container.appendChild(createThinkBlockEl('Thinking…', streamText, true, true));
+        } else {
+            const ind = document.createElement('div');
+            ind.className = 'phase-indicator';
+            ind.textContent = 'Thinking…';
+            container.appendChild(ind);
+        }
+    } else if (phase === 'responding') {
+        if (streamText) {
+            const div = document.createElement('div');
+            div.className = 'typing-cursor';
+            div.textContent = streamText;      // plain text while streaming
+            container.appendChild(div);
+        } else {
+            const ind = document.createElement('div');
+            ind.className = 'phase-indicator';
+            ind.textContent = 'Composing response…';
+            container.appendChild(ind);
         }
     }
+}
 
-    function appendUserMessage(text) {
+/** Final render with markdown + KaTeX */
+function renderFinal(container, steps, response) {
+    container.innerHTML = '';
+
+    steps.forEach(s => {
+        container.appendChild(createThinkBlockEl(s.label, s.content, false, false));
+    });
+
+    if (response) {
         const div = document.createElement('div');
-        div.className = 'message user-msg';
-        div.textContent = text;
-        chatBox.appendChild(div);
-        chatBox.scrollTop = chatBox.scrollHeight;
+        div.innerHTML = marked.parse(response);
+        container.appendChild(div);
+        if (typeof renderMathInElement === 'function') {
+            renderMathInElement(div, {
+                delimiters: [
+                    { left: '$$',  right: '$$',  display: true  },
+                    { left: '$',   right: '$',   display: false },
+                    { left: '\\[', right: '\\]', display: true  },
+                    { left: '\\(', right: '\\)', display: false },
+                ],
+                throwOnError: false,
+            });
+        }
+    }
+}
+
+/* ─── Multi-pass reasoning pipeline ─── */
+async function reasonAndRespond(container) {
+    const steps = [];                       // { label, content }
+    let workMsgs = [...history];            // copy — don't pollute real history
+    const MAX_TOOL_ROUNDS = 100;
+
+    /* ── Pass 1 : Reasoning ── */
+    workMsgs.push({ role: "user", content: REASONING_PROMPT });
+    renderLive(container, steps, 'thinking', '');
+
+    let reasoning = await streamGenerate(workMsgs, txt => {
+        renderLive(container, steps, 'thinking', txt);
+        scrollBottom();
+    });
+    workMsgs.push({ role: "assistant", content: reasoning });
+    steps.push({ label: 'Reasoning', content: reasoning });
+
+    /* ── Pass 2+ : Respond / tool loop ── */
+    let finalResponse = "";
+
+    for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+        workMsgs.push({ role: "user", content: RESPOND_PROMPT });
+        renderLive(container, steps, 'responding', '');
+
+        let response = await streamGenerate(workMsgs, txt => {
+            renderLive(container, steps, 'responding', txt);
+            scrollBottom();
+        });
+        workMsgs.push({ role: "assistant", content: response });
+
+        const tool = parseToolCall(response);
+        if (tool) {
+            /* ── Execute tool ── */
+            const result = executeTool(tool.name, tool.args);
+            steps.push({
+                label: `Tool: ${tool.name}`,
+                content: `Called: ${tool.name}\nArgs: ${JSON.stringify(tool.args)}\nResult: ${result}`
+            });
+
+            /* ── Feed result back and reason again ── */
+            workMsgs.push({
+                role: "user",
+                content: makeToolResultPrompt(tool.name, tool.args, result)
+            });
+            renderLive(container, steps, 'thinking', '');
+
+            let postToolReasoning = await streamGenerate(workMsgs, txt => {
+                renderLive(container, steps, 'thinking', txt);
+                scrollBottom();
+            });
+            workMsgs.push({ role: "assistant", content: postToolReasoning });
+            steps.push({ label: 'Reasoning', content: postToolReasoning });
+
+        } else {
+            /* ── No tool call → this is the final answer ── */
+            finalResponse = response;
+            break;
+        }
     }
 
-    function clearChat() {
-        messages = [{ role: "system", content: getSystemPrompt() }];
-        chatBox.innerHTML = '<div class="empty-state" id="empty-state">Send a message to start</div>';
+    if (!finalResponse) {
+        finalResponse = "Sorry, I couldn't finish processing. Please try rephrasing.";
     }
 
-    sendBtn.onclick = () => { if (isGenerating) shouldStop = true; else sendMessage(); };
-    userInput.onkeypress = (e) => { if (e.key === 'Enter' && !isGenerating) sendMessage(); };
-    clearBtn.onclick = clearChat;
+    renderFinal(container, steps, finalResponse);
+    return finalResponse;
+}
 
-    init();
+/* ─── Send message ─── */
+async function sendMessage() {
+    const text = userInput.value.trim();
+    if (!text || isGenerating) return;
+
+    const empty = document.getElementById('empty-state');
+    if (empty) empty.style.display = 'none';
+
+    appendUserBubble(text);
+    userInput.value = '';
+
+    isGenerating = true;
+    shouldStop = false;
+    sendBtn.textContent = 'Stop';
+    sendBtn.classList.add('stop');
+    userInput.disabled = true;
+
+    history.push({ role: "user", content: "[USER]:\n"+text });
+
+    const botDiv = document.createElement('div');
+    botDiv.className = 'message bot-msg';
+    chatBox.appendChild(botDiv);
+    scrollBottom();
+
+    try {
+        const finalText = await reasonAndRespond(botDiv);
+        history.push({ role: "assistant", content: finalText });
+    } catch (e) {
+        if (!e.stopped) {
+            botDiv.textContent = "Error: " + (e.message || e);
+        }
+    } finally {
+        isGenerating = false;
+        sendBtn.textContent = 'Send';
+        sendBtn.classList.remove('stop');
+        userInput.disabled = false;
+        userInput.focus();
+        scrollBottom();
+    }
+}
+
+function appendUserBubble(text) {
+    const div = document.createElement('div');
+    div.className = 'message user-msg';
+    div.textContent = text;
+    chatBox.appendChild(div);
+    scrollBottom();
+}
+
+function clearChat() {
+    history = [{ role: "system", content: SYSTEM_PROMPT }];
+    chatBox.innerHTML = '<div class="empty-state" id="empty-state">Send a message to start</div>';
+}
+
+/* ─── Event listeners ─── */
+sendBtn.onclick = () => {
+    if (isGenerating) shouldStop = true;
+    else sendMessage();
+};
+userInput.onkeypress = e => { if (e.key === 'Enter' && !isGenerating) sendMessage(); };
+clearBtn.onclick = clearChat;
+
+/* ─── Init ─── */
+async function init() {
+    try {
+        loadingStatus.textContent = "Downloading model…";
+        engine = await CreateMLCEngine(SELECTED_MODEL, {
+            initProgressCallback: (progress) => {
+                loadingBar.style.width = Math.ceil(progress.progress * 100) + '%';
+                loadingStatus.textContent = progress.text;
+            }
+        });
+        loadingScreen.classList.add('hidden');
+        mainContainer.style.display = 'flex';
+        userInput.focus();
+    } catch (err) {
+        loadingStatus.textContent = "Error: " + err.message;
+        loadingBar.style.background = '#c0392b';
+    }
+}
+
+init();
 </script>
 </body>
 </html>
