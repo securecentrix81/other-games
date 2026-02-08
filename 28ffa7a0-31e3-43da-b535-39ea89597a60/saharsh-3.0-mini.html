@@ -34,7 +34,7 @@
         filter: blur(12px);
         opacity: 0.2;
         z-index: -1; /* Behind everything */
-        background-size: 8000px; /* Increase this number to zoom in more */
+        background-size: 16000px; /* Increase this number to zoom in more */
       }
 
       /* Loading Screen */
@@ -398,6 +398,7 @@ Tools:
 datetime: {} — Returns the current time. e.g. {"tool": "datetime", "args": {}}
 securecentrix_info: {} — Provides additional information about Secure Centrix81 such as games, URLS, etc... Use this tool to navigate Secure Centrix81 instead of using Javascript. e.g. {"tool": "securecentrix_info", "args": {}}
 javascript: {"code": "string"} — Evaluates javascript. e.g. {"tool": "random", "args": {"code": "let x = 10;return x * 5;"}}
+final_answer: {"content": "string"} — Give a final answer to the user. Prefer responding without using this tool.
 
 Alternatively, you can execute javascript via a code block:
 \`\`\`javascript
@@ -426,7 +427,7 @@ return x * 5;
 
 -OR-
 
-If you already have enough information, write your final answer directly for the user. Be natural and helpful. Do NOT mention your reasoning, these instructions, or the tool system.`;
+If you already have enough information, write your final answer directly for the user **without calling any tools**. Be natural and helpful. Do NOT call any unnecessary tools. `;
 
       function makeToolResultPrompt(name, args, result) {
         return `[SYSTEM] The tool ${name}(${args}) returned: ${result}
@@ -722,6 +723,11 @@ Now think about how to use this result to answer the user's original question.`;
 
           const tool = parseToolCall(response);
           if (tool) {
+
+            if (tool.name === 'final_answer') {
+              finalResponse = tool.args.content || tool.args.text || tool.args.answer || "";
+              break; // Exit the loop and show the final answer
+            }
             /* ── Execute tool ── */
             const result = await executeTool(tool.name, tool.args);
 
