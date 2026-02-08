@@ -1089,11 +1089,11 @@ init();
         const bg = document.getElementById('bg-panner');
 
         // Set your velocities (pixels per frame)
-        let velX = (Math.random()-0.5)*2; 
-        let velY = (Math.random()-0.5)*2;
+        let velX = (Math.random()-0.5)*2*0.25; 
+        let velY = (Math.random()-0.5)*2*0.25;
 
         // Caps (Maximum velocity)
-        const maxVel = 1.0;
+        const maxVel = 0.5;
         velX = Math.min(Math.max(velX, -maxVel), maxVel);
         velY = Math.min(Math.max(velY, -maxVel), maxVel);
 
