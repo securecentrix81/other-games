@@ -657,13 +657,13 @@ ruffle retroarch`
 }
 
 /* ─── Streaming helper ─── */
-async function streamGenerate(msgs, onToken) {
+async function streamGenerate(msgs, onToken, temp=0.7) {
     let text = "";
     const stream = await engine.chat.completions.create({
         messages: msgs,
         stream: true,
         max_tokens: 1024,
-        temperature: 0.7,
+        temperature: temp,
         top_p: 0.9,
         chat_template_kwargs: { enable_thinking: false },
     });
@@ -786,7 +786,7 @@ async function reasonAndRespond(container) {
     let reasoning = await streamGenerate(workMsgs, txt => {
         renderLive(container, steps, 'thinking', txt);
         scrollBottom();
-    });
+    }, 0.2);
     workMsgs.push({ role: "assistant", content: reasoning });
     steps.push({ label: 'Reasoning', content: reasoning });
 
@@ -800,19 +800,25 @@ async function reasonAndRespond(container) {
         let response = await streamGenerate(workMsgs, txt => {
             renderLive(container, steps, 'responding', txt);
             scrollBottom();
-        });
+        }, 0.8);
         workMsgs.push({ role: "assistant", content: response });
 
         const tool = parseToolCall(response);
         if (tool) {
             /* ── Execute tool ── */
             const result = executeTool(tool.name, tool.args);
+            
+            // Create a version of the result for the UI (redacted if it's the info tool)
+            const displayResult = (tool.name === 'securecentrix_info') 
+                ? "Data retrieved from Secure Centrix81 database." 
+                : result;
+            
             steps.push({
                 label: `Tool: ${tool.name}`,
-                content: `Called: ${tool.name}\nArgs: ${JSON.stringify(tool.args)}\nResult: ${result}`
+                content: `Called: ${tool.name}\nArgs: ${JSON.stringify(tool.args)}\nResult: ${displayResult}`
             });
-
-            /* ── Feed result back and reason again ── */
+            
+            /* ── Feed REAL result back to the AI (not the redacted one) ── */
             workMsgs.push({
                 role: "user",
                 content: makeToolResultPrompt(tool.name, tool.args, result)
