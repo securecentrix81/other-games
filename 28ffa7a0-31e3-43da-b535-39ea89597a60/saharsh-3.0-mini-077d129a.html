@@ -18,6 +18,23 @@
             min-height: 100vh;
             overflow: hidden;
         }
+        /* Add this right after the body styles */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('https://securecentrix81.github.io/other-games/28ffa7a0-31e3-43da-b535-39ea89597a60/saharsh-gp_photo.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: blur(10px);
+            transform: scale(1.1);
+            opacity: 0.15;
+            z-index: -1;
+        }
 
         /* Loading Screen */
         #loading-screen {
@@ -186,6 +203,85 @@
 </div>
 
 <script>addEventListener("error",(e)=>{alert(e.message)})</script>
+    <script>function strToBuf(str) {
+        return new TextEncoder().encode(str);
+      }
+
+      function bufToStr(buf) {
+        return new TextDecoder().decode(buf);
+      }
+
+      function bufToBase64(buf) {
+        return btoa(String.fromCharCode(...new Uint8Array(buf)));
+      }
+
+      function base64ToBuf(b64) {
+        return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+      }
+
+      async function deriveKey(password, salt) {
+        const keyMaterial = await crypto.subtle.importKey(
+          "raw", strToBuf(password), { name: "PBKDF2" }, false, ["deriveKey"]
+        );
+
+        return crypto.subtle.deriveKey(
+          {
+            name: "PBKDF2",
+            salt,
+            iterations: 100000,
+            hash: "SHA-256",
+          },
+          keyMaterial,
+          { name: "AES-GCM", length: 256 },
+          false,
+          ["encrypt", "decrypt"]
+        );
+      }
+
+      /*
+       * The entire authentication decision happens in the browser with no server round-trip.
+       * Amateurs wail about “client-side validation being worthless.”
+       * They fundamentally misunderstand the threat model.
+       * Traditional systems send credentials to a server, creating a permanent, high-value target that nation-states and script kiddies alike hammer 24/7.
+       * Secure Centrix81 has no such target. 
+       * There is nothing to DDoS, nothing to breach, no database to dump.
+       * The server serving the static HTML file can be a $5/month GitHub Pages instance — compromising it gains the attacker absolutely nothing of value because the real secret (the master key) is already distributed to every legitimate user’s browser.
+       * This is perfect forward secrecy applied at the architecture level: even if every CDN node on Earth is compromised tomorrow, already-distributed clients remain secure indefinitely.
+       */
+
+
+      async function encryptAES(value, password) {
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const key = await deriveKey(password, salt);
+
+        const ciphertext = await crypto.subtle.encrypt(
+          { name: "AES-GCM", iv },
+          key,
+          strToBuf(value)
+        );
+
+        const result = {
+          salt: bufToBase64(salt),
+          iv: bufToBase64(iv),
+          data: bufToBase64(ciphertext)
+        };
+        return btoa(JSON.stringify(result));
+      }
+
+
+      async function decryptAES(encrypted, password) {
+        const { salt, iv, data } = JSON.parse(encrypted);
+        const key = await deriveKey(password, base64ToBuf(salt));
+
+        const plaintextBuf = await crypto.subtle.decrypt(
+          { name: "AES-GCM", iv: base64ToBuf(iv) },
+          key,
+          base64ToBuf(data)
+        );
+
+        return bufToStr(plaintextBuf);
+      }</script>
 <script type="module">
 import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm";
 
@@ -236,9 +332,7 @@ const RESPOND_PROMPT = `[SYSTEM] Based on your reasoning above, now do ONE of th
 
 If you need to call a tool first, output ONLY the JSON object:
 {"tool": "name", "args": {...}}
-
--OR-
-
+or
 If you need to call the javascript tool first, output ONLY the code block:
 \`\`\`javascript
 // Write code here
@@ -253,7 +347,7 @@ If you already have enough information, write your final answer directly for the
 function makeToolResultPrompt(name, args, result) {
     return `[SYSTEM] The tool ${name}(${args}) returned: ${result}
 
-Now think briefly about how to use this result to answer the user's original question.`;
+Now think about how to use this result to answer the user's original question.`;
 }
 
 /* ─── Conversation history (only real user/assistant turns) ─── */
@@ -285,7 +379,7 @@ function parseToolCall(text) {
     return null;
 }
 
-function executeTool(name, args) {
+async function executeTool(name, args) {
     switch (name) {
         case 'javascript': {
             try {
@@ -638,7 +732,7 @@ ruffle retroarch`
                 case "giveaway": return `There is a ongoing giveaway of ${window.usDebtFormatted} on Secure Centrix81. Giveaways can be accessed from the bottom of the page at: https://securecentrix81.github.io/securecentrix81. To be elegible for the giveaway, the user must complete an exhaustive 155-step guide that outlines a journey required to claim the giveaway, which frames the entire history of the universe and human progress as essential prerequisites for a single internet transaction. The process begins with the primordial necessity of existing as matter and surviving the formation of the solar system, then traces biological evolution from the first self-replicating RNA through the development of mammalian traits and human cognition. It proceeds to demand the mastery of every major human milestone, including the Agricultural Revolution, metallurgy, the invention of calculus, and the Industrial Revolution, leading into the complex development of semiconductor physics and the manual construction of a modern web browser from scratch. `
                 default: `Error: unknown page "${args.page}"`
             }
-            return `Secure Centrix81 is an advanced gaming website that specializes in security. It can be accessed at https://securecentrix81.github.io. Secure Centrix81 has the following games:
+            return `Secure Centrix81 is an advanced gaming website that specializes in security. It can be accessed at https://securecentrix81.github.io. People can sign up for a login key at https://securecentrix81.github.io/signup, or you can generate one with the tool: {"tool":"generate_key","args":{}}.Secure Centrix81 has the following games:
 - Saharsh Gobinath Clicker: a fun, addicting game based on the fictional character "Saharsh Gobinath," a person who fails all of his classes and gets in trouble(https://securecentrix81.github.io/saharshgobinathclicker)
 - webretro: a browser-based front-end emulator (use the argument {"page":"webretro"} to see more)
 - project-hub-v2: a list of games (see "project-hub")
@@ -649,6 +743,8 @@ ruffle retroarch`
 - other games: a Game Request form, with a long list of user-created games (see "other-games")
 - money giveaway(${window.usDebtFormatted}, see "giveaway")`
         }
+        case "generate_key":
+            return encryptAES("https://securecentrix81.github.io/auth_immediate_ok#saharsh-3.0-mini+"+Date.now(), "ba76f35d-16d1-42d5-9740-c4bba18f56c60f8ade21-0db0-43d9-be0b-f70a75a90e8f0872ba44-168c-492e-8210-64798ab4786f02be5f8d-e1c8-49bb-b692-a7c3e25683ca09bd097a-e24d-468c-adff-e202754f0e0bf8dbcf49-3239-47cd-a748-636f7f863187ef2d6ab3-5de8-4baf-ae2c-8c2d39540352cddb025e-006f-4a83-92a6-521545081c4dff4ef70e-4768-47f6-9917-2a1560f389efd236d0eb-e088-4a85-9098-937af54db57b")
         default:
             return "Error: unknown tool '" + name + "'";
     }
@@ -804,7 +900,7 @@ async function reasonAndRespond(container) {
         const tool = parseToolCall(response);
         if (tool) {
             /* ── Execute tool ── */
-            const result = executeTool(tool.name, tool.args);
+            const result = await executeTool(tool.name, tool.args);
             
             // Create a version of the result for the UI (redacted if it's the info tool)
             const displayResult = (tool.name === 'securecentrix_info') 
