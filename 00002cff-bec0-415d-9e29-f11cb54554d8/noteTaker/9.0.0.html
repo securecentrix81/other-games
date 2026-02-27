@@ -393,6 +393,11 @@
       .hidden {
         display: none !important;
       }
+
+      .section-tab--drop-target {
+        background-color: #4CAF50 !important;
+        color: white;
+      }
     </style>
   </head>
   <body>
@@ -1673,6 +1678,8 @@
             dragState.noteStartX = note.x;
             dragState.noteStartY = note.y;
             document.body.classList.add("is-dragging");
+
+            note.el.style.pointerEvents = "none";
           }
 
           if (e.target.closest(".note__resize-handle")) {
@@ -1697,11 +1704,20 @@
           const deltaX = e.clientX - dragState.startX;
           const deltaY = e.clientY - dragState.startY;
       
-          if (dragState.action === "move") {
-            note.x = dragState.noteStartX + deltaX;
-            note.y = dragState.noteStartY + deltaY;
-            note.updateLayout();
-          } else if (dragState.action === "resize") {
+            if (dragState.action === "move") {
+              note.x = dragState.noteStartX + deltaX;
+              note.y = dragState.noteStartY + deltaY;
+              note.updateLayout();
+          
+              // ADD THESE LINES: Detect section drop targets
+              const hoverTarget = document.elementFromPoint(e.clientX, e.clientY);
+              const tabEl = hoverTarget ? hoverTarget.closest('.section-tab:not(.section-tab--add)') : null;
+              
+              document.querySelectorAll('.section-tab').forEach(tab => tab.classList.remove('section-tab--drop-target'));
+              if (tabEl && tabEl.dataset.sectionId !== note.sectionId) {
+                tabEl.classList.add('section-tab--drop-target');
+              }
+            } else if (dragState.action === "resize") {
             note.width = dragState.noteStartWidth + deltaX;
             note.height = dragState.noteStartHeight + deltaY;
             note.updateLayout();
@@ -1736,8 +1752,32 @@
         }
       });
 
-        document.addEventListener("mouseup", () => {
+        document.addEventListener("mouseup", (e) => { // ADD (e) parameter
           // Note drag cleanup
+          if (dragState.active && dragState.noteId) {
+            const note = notes[dragState.noteId];
+            if (note) {
+              note.el.style.pointerEvents = ""; // Restore pointer events
+              
+              if (dragState.action === "move") {
+                const dropTarget = document.elementFromPoint(e.clientX, e.clientY);
+                const tabEl = dropTarget ? dropTarget.closest('.section-tab:not(.section-tab--add)') : null;
+                
+                // If dropped on a different section tab, move the note
+                if (tabEl) {
+                  const targetSectionId = tabEl.dataset.sectionId;
+                  if (targetSectionId && targetSectionId !== note.sectionId) {
+                    note.moveToSection(targetSectionId);
+                    scheduleSave();
+                  }
+                }
+              }
+            }
+            
+            // Clean up hover highlights
+            document.querySelectorAll('.section-tab').forEach(tab => tab.classList.remove('section-tab--drop-target'));
+          }
+        
           dragState.active = false;
           dragState.action = null;
           dragState.noteId = null;
