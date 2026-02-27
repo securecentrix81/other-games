@@ -105,8 +105,8 @@
           }
         }
         function update() {
-          for (let i of confetti) i.update()
-          confetti.push(new Confetti())
+          for (let c of confetti) c.update()
+          for (let i = 0; i < 2; i++) confetti.push(new Confetti())
           confetti = confetti.filter(c=>c.alive)
           requestAnimationFrame(update)
         }
