@@ -1,0 +1,117 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Person of the Day</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f9;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        color: #333;
+        overflow: hidden;
+      }
+
+      .container {
+        background-color: #ffffff;
+        padding: 40px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 400px;
+        text-align: center;
+      }
+
+      h1 {
+        font-size: 28px;
+        margin-bottom: 20px;
+        color: #2c3e50;
+      }
+
+      button {
+        width: 100%;
+        padding: 12px;
+        background-color: #3498db;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+
+      button:hover {
+        background-color: #2980b9;
+      }
+
+      p {
+        margin-top: 20px;
+        font-size: 18px;
+      }
+
+      a {
+        color: #3498db;
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Person of the Day</h1>
+      <img src="https://asset-cdn.schoology.com/system/files/imagecache/profile_big/pictures/picture-c0b09cdead19788fb0f8be0d53b5c572_68c34cd700b90.jpg">
+      <p>🎉🎉🎉 Saharsh Gobinath 🎉🎉🎉</p>
+      <script>
+        let confetti = []
+        class Confetti {
+          constructor() {
+            this.x = Math.random()*window.innerWidth
+            this.y = -100
+            this.rotationX = Math.random()*360
+            this.rotationY = Math.random()*360
+            this.rotationZ = Math.random()*360
+            this.rotationVelX = (Math.random()-0.5)*10
+            this.rotationVelY = (Math.random()-0.5)*10
+            this.rotationVelZ = (Math.random()-0.5)*10
+            this.width = 5+Math.random()*10
+            this.height = 5+Math.random()*10
+            this.color = `rgb(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`
+            let confettiElement = document.createElement("div")
+            this.element = confettiElement
+            document.body.appendChild(this.element)
+            this.alive = true
+          }
+          update() {
+          this.velocity = (this.width+this.height)/5
+            this.y += this.velocity
+            if (this.y - 100 > window.innerHeight) {
+              this.element.remove()
+              this.alive = false
+            }
+            this.element.style = `position:absolute;top:${this.y}px;left:${this.x}px;width:${this.width}px;height:${this.height}px;background-color:${this.color};transform:rotateX(${this.rotationX}deg) rotateY(${this.rotationY}deg) rotateZ(${this.rotationZ}deg);opacity:0.5;z-index:${this.velocity < 3.5?-100:100}`
+            this.rotationX += this.rotationVelX
+            this.rotationY += this.rotationVelY
+            this.rotationZ += this.rotationVelZ
+          }
+        }
+        function update() {
+          for (let c of confetti) c.update()
+          for (let i = 0; i < 2; i++) confetti.push(new Confetti())
+          confetti = confetti.filter(c=>c.alive)
+          requestAnimationFrame(update)
+        }
+        update()
+      </script>
+    </div>
+  </body>
+</html>

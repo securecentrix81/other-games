@@ -825,7 +825,10 @@ If you already have enough information, write your final answer directly for the
 
       /* ─── Event listeners ─── */
       sendBtn.onclick = () => {
-        if (isGenerating) shouldStop = true;
+        if (isGenerating) {
+          shouldStop = true;
+          engine.interruptGenerate(); // ← Add this line
+        }
         else sendMessage();
       };
       userInput.onkeypress = e => { if (e.key === 'Enter' && !isGenerating) sendMessage(); };

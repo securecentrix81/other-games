@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wild West Redemption</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="game-container"></div>
+    
+    <div id="ui-layer">
+      <div id="crosshair">+</div>
+      <div id="stats">
+        <div>Health: <span id="health-display">100</span></div>
+        <div>Score: <span id="score-display">0</span></div>
+        <div>High Score: <span id="high-score-display">0</span></div>
+        <div>Wave: <span id="wave-display">1</span></div>
+        <div>Ammo: <span id="ammo-display">6/6</span></div>
+      </div>
+      
+      <div id="damage-overlay"></div>
+      <div id="muzzle-flash"></div>
+      
+      <div id="menu">
+        <h1>WILD WEST REDEMPTION</h1>
+        <p>A single-player adaptation inspired by classic western action.</p>
+        <p>Instructions:</p>
+        <p>WASD to Move | Mouse to Look | Left Click to Shoot | R to Reload</p>
+        <p>Survive the outlaw attacks.</p>
+        <button id="start-btn">PLAY</button>
+      </div>
+
+      <div id="game-over">
+        <h1>YOU DIED</h1>
+        <p>Score: <span id="final-score">0</span></p>
+        <p>High Score: <span id="final-high-score">0</span></p>
+        <button id="restart-btn">TRY AGAIN</button>
+      </div>
+    </div>
+
+    <!-- Three.js and dependencies from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script type="module" src="main.js"></script>
+  </body>
+</html>

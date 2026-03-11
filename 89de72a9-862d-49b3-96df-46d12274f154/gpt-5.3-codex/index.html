@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Secure Centrix81 - Frontier Reckoning</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@700;800&family=Manrope:wght@500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="game.css" />
+  </head>
+  <body>
+    <div id="game-shell">
+      <canvas id="gameCanvas" aria-label="Frontier shooter game"></canvas>
+
+      <div id="hud" class="hidden">
+        <div class="hud-row top-left">
+          <div class="panel">Mission <span id="missionLabel">1</span></div>
+          <div class="panel">Time <span id="timeLabel">0</span></div>
+          <div class="panel">Target <span id="targetLabel">0</span></div>
+        </div>
+        <div class="hud-row top-right">
+          <div class="panel">Score <span id="scoreLabel">0</span></div>
+          <div class="panel">High <span id="highLabel">0</span></div>
+          <div class="panel">Combo <span id="comboLabel">x1</span></div>
+        </div>
+        <div class="hud-row bottom-left">
+          <div class="panel">Health <span id="healthLabel">100</span></div>
+          <div class="panel">Ammo <span id="ammoLabel">6/6</span></div>
+          <div class="panel">View <span id="viewLabel">FPS</span></div>
+        </div>
+        <div id="eventBanner"></div>
+      </div>
+
+      <section id="menu" class="overlay">
+        <h1>Frontier Reckoning</h1>
+        <p>
+          Survive three escalating 1899 shootout missions. Hit longshots, keep your combo alive,
+          and master both first-person and third-person views.
+        </p>
+        <div class="controls">
+          <p><strong>Mouse</strong>: Aim + Shoot</p>
+          <p><strong>R</strong>: Reload</p>
+          <p><strong>V</strong>: Switch FPS/TPS</p>
+          <p><strong>P</strong>: Pause</p>
+        </div>
+        <button id="startBtn">Start Ride</button>
+      </section>
+
+      <section id="pause" class="overlay hidden">
+        <h2>Paused</h2>
+        <p>Take a breath. Press P to jump back in.</p>
+      </section>
+
+      <section id="end" class="overlay hidden">
+        <h2 id="endTitle">Game Over</h2>
+        <p id="endText">You were overrun.</p>
+        <button id="retryBtn">Instant Retry</button>
+      </section>
+    </div>
+
+    <script src="game.js"></script>
+  </body>
+</html>

@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regex Editor</title>
+    <!-- Prism.js for Regex Highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <style>
+        :root {
+            --bg: #1e1e1e;
+            --panel: #2d2d2d;
+            --text: #d4d4d4;
+            --accent: #007acc;
+            --border: #444;
+            --bracket-match: rgba(255, 235, 59, 0.4);
+            --special-char: #4ec9b0;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Layout */
+        .top-bar { padding: 10px; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; gap: 10px; align-items: center; z-index: 100; }
+        .main-editor { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .output-panel { height: 45%; border-top: 1px solid var(--border); background: var(--panel); display: flex; flex-direction: column; }
+
+        /* Code Editors */
+        .editor-container { position: relative; width: 100%; border: 1px solid #555; border-radius: 4px; background: #000; overflow: hidden; display: flex;}
+        .sync-input {
+            width: 100%;
+            min-height: 38px;
+            padding: 8px 10px;
+            box-sizing: border-box;
+            font-family: 'Fira Code', monospace;
+            font-size: 15px;
+            line-height: 1.5;
+            background: transparent;
+            color: transparent;
+            caret-color: white;
+            position: relative;
+            z-index: 2;
+            border: none;
+            outline: none;
+            white-space: pre;
+            overflow-x: auto;
+        }
+        .sync-highlight {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            margin: 0; padding: 8px 10px;
+            pointer-events: none;
+            z-index: 1;
+            white-space: pre;
+            overflow: hidden;
+            font-family: 'Fira Code', monospace;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        /* Custom Flags Dropdown */
+        .dropdown { position: relative; display: inline-block; }
+        .dropdown-trigger { 
+            background: #3c3c3c; border: 1px solid #555; color: white; 
+            padding: 8px 15px; cursor: pointer; border-radius: 4px; font-size: 13px;
+            min-width: 80px; text-align: left;
+        }
+        .dropdown-content {
+            display: none; position: absolute; right: 0; background: #2d2d2d;
+            min-width: 160px; box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+            z-index: 1000; border: 1px solid var(--border); border-radius: 4px;
+            padding: 5px 0;
+        }
+        .dropdown.open .dropdown-content { display: block; }
+        .flag-option { 
+            padding: 8px 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; 
+        }
+        .flag-option:hover { background: #3e3e3e; }
+        .flag-option input { cursor: pointer; }
+
+        /* Source Text Area */
+        #sourceText {
+            flex: 1; background: var(--bg); color: var(--text);
+            border: none; padding: 15px; resize: none; font-family: 'Fira Code', monospace;
+            outline: none; font-size: 14px;
+        }
+
+        /* Tabs */
+        .tabs { display: flex; background: #252526; border-bottom: 1px solid var(--border); }
+        .tab { padding: 10px 25px; cursor: pointer; border-right: 1px solid var(--border); font-size: 13px; color: #969696; }
+        .tab.active { background: var(--panel); color: white; border-bottom: 2px solid var(--accent); }
+
+        .tab-content { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; }
+        .control-row { margin-bottom: 15px; }
+
+        /* Highlight Classes */
+        .b-match { background: var(--bracket-match); border-radius: 2px; color: #fff; }
+        .match-tag { background: rgba(0, 122, 204, 0.3); border-bottom: 1px solid #007acc; }
+        .spec-char { color: var(--special-char); font-weight: bold; }
+
+        #outputDisplay { 
+            white-space: pre-wrap; word-break: break-all; font-family: 'Fira Code', monospace;
+            background: #1a1a1a; padding: 15px; border-radius: 4px; flex: 1; border: 1px solid #333;
+        }
+        
+        .status-bar { font-size: 11px; padding: 4px 12px; background: #007acc; color: white; display: flex; justify-content: space-between; }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <span style="font-size: 12px; font-weight: bold; color: #888;">REGEX</span>
+        <div style="flex: 1" class="editor-container">
+            <div id="regexHighlight" class="sync-highlight language-regex"></div>
+            <div id="regexInput" class="sync-input" contenteditable="true" spellcheck="false"></div>
+        </div>
+        
+        <!-- Custom Flags Menu -->
+        <div class="dropdown" id="flagsDropdown">
+            <div class="dropdown-trigger" onclick="toggleFlags()">Flags: <span id="activeFlags">gi</span> ▾</div>
+            <div class="dropdown-content">
+                <label class="flag-option"><input type="checkbox" value="g" checked> global (g)</label>
+                <label class="flag-option"><input type="checkbox" value="i" checked> case insensitive (i)</label>
+                <label class="flag-option"><input type="checkbox" value="m"> multiline (m)</label>
+                <label class="flag-option"><input type="checkbox" value="s"> dotAll (s)</label>
+                <label class="flag-option"><input type="checkbox" value="u"> unicode (u)</label>
+            </div>
+        </div>
+    </div>
+
+    <textarea id="sourceText" placeholder="Paste target text here..."></textarea>
+
+    <div class="output-panel">
+        <div class="tabs">
+            <div class="tab active" data-mode="replace">Replace</div>
+            <div class="tab" data-mode="list">List</div>
+            <div class="tab" data-mode="match">Match</div>
+        </div>
+        
+        <div class="tab-content">
+            <div id="replaceControls" class="mode-ui">
+                <div class="control-row">
+                    <div class="editor-container">
+                        <div id="replaceHighlight" class="sync-highlight"></div>
+                        <div id="replaceInput" class="sync-input" contenteditable="true" spellcheck="false" placeholder="Replacement string..."></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="listControls" class="mode-ui" style="display:none">
+                <div class="control-row">
+                    <div class="editor-container">
+                        <div id="listHighlight" class="sync-highlight"></div>
+                        <div id="listInput" class="sync-input" contenteditable="true" spellcheck="false" placeholder="List template (e.g. $1, $2)..."></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="outputDisplay"></div>
+        </div>
+        <div class="status-bar">
+            <span id="statusBar">Ready</span>
+            <span id="perfStats"></span>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-regex.min.js"></script>
+
+    <script>
+        const STORAGE_PREFIX = location.pathname + "_v2_";
+        const state = {
+            mode: 'replace',
+            debounceTimer: null,
+            flags: 'gi'
+        };
+
+        const els = {
+            regexIn: document.getElementById('regexInput'),
+            regexHi: document.getElementById('regexHighlight'),
+            source: document.getElementById('sourceText'),
+            replaceIn: document.getElementById('replaceInput'),
+            replaceHi: document.getElementById('replaceHighlight'),
+            listIn: document.getElementById('listInput'),
+            listHi: document.getElementById('listHighlight'),
+            output: document.getElementById('outputDisplay'),
+            flagsMenu: document.getElementById('flagsDropdown'),
+            activeFlagsTxt: document.getElementById('activeFlags'),
+            status: document.getElementById('statusBar'),
+            perf: document.getElementById('perfStats')
+        };
+
+        window.onload = () => {
+            loadState();
+            setupEventListeners();
+            process();
+        };
+
+        function toggleFlags() { els.flagsMenu.classList.toggle('open'); }
+
+        // Close dropdown when clicking outside
+        window.onclick = (e) => {
+            if (!e.target.closest('#flagsDropdown')) els.flagsMenu.classList.remove('open');
+        };
+
+        function setupEventListeners() {
+            // Main inputs
+            [els.regexIn, els.replaceIn, els.listIn].forEach(el => {
+                el.addEventListener('input', () => {
+                    syncEditor(el);
+                    debouncedProcess();
+                    saveState();
+                });
+                el.addEventListener('keyup', (e) => handleBracketMatch(el));
+                el.addEventListener('click', () => handleBracketMatch(el));
+            });
+
+            els.source.addEventListener('input', () => {
+                debouncedProcess();
+                saveState();
+            });
+
+            // Flags
+            document.querySelectorAll('.flag-option input').forEach(ck => {
+                ck.addEventListener('change', () => {
+                    updateFlagsString();
+                    process();
+                    saveState();
+                });
+            });
+
+            // Tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    state.mode = tab.dataset.mode;
+                    
+                    document.getElementById('replaceControls').style.display = state.mode === 'replace' ? 'block' : 'none';
+                    document.getElementById('listControls').style.display = state.mode === 'list' ? 'block' : 'none';
+                    
+                    process();
+                });
+            });
+        }
+
+        function updateFlagsString() {
+            const checks = document.querySelectorAll('.flag-option input:checked');
+            state.flags = Array.from(checks).map(c => c.value).join('');
+            els.activeFlagsTxt.innerText = state.flags;
+        }
+
+        function syncEditor(el) {
+            const hi = el.previousElementSibling;
+            const code = el.innerText;
+            
+            if (el === els.regexIn) {
+                hi.innerHTML = Prism.highlight(code, Prism.languages.regex, 'regex');
+            } else {
+                // Highlighting for Replace/List special characters
+                hi.innerHTML = code
+                    .replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[m]))
+                    .replace(/(\$[0-9&]+|\\n|\\t|\\\\|\\r)/g, '<span class="spec-char">$1</span>');
+            }
+        }
+
+        function handleBracketMatch(el) {
+            const pos = getCursorPos(el);
+            const text = el.innerText;
+            syncEditor(el); // Reset
+            
+            const pairs = { '(': ')', '[': ']', '{': '}', ')': '(', ']': '[', '}': '{' };
+            const charBefore = text[pos - 1];
+            const charAfter = text[pos];
+            
+            const targetChar = pairs[charBefore] ? charBefore : (pairs[charAfter] ? charAfter : null);
+            const targetPos = pairs[charBefore] ? pos - 1 : pos;
+
+            if (targetChar) {
+                const partnerPos = findPartner(text, targetPos, targetChar, pairs[targetChar]);
+                if (partnerPos !== -1) {
+                    highlightBrackets(el.previousElementSibling, targetPos, partnerPos);
+                }
+            }
+        }
+
+        function findPartner(text, start, open, close) {
+            const direction = ['(', '[', '{'].includes(open) ? 1 : -1;
+            let depth = 0;
+            for (let i = start; i >= 0 && i < text.length; i += direction) {
+                if (text[i] === open) depth++;
+                else if (text[i] === close) depth--;
+                if (depth === 0) return i;
+            }
+            return -1;
+        }
+
+        function highlightBrackets(hiEl, pos1, pos2) {
+            const content = hiEl.innerText;
+            let html = "";
+            for(let i=0; i<content.length; i++) {
+                if(i === pos1 || i === pos2) html += `<span class="b-match">${content[i]}</span>`;
+                else html += content[i];
+            }
+            // For regex editor, we need to preserve Prism colors but this is a simplified visual helper
+            hiEl.innerHTML = hiEl.innerHTML.replace(new RegExp(`\\${content[pos1]}|\\${content[pos2]}`, 'g'), (m, offset) => {
+                return (offset === pos1 || offset === pos2) ? `<span class="b-match">${m}</span>` : m;
+            });
+        }
+
+        function debouncedProcess() {
+            clearTimeout(state.debounceTimer);
+            const delay = els.source.value.length > 200000 ? 600 : 40;
+            state.status.innerText = "Processing...";
+            state.debounceTimer = setTimeout(process, delay);
+        }
+
+        function process() {
+            const pattern = els.regexIn.innerText.replace(/\n/g, '');
+            const text = els.source.value;
+            
+            if (!pattern) {
+                els.output.innerText = "Waiting for pattern...";
+                return;
+            }
+
+            try {
+                const re = new RegExp(pattern, state.flags);
+                const start = performance.now();
+
+                if (state.mode === 'replace') {
+                    const rep = els.replaceIn.innerText.replace(/\\n/g, '\n').replace(/\\t/g, '\t');
+                    els.output.innerText = text.replace(re, rep);
+                } 
+                else if (state.mode === 'list') {
+                    const temp = els.listIn.innerText;
+                    const matches = [...text.matchAll(re)];
+                    els.output.innerText = matches.map(m => {
+                        return temp.replace(/\$([0-9&]+)/g, (_, g) => g === '&' ? m[0] : (m[parseInt(g)] || ''));
+                    }).join('\n');
+                } 
+                else if (state.mode === 'match') {
+                    if (text.length > 300000) {
+                        const count = (text.match(re) || []).length;
+                        els.output.innerHTML = `<em>Text too large for live preview highlighting (${text.length} chars).</em><br><b>Matches found:</b> ${count}`;
+                    } else {
+                        els.output.innerHTML = text
+                            .replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[m]))
+                            .replace(re, m => `<span class="match-tag">${m}</span>`);
+                    }
+                }
+
+                els.perf.innerText = `${(performance.now() - start).toFixed(1)}ms`;
+                els.status.innerText = "Ready";
+            } catch (e) {
+                els.status.innerText = "Regex Error: " + e.message;
+            }
+        }
+
+        function getCursorPos(el) {
+            const sel = window.getSelection();
+            if (sel.rangeCount === 0) return 0;
+            const range = sel.getRangeAt(0);
+            const preRange = range.cloneRange();
+            preRange.selectNodeContents(el);
+            preRange.setEnd(range.endContainer, range.endOffset);
+            return preRange.toString().length;
+        }
+
+        function saveState() {
+            const data = {
+                re: els.regexIn.innerText,
+                src: els.source.value,
+                rep: els.replaceIn.innerText,
+                lst: els.listIn.innerText,
+                flg: state.flags
+            };
+            Object.keys(data).forEach(k => localStorage.setItem(STORAGE_PREFIX + k, data[k]));
+        }
+
+        function loadState() {
+            els.regexIn.innerText = localStorage.getItem(STORAGE_PREFIX + "re") || "(\\w+)=(\\d+)";
+            els.source.value = localStorage.getItem(STORAGE_PREFIX + "src") || "item1=100\nitem2=200";
+            els.replaceIn.innerText = localStorage.getItem(STORAGE_PREFIX + "rep") || "KEY: $1, VAL: $2";
+            els.listIn.innerText = localStorage.getItem(STORAGE_PREFIX + "lst") || "$1";
+            state.flags = localStorage.getItem(STORAGE_PREFIX + "flg") || "gi";
+            
+            document.querySelectorAll('.flag-option input').forEach(ck => {
+                ck.checked = state.flags.includes(ck.value);
+            });
+            updateFlagsString();
+            syncEditor(els.regexIn);
+            syncEditor(els.replaceIn);
+            syncEditor(els.listIn);
+        }
+    </script>
+</body>
+</html>
