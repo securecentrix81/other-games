@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        #calc {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #curr-graph {
+            font-family: 'Corbel';
+            position: fixed;
+            bottom: 60px;
+            right: 20px;
+            color: #00664d;
+            font-weight: bold;
+            text-align: right;
+        }
+
+        #switch-graph {
+            font-family: 'Corbel';
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 100px;
+            height: 30px;
+            border-radius: 0;
+            border-color: #004131;
+            background-color: #00664d;
+            color: white;
+        }
+    </style>
+    <script src="https://www.desmos.com/api/v1.11/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
+</head>
+
+<body>
+    <div id="calc"></div>
+    <div id="curr-graph">Current Graph: <span id="curr-graph-text"></span><br><span style="font-size:14px">All graphs were made by me</span></div>
+    <button id="switch-graph" onclick="switchGraph(Math.floor(Math.random()*graphs.length))">Switch Graph</button>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script>
+        const elt = $('#calc')[0];
+        const calc = Desmos.GraphingCalculator(elt);
+        
+        const graphs = [
+            {"url": "https://www.desmos.com/calculator/pgekazsknx", "name": "Calvin in Desmos"},
+            {"url": "https://www.desmos.com/calculator/y8ndhlaflw", "name": "Non-Suspicious Graph =)"},
+            {"url": "https://www.desmos.com/calculator/vjkyjojy4j", "name": "Desmos Sorting Algorithms (Created 2024/05)"},
+            {"url": "https://www.desmos.com/calculator/6e3ae221fe", "name": "Solar System in Desmos (Created 2024/06)"},
+            {"url": "https://www.desmos.com/calculator/9vqvdiwbcy", "name": "Geometry Dash Desmos (Created 2024/05)"},
+            {"url": "https://www.desmos.com/calculator/hrvaa3509y", "name": "Riemann Zeta Function Visualized (Created 2024/12)"}
+        ];
+
+        function switchGraph(index) {
+            $.getJSON(graphs[index].url).done(data => calc.setState(data.state));
+            $('#curr-graph-text')[0].innerText = graphs[index].name;
+        }
+        switchGraph(0);
+    </script>
+
+</body>
+
+</html>
