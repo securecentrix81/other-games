@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Play F</title>
+  <style>
+    :root{
+      --bg:#0f172a;
+      --card:#0b1220;
+      --accent:#7dd3fc;
+      --muted:#94a3b8;
+      --text:#e6eef8;
+    }
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+    body{display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#071029 0%, #0b1a2f 100%);color:var(--text);}
+    .card{width:380px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:20px;border-radius:12px;box-shadow:0 10px 30px rgba(2,6,23,0.6);}
+    h1{margin:0 0 8px;font-size:18px}
+    p{margin:0 0 16px;color:var(--muted);font-size:13px}
+    .controls{display:flex;gap:8px;margin-bottom:12px}
+    button{flex:1;padding:10px 12px;border-radius:8px;border:0;background:var(--accent);color:#022;font-weight:600;cursor:pointer;box-shadow:0 6px 12px rgba(124,58,237,0.12)}
+    button.secondary{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--text);font-weight:600}
+    .row{display:flex;align-items:center;gap:10px}
+    label{font-size:13px;color:var(--muted)}
+    input[type="range"]{width:100%}
+    .hint{margin-top:12px;font-size:12px;color:var(--muted)}
+    footer{margin-top:14px;font-size:12px;color:var(--muted);text-align:right}
+  </style>
+</head>
+<body>
+  <div class="card" role="region" aria-label="B note player">
+    <h1>Play note F — 698.456462866 Hz</h1>
+    <p>Generates a continuous oscillator at the exact frequency. Click <strong>Play</strong> to start audio.</p>
+
+    <div class="controls" aria-hidden="false">
+      <button id="playBtn">Play</button>
+      <button id="stopBtn" class="secondary" disabled>Stop</button>
+    </div>
+
+    <div class="row" style="margin-bottom:8px">
+      <label for="wave">Waveform</label>
+      <select id="wave" style="margin-left:auto">
+        <option value="sine">sine (default)</option>
+        <option value="square">square</option>
+        <option value="sawtooth">sawtooth</option>
+        <option value="triangle">triangle</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <label for="volume">Volume</label>
+      <input id="volume" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume slider">
+    </div>
+
+    <div class="hint">Frequency: <strong id="freqDisplay">698.456462866 Hz</strong></div>
+    <footer>Keyboard: Space toggles Play/Stop</footer>
+  </div>
+
+  <script>try{
+    // Frequency for B (Hz)
+    const B_FREQ = 440*2**(8/12);
+
+    // Audio nodes and state
+    let audioCtx = null;
+    let osc = null;
+    let gainNode = null;
+    let isPlaying = false;
+
+    const playBtn = document.getElementById('playBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const volSlider = document.getElementById('volume');
+    const waveSelect = document.getElementById('wave');
+
+    // Create/resume AudioContext on first interaction
+    function ensureAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      } else if (audioCtx.state === 'suspended') {
+        // resume if suspended (many browsers start suspended)
+        return audioCtx.resume();
+      }
+      return Promise.resolve();
+    }
+
+    function startOscillator() {
+      if (isPlaying) return;
+      ensureAudioContext().then(() => {
+        // Create nodes
+        osc = audioCtx.createOscillator();
+        gainNode = audioCtx.createGain();
+
+        // Set oscillator and gain (full volume = 1.0)
+        osc.type = waveSelect.value || 'sine';
+        osc.frequency.value = B_FREQ;
+        gainNode.gain.value = parseFloat(volSlider.value); // default 1.0 (full)
+
+        // Connect and start
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        osc.start();
+
+        isPlaying = true;
+        playBtn.disabled = true;
+        stopBtn.disabled = false;
+        playBtn.textContent = 'Playing…';
+      }).catch(err => {
+        console.error('Audio start failed:', err);
+        alert('Could not start audio: ' + err.message);
+      });
+    }
+
+    function stopOscillator() {
+      if (!isPlaying) return;
+      try {
+        osc.stop();
+      } catch (e) {
+        // ignore if already stopped
+      }
+      try {
+        osc.disconnect();
+      } catch (e) {}
+      try {
+        gainNode.disconnect();
+      } catch (e) {}
+
+      osc = null;
+      gainNode = null;
+      isPlaying = false;
+      playBtn.disabled = false;
+      stopBtn.disabled = true;
+      playBtn.textContent = 'Play';
+    }
+
+    // Event handlers
+    playBtn.addEventListener('click', startOscillator);
+    stopBtn.addEventListener('click', stopOscillator);
+
+    // Update volume in real time
+    volSlider.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      if (gainNode) gainNode.gain.setValueAtTime(v, audioCtx.currentTime);
+    });
+
+    // Change waveform while playing
+    waveSelect.addEventListener('change', (e) => {
+      if (osc) osc.type = e.target.value;
+    });
+
+    // Space toggles play/stop (when not focused on input control)
+    window.addEventListener('keydown', (ev) => {
+      if (ev.code === 'Space' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'SELECT') {
+        ev.preventDefault();
+        if (isPlaying) stopOscillator();
+        else startOscillator();
+      }
+    });
+
+    // Show frequency label (static)
+    document.getElementById('freqDisplay').textContent = B_FREQ + ' Hz';
+
+    // Clean up on page unload
+    window.addEventListener('unload', () => {
+      if (audioCtx && typeof audioCtx.close === 'function') audioCtx.close();
+    });}catch(e){alert(e)}
+  </script>
+</body>
+</html>
