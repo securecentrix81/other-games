@@ -324,30 +324,40 @@ const editorApp = {
     },
 
     switchProject: function(name) {
-        if (this.editorInstance) this.saveFiles();
+        // 1. Save current work before leaving
+        this.saveFiles();
+        
+        // 2. Update current project state
         this.currentProject = name;
         localStorage.setItem(CURRENT_PROJECT_KEY, name);
-        this.activeFile = null;
-        this.loadFiles();
-        this.updateProjectSelect();
         
-        // Clean up old Monaco models so they don't collide with the new project
+        // 3. Clear existing Monaco models to prevent "Model already exists" errors
         if (window.monaco) {
             monaco.editor.getModels().forEach(model => model.dispose());
         }
+    
+        // 4. Reload files from LocalStorage for the NEW project
+        this.activeFile = null; // Reset active file so loadFiles can pick a valid one
+        this.loadFiles();
         
-        if (this.editorInstance) this.switchFile(this.activeFile);
+        // 5. Update UI
+        this.updateProjectSelect();
         this.renderSidebar();
+        
+        // 6. Load the content into the editor
+        if (this.activeFile) {
+            this.switchFile(this.activeFile);
+        }
     },
 
     loadFiles: function() {
         const key = FILES_PREFIX + this.currentProject;
         const stored = localStorage.getItem(key);
         this.files = stored ? JSON.parse(stored) : JSON.parse(JSON.stringify(defaultFiles));
-        if (!this.activeFile || !this.files[this.activeFile]) this.activeFile = 'index.html';
-        // Ensure index.html exists
-        if (!this.files['index.html']) {
-            this.activeFile = Object.keys(this.files)[0];
+        
+        // Ensure we pick a valid file from the new project
+        if (!this.activeFile || !this.files[this.activeFile]) {
+            this.activeFile = this.files['index.html'] ? 'index.html' : Object.keys(this.files)[0];
         }
     },
 
@@ -359,21 +369,20 @@ const editorApp = {
     },
 
     initMonaco: function() {
-        // 1. Fix the Worker NetworkError / importScripts Cross-Origin issue
+        // 1. Fix the Worker CORS issue
         window.MonacoEnvironment = {
             getWorkerUrl: function(workerId, label) {
                 const code = `
-                    self.MonacoEnvironment = {
-                        baseUrl: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/'
-                    };
+                    self.MonacoEnvironment = { baseUrl: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/' };
                     importScripts('https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/vs/base/worker/workerMain.js');
                 `;
                 const blob = new Blob([code], { type: 'application/javascript' });
                 return URL.createObjectURL(blob);
             }
         };
-
+    
         require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/vs' }});
+    
         require(['vs/editor/editor.main'], () => {
             this.editorInstance = monaco.editor.create(document.getElementById('monaco-root'), {
                 theme: 'vs-dark',
@@ -381,24 +390,25 @@ const editorApp = {
                 minimap: { enabled: false },
                 fontSize: 14
             });
-
-            // 2. Properly initialize the first model
-            const uri = monaco.Uri.parse('file:///' + this.activeFile);
-            let initialModel = monaco.editor.getModel(uri);
-            if (!initialModel) {
-                initialModel = monaco.editor.createModel(this.files[this.activeFile].content, this.files[this.activeFile].language, uri);
+    
+            // 2. Properly initialize the first model using your existing helper
+            if (this.activeFile && this.files[this.activeFile]) {
+                this.switchFile(this.activeFile);
             }
-            this.editorInstance.setModel(initialModel);
-
-            // 3. Debounce save to prevent the UI from freezing on fast typing
+    
+            // 3. Debounce save logic
             let saveTimeout;
             this.editorInstance.onDidChangeModelContent(() => {
-                this.files[this.activeFile].content = this.editorInstance.getValue();
-                clearTimeout(saveTimeout);
-                saveTimeout = setTimeout(() => {
-                    this.saveFiles();
-                }, 750); // Will wait for a 750ms pause in typing before saving
+                // Check if activeFile exists to prevent crashes
+                if (this.activeFile && this.files[this.activeFile]) {
+                    this.files[this.activeFile].content = this.editorInstance.getValue();
+                    clearTimeout(saveTimeout);
+                    saveTimeout = setTimeout(() => {
+                        this.saveFiles();
+                    }, 750);
+                }
             });
+    
             this.renderSidebar();
         });
     },
