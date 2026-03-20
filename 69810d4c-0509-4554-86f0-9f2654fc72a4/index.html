@@ -178,7 +178,6 @@
 const PROJECTS_KEY = 'myCodeEditor_projectList';
 const CURRENT_PROJECT_KEY = 'myCodeEditor_currentProject';
 const FILES_PREFIX = 'myCodeEditor_files_';
-const START_NEW_PROJECT_ON_EACH_OPEN = true;
     
 const defaultFiles = {
     'index.html': {
@@ -271,39 +270,26 @@ const editorApp = {
     },
 
     loadProjects: function() {
-        if (START_NEW_PROJECT_ON_EACH_OPEN) {
-            // Always start with a brand-new project
-            const newProject = 'Scratch-' + Date.now();
+        // 1. Load the list of project names
+        const storedProjects = localStorage.getItem(PROJECTS_KEY);
+        this.projects = storedProjects ? JSON.parse(storedProjects) : [];
     
-            // Optional: clear old per-file keys so LocalStorage doesn't keep growing
-            /*what the hell...
-            Object.keys(localStorage).forEach(k => {
-                if (k.startsWith(FILES_PREFIX)) localStorage.removeItem(k);
-            });*/
-    
-            this.projects = [newProject];
-            this.currentProject = newProject;
-    
+        // 2. If the list is empty (first time ever), create a default project
+        if (this.projects.length === 0) {
+            const defaultName = 'My Project';
+            this.projects.push(defaultName);
             localStorage.setItem(PROJECTS_KEY, JSON.stringify(this.projects));
-            localStorage.setItem(CURRENT_PROJECT_KEY, newProject);
-            localStorage.setItem(
-                FILES_PREFIX + newProject,
-                JSON.stringify(JSON.parse(JSON.stringify(defaultFiles)))
-            );
-    
-            this.updateProjectSelect();
-            this.loadFiles();
-            return;
+            localStorage.setItem(FILES_PREFIX + defaultName, JSON.stringify(JSON.parse(JSON.stringify(defaultFiles))));
         }
     
-        // Existing behavior (kept for future toggle)
-        const storedProjects = localStorage.getItem(PROJECTS_KEY);
-        this.projects = storedProjects ? JSON.parse(storedProjects) : ['Default Project'];
-        if (!localStorage.getItem(PROJECTS_KEY)) localStorage.setItem(PROJECTS_KEY, JSON.stringify(this.projects));
-    
+        // 3. Determine which project to open (last used or the first in list)
         const storedCurrent = localStorage.getItem(CURRENT_PROJECT_KEY);
-        this.currentProject = (storedCurrent && this.projects.includes(storedCurrent)) ? storedCurrent : this.projects[0];
-        
+        this.currentProject = (storedCurrent && this.projects.includes(storedCurrent)) 
+            ? storedCurrent 
+            : this.projects[0];
+    
+        // 4. Finalize
+        localStorage.setItem(CURRENT_PROJECT_KEY, this.currentProject);
         this.updateProjectSelect();
         this.loadFiles();
     },
