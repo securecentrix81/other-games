@@ -1,0 +1,73 @@
+html {
+  background-color: #000;
+  color: #FFF;
+  overflow: hidden;
+}
+.menu-overlay {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+}
+.menu-btn {
+  position: relative;
+  display: block;
+  width: calc(100% - 80px);
+  padding: 20px;
+  margin: 40px;
+  font-size: 20px;
+  background-color: #0D0;
+  /* border-color: #0A0; */
+  /* border-style: outset;
+  border-width: 5px 10px 5px 10px; */
+  border: 0;
+  border-radius: 10px;
+  transition-duration: 0.3s;
+  cursor: pointer;
+  box-shadow: 0px 0px 20px 0px #0f0;
+}
+.menu-back {
+  background-color: #0D0;
+  /* border: 5px outset #0A0; */
+  border: 0;
+  border-radius: 100%;
+  margin: 15px 100% 15px 40px;
+  transition-duration: 0.3s;
+  cursor: pointer;
+  box-shadow: 0px 0px 20px 0px #0f0;
+}
+.menu-btn:hover, .menu-back:hover {
+  background-color: #0A0;
+  border-color: #080;
+}
+.menu-btn:active, .menu-back:active {
+  /* border-style: inset; */
+}
+h1.menu-title {
+  font-size: 50px;
+}
+.menu-overlay div {
+  width: 100%;
+  height: 100%;
+  text-align: center;
+}
+.hidden {
+  display: none;
+}
+
+
+
+
+.game {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 500px;
+  text-align: center;
+}
+.canvas {
+  width: 500px;
+  height: 500px;
+}
