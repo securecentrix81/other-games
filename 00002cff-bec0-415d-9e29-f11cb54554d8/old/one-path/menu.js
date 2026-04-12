@@ -1,0 +1,1 @@
+for (let i of document.querySelectorAll(".menu-back")) {i.innerHTML = `<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><polygon points="10,50 40,15 40,35 90,35 90,65 40,65 40,85" style="fill:#000;stroke:#0a0;stroke-width:5" /></svg>`}
