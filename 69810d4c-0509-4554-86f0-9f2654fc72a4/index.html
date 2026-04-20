@@ -61,10 +61,26 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         /* PREVIEW AREA */
-        .preview-container { width: 40%; background: white; border-left: 1px solid var(--border); display: flex; flex-direction: column; }
+        .preview-container { flex: 0 0 40%; background: white; display: flex; flex-direction: column; min-width: 200px; }
         .preview-header { padding: 5px 10px; background: #eee; color: #333; font-size: 12px; border-bottom: 1px solid #ccc; font-weight: bold; display: flex; justify-content: space-between; }
         .preview-status { font-size: 10px; color: #666; }
         iframe { flex: 1; border: none; width: 100%; height: 100%; background: #fff; }
+
+        /* RESIZE HANDLE */
+        .resize-handle {
+            width: 5px;
+            background: var(--border);
+            cursor: col-resize;
+            flex-shrink: 0;
+            transition: background 0.15s;
+            position: relative;
+        }
+        .resize-handle:hover, .resize-handle.dragging { background: var(--accent); }
+        .resize-handle::after {
+            content: "";
+            position: absolute;
+            left: -3px; right: -3px; top: 0; bottom: 0;
+        }
 
         /* CONTEXT MENU */
         #context-menu { position: fixed; z-index: 10000; width: 150px; background: var(--menu-bg); border: 1px solid var(--border); box-shadow: 0 2px 10px rgba(0,0,0,0.5); display: none; padding: 5px 0; border-radius: 4px; }
@@ -83,7 +99,7 @@
     </style>
 
     <!-- avoid using latest.js for compatibility reasons -->
-    <script src="https://securecentrix81.github.io/api/centrix/localStorage-proxy/1.1.0.js" integrity="sha384-brOY3SIKHAj5b15WluO2EUuMmeOnuefqOHOFskOKhekJhZtE4pVqrP5JG0vs2Q8m" crossorigin="anonymous"></script>
+    <script src="/api/centrix/localStorage-proxy/1.1.0.js" integrity="sha384-brOY3SIKHAj5b15WluO2EUuMmeOnuefqOHOFskOKhekJhZtE4pVqrP5JG0vs2Q8m" crossorigin="anonymous"></script>
 </head>
 <body>
 
@@ -117,7 +133,8 @@
         <div id="loader"><div class="spinner"></div></div>
         <div id="monaco-root"></div>
     </div>
-    <div class="preview-container">
+    <div class="resize-handle" id="resizeHandle" title="Drag to resize"></div>
+    <div class="preview-container" id="previewContainer">
         <div class="preview-header">
             <span>Output</span>
             <span id="previewStatus" class="preview-status">Ready</span>
@@ -248,6 +265,48 @@ const editorApp = {
         this.loadProjects();
         this.initMonaco();
         this.initContextMenu();
+        this.initResizer();
+    },
+
+    initResizer: function() {
+        const handle = document.getElementById('resizeHandle');
+        const preview = document.getElementById('previewContainer');
+        const workspace = document.querySelector('.workspace');
+        if (!handle || !preview || !workspace) return;
+
+        const STORAGE_KEY = 'myCodeEditor_previewWidth';
+        const stored = parseFloat(localStorage.getItem(STORAGE_KEY));
+        if (!isNaN(stored) && stored > 200) {
+            preview.style.flex = `0 0 ${stored}px`;
+        }
+
+        let dragging = false;
+        handle.addEventListener('mousedown', (e) => {
+            dragging = true;
+            handle.classList.add('dragging');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            e.preventDefault();
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (!dragging) return;
+            const rect = workspace.getBoundingClientRect();
+            // Preview width = distance from mouse to workspace right edge.
+            const newWidth = Math.max(
+                200,
+                Math.min(rect.right - e.clientX, rect.width - 300)
+            );
+            preview.style.flex = `0 0 ${newWidth}px`;
+            try { localStorage.setItem(STORAGE_KEY, String(newWidth)); } catch {}
+        });
+        document.addEventListener('mouseup', () => {
+            if (!dragging) return;
+            dragging = false;
+            handle.classList.remove('dragging');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            if (this.editorInstance) this.editorInstance.layout();
+        });
     },
 
     // Initialize the Web Worker from the script tag
