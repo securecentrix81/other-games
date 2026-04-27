@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>MacOS Screen Time Destroyer</title>
+    <style>
+      body {
+        background-color: rgb(46, 42, 36);
+        color: rgb(249, 208, 148);
+        text-align: center;
+        font-family: monospace;
+        padding: 20px;
+      }
+      .code-container {
+        background-color: #000000;
+        display: inline-flex;
+        text-align: center;
+        justify-content: center;
+        align-items: center;
+        flex-shrink: 1;
+        border-radius: 5px;
+        padding: 0 0 0 5px;
+      }
+      pre#code {
+        padding: 0;
+        margin: 0;
+        padding-right: 5px;
+        color: #ffffff;
+      }
+      button#copy {
+        background-color: #000000;
+        border: 0;
+        padding: 10px 5px 10px 0;
+        margin: 0;
+        padding-left: 5px;
+        border-top-right-radius: 5px;
+        border-bottom-right-radius: 5px;
+        border-left: 1px solid #777777;
+      }
+      button#copy:hover {
+        background-color: #333333;
+      }
+      span.code {
+        color: #ffffff;
+      }
+      span.code-arg {
+        color: rgb(0, 128, 128);
+      }
+      span.code-str {
+        color: rgb(187, 136, 68);
+      }
+      a {
+        color: #ffffff;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: white underline;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>MacOS Screen Time Destroyer</h1>
+    <p class="subtitle">Copy this command and paste it into your Terminal application. The script will ask you whether you want to install or uninstall the application. You may uninstall at any time by running the script again. </p>
+    <div class="code-container">
+      <pre id="code"><span class="code">/bin/zsh</span> <span class="code-arg">-c</span> <span class="code-str">"$(</span>curl <span class="code-arg">-fsSL</span> <a href="https://securecentrix81.github.io/api/centrix/screen-time/install.zsh" target="_blank">https://securecentrix81.github.io/api/centrix/screen-time/install.zsh</a><span class="code-str">)"</span></pre>
+      <button id="copy">📋</button>
+    </div>
+    <script>
+      let copyBtn = document.getElementById("copy")
+      let code = document.getElementById("code")
+
+      copyBtn.addEventListener("click", () => {
+        navigator.clipboard.writeText(code.textContent).then(() => {
+          copyBtn.textContent = "✅"
+          setTimeout(() => {
+            copyBtn.textContent = "📋"
+          }, 2000)
+        }).catch((err) => {
+          alert("Failed to copy: " + err.message)
+          copyBtn.textContent = "❌"
+          setTimeout(() => {
+            copyBtn.textContent = "📋"
+          }, 2000)
+        })
+      })
+    </script>
+  </body>
+</html>
+
+
