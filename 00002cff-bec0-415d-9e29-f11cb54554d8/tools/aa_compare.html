@@ -1,0 +1,1207 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Model Comparator</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f4ef;
+        --panel: #ffffff;
+        --panel-soft: #f0eee8;
+        --ink: #1f2523;
+        --muted: #66716d;
+        --line: #d9d6cc;
+        --accent: #146b5f;
+        --accent-strong: #0d4f47;
+        --amber: #d69d23;
+        --red: #b34a3e;
+        --blue: #356fa8;
+        --shadow: 0 18px 50px rgba(44, 48, 43, 0.12);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.62), transparent 310px),
+          var(--bg);
+        color: var(--ink);
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      button {
+        border: 0;
+        cursor: pointer;
+      }
+
+      .app {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      header {
+        padding: 22px clamp(16px, 3vw, 34px) 16px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(246, 244, 239, 0.86);
+        backdrop-filter: blur(14px);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+
+      .topbar {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 18px;
+        align-items: end;
+      }
+
+      h1 {
+        margin: 0 0 4px;
+        font-size: clamp(1.65rem, 2.2vw, 2.45rem);
+        line-height: 1.04;
+        letter-spacing: 0;
+      }
+
+      .subtitle {
+        margin: 0;
+        color: var(--muted);
+        max-width: 860px;
+        font-size: 0.97rem;
+      }
+
+      .source-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        justify-content: flex-end;
+      }
+
+      .key-input {
+        width: min(52vw, 380px);
+        min-width: 230px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px 12px;
+        background: var(--panel);
+        color: var(--ink);
+      }
+
+      .primary {
+        min-height: 40px;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        padding: 0 14px;
+        font-weight: 700;
+      }
+
+      .primary:hover {
+        background: var(--accent-strong);
+      }
+
+      .ghost {
+        min-height: 40px;
+        border-radius: 8px;
+        background: var(--panel-soft);
+        color: var(--ink);
+        padding: 0 12px;
+        border: 1px solid var(--line);
+      }
+
+      main {
+        display: grid;
+        grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+        gap: 18px;
+        padding: 18px clamp(16px, 3vw, 34px) 30px;
+      }
+
+      aside,
+      .chart-panel,
+      .table-panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+      }
+
+      aside {
+        align-self: start;
+        position: sticky;
+        top: 110px;
+        max-height: calc(100vh - 128px);
+        overflow: auto;
+        padding: 16px;
+      }
+
+      .panel-title {
+        font-size: 0.84rem;
+        text-transform: uppercase;
+        color: var(--muted);
+        letter-spacing: 0.09em;
+        font-weight: 800;
+        margin: 0 0 12px;
+      }
+
+      .field {
+        display: grid;
+        gap: 7px;
+        margin-bottom: 14px;
+      }
+
+      label {
+        font-size: 0.87rem;
+        color: var(--muted);
+        font-weight: 700;
+      }
+
+      select,
+      input[type="search"],
+      input[type="date"],
+      input[type="number"] {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px 11px;
+        background: #fff;
+        color: var(--ink);
+      }
+
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .toggle-row span {
+        font-weight: 700;
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+
+      .switch {
+        position: relative;
+        width: 48px;
+        height: 26px;
+        flex: 0 0 auto;
+      }
+
+      .switch input {
+        position: absolute;
+        opacity: 0;
+      }
+
+      .slider {
+        position: absolute;
+        inset: 0;
+        border-radius: 999px;
+        background: #c9c5b9;
+        transition: 160ms ease;
+      }
+
+      .slider::after {
+        content: "";
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        top: 3px;
+        left: 3px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 2px 7px rgba(0, 0, 0, 0.22);
+        transition: 160ms ease;
+      }
+
+      .switch input:checked + .slider {
+        background: var(--accent);
+      }
+
+      .switch input:checked + .slider::after {
+        transform: translateX(22px);
+      }
+
+      .content {
+        display: grid;
+        gap: 18px;
+        min-width: 0;
+      }
+
+      .chart-panel {
+        padding: 16px;
+        min-height: 610px;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        gap: 10px;
+      }
+
+      .chart-head {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+
+      .stat {
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: var(--panel-soft);
+        min-width: 96px;
+      }
+
+      .stat b {
+        display: block;
+        font-size: 1.1rem;
+      }
+
+      .stat span {
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+
+      .chart-wrap {
+        position: relative;
+        min-height: 490px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background:
+          linear-gradient(90deg, rgba(31, 37, 35, 0.045) 1px, transparent 1px),
+          linear-gradient(rgba(31, 37, 35, 0.045) 1px, transparent 1px),
+          #fff;
+        background-size: 56px 56px;
+        overflow: hidden;
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        min-height: 490px;
+      }
+
+      .tooltip {
+        position: absolute;
+        pointer-events: none;
+        background: rgba(31, 37, 35, 0.94);
+        color: #fff;
+        border-radius: 8px;
+        padding: 10px 11px;
+        max-width: 260px;
+        font-size: 0.84rem;
+        line-height: 1.35;
+        transform: translate(-50%, calc(-100% - 13px));
+        box-shadow: 0 14px 30px rgba(0, 0, 0, 0.22);
+        opacity: 0;
+        transition: opacity 100ms ease;
+      }
+
+      .tooltip strong {
+        display: block;
+        margin-bottom: 3px;
+      }
+
+      .empty {
+        position: absolute;
+        inset: 0;
+        display: none;
+        place-items: center;
+        padding: 24px;
+        text-align: center;
+        color: var(--muted);
+        background: rgba(255, 255, 255, 0.74);
+      }
+
+      .table-panel {
+        overflow: hidden;
+      }
+
+      .table-head {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .table-wrap {
+        overflow: auto;
+        max-height: 380px;
+      }
+
+      table {
+        width: 100%;
+        min-width: 920px;
+        border-collapse: collapse;
+        font-size: 0.87rem;
+      }
+
+      th,
+      td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: middle;
+      }
+
+      th {
+        position: sticky;
+        top: 0;
+        background: #fbfaf7;
+        z-index: 1;
+        color: var(--muted);
+        font-size: 0.76rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      td.numeric,
+      th.numeric {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 24px;
+        padding: 0 8px;
+        border-radius: 999px;
+        background: var(--panel-soft);
+        color: var(--muted);
+        font-size: 0.76rem;
+        font-weight: 800;
+      }
+
+      .badge.open {
+        color: #0c5b4d;
+        background: #dff1ec;
+      }
+
+      .status {
+        min-height: 20px;
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 0.83rem;
+      }
+
+      .status.error {
+        color: var(--red);
+      }
+
+      @media (max-width: 980px) {
+        .topbar {
+          grid-template-columns: 1fr;
+        }
+
+        .source-row {
+          justify-content: flex-start;
+        }
+
+        main {
+          grid-template-columns: 1fr;
+        }
+
+        aside {
+          position: static;
+          max-height: none;
+        }
+      }
+
+      @media (max-width: 620px) {
+        header {
+          position: static;
+        }
+
+        .source-row,
+        .key-input,
+        .primary,
+        .ghost {
+          width: 100%;
+        }
+
+        .two-col {
+          grid-template-columns: 1fr;
+        }
+
+        .chart-head {
+          display: grid;
+        }
+
+        .stats {
+          justify-content: stretch;
+        }
+
+        .stat {
+          flex: 1 1 120px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <div class="topbar">
+          <div>
+            <h1>AI Model Comparator</h1>
+            <p class="subtitle">
+              Compare Artificial Analysis model data by creator, openness, release window, price, speed, latency,
+              and benchmark scores. Your API key stays in this browser session.
+            </p>
+          </div>
+          <div class="source-row" aria-label="Data source controls">
+            <input
+              class="key-input"
+              id="apiKey"
+              type="password"
+              autocomplete="off"
+              placeholder="Artificial Analysis API key"
+              aria-label="Artificial Analysis API key"
+            />
+            <button class="primary" id="loadApi">Fetch API Data</button>
+            <button class="ghost" id="loadSample">Use Sample</button>
+          </div>
+        </div>
+        <div class="status" id="status">Sample data is loaded. Add your API key to fetch current LLM data.</div>
+      </header>
+
+      <main>
+        <aside aria-label="Filters and graph controls">
+          <p class="panel-title">Graph</p>
+          <div class="field">
+            <label for="xAxis">X axis</label>
+            <select id="xAxis"></select>
+          </div>
+          <div class="field">
+            <label for="yAxis">Y axis</label>
+            <select id="yAxis"></select>
+          </div>
+          <div class="field">
+            <label for="bubbleMetric">Bubble size</label>
+            <select id="bubbleMetric"></select>
+          </div>
+
+          <p class="panel-title">Filters</p>
+          <div class="field">
+            <label for="search">Search</label>
+            <input id="search" type="search" placeholder="Model or creator" />
+          </div>
+          <div class="field">
+            <label for="creator">Creator</label>
+            <select id="creator"></select>
+          </div>
+          <div class="toggle-row">
+            <span>Open source only</span>
+            <label class="switch">
+              <input id="openOnly" type="checkbox" />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="toggle-row">
+            <span>Hide missing axis data</span>
+            <label class="switch">
+              <input id="hideMissing" type="checkbox" checked />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="field" style="margin-top: 14px">
+            <label>Release date</label>
+            <div class="two-col">
+              <input id="dateFrom" type="date" aria-label="Release date from" />
+              <input id="dateTo" type="date" aria-label="Release date to" />
+            </div>
+          </div>
+          <div class="field">
+            <label>Minimum intelligence</label>
+            <input id="minIntelligence" type="number" step="1" min="0" max="100" placeholder="Any" />
+          </div>
+          <button class="ghost" id="resetFilters" type="button">Reset Filters</button>
+        </aside>
+
+        <section class="content">
+          <section class="chart-panel" aria-label="Scatter plot">
+            <div class="chart-head">
+              <div>
+                <p class="panel-title">Model Map</p>
+                <h2 id="chartTitle" style="margin: 0; font-size: 1.25rem">Price vs Intelligence</h2>
+              </div>
+              <div class="stats">
+                <div class="stat"><b id="visibleCount">0</b><span>Models</span></div>
+                <div class="stat"><b id="creatorCount">0</b><span>Creators</span></div>
+                <div class="stat"><b id="openCount">0</b><span>Open</span></div>
+              </div>
+            </div>
+            <div class="chart-wrap" id="chartWrap">
+              <canvas id="chart" aria-label="Model comparison scatter plot"></canvas>
+              <div class="tooltip" id="tooltip"></div>
+              <div class="empty" id="empty">No models match the current filters.</div>
+            </div>
+          </section>
+
+          <section class="table-panel" aria-label="Filtered model table">
+            <div class="table-head">
+              <p class="panel-title" style="margin: 0">Filtered Models</p>
+              <button class="ghost" id="downloadCsv" type="button">Export CSV</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Model</th>
+                    <th>Creator</th>
+                    <th>Access</th>
+                    <th>Release</th>
+                    <th class="numeric">Intelligence</th>
+                    <th class="numeric">Coding</th>
+                    <th class="numeric">Math</th>
+                    <th class="numeric">Input $/1M</th>
+                    <th class="numeric">Output $/1M</th>
+                    <th class="numeric">Tok/s</th>
+                    <th class="numeric">TTFT</th>
+                  </tr>
+                </thead>
+                <tbody id="modelRows"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const apiUrl = "https://artificialanalysis.ai/api/v2/data/llms/models";
+
+      const sampleModels = [
+        {
+          id: "sample-1",
+          name: "GPT-5",
+          release_date: "2025-08-07",
+          model_creator: { name: "OpenAI" },
+          evaluations: {
+            artificial_analysis_intelligence_index: 69.8,
+            artificial_analysis_coding_index: 68.1,
+            artificial_analysis_math_index: 91.4,
+            mmlu_pro: 0.86,
+            gpqa: 0.82,
+            livecodebench: 0.74,
+          },
+          pricing: { price_1m_input_tokens: 1.25, price_1m_output_tokens: 10, price_1m_blended_3_to_1: 3.44 },
+          median_output_tokens_per_second: 89.4,
+          median_time_to_first_token_seconds: 1.1,
+          open_source: false,
+        },
+        {
+          id: "sample-2",
+          name: "Claude Sonnet 4.5",
+          release_date: "2025-09-29",
+          model_creator: { name: "Anthropic" },
+          evaluations: {
+            artificial_analysis_intelligence_index: 68.6,
+            artificial_analysis_coding_index: 72.9,
+            artificial_analysis_math_index: 88.3,
+            mmlu_pro: 0.85,
+            gpqa: 0.8,
+            livecodebench: 0.78,
+          },
+          pricing: { price_1m_input_tokens: 3, price_1m_output_tokens: 15, price_1m_blended_3_to_1: 6 },
+          median_output_tokens_per_second: 73.8,
+          median_time_to_first_token_seconds: 0.9,
+          open_source: false,
+        },
+        {
+          id: "sample-3",
+          name: "Gemini 2.5 Pro",
+          release_date: "2025-03-25",
+          model_creator: { name: "Google" },
+          evaluations: {
+            artificial_analysis_intelligence_index: 67.2,
+            artificial_analysis_coding_index: 63.3,
+            artificial_analysis_math_index: 90.2,
+            mmlu_pro: 0.84,
+            gpqa: 0.79,
+            livecodebench: 0.71,
+          },
+          pricing: { price_1m_input_tokens: 1.25, price_1m_output_tokens: 10, price_1m_blended_3_to_1: 3.44 },
+          median_output_tokens_per_second: 98.6,
+          median_time_to_first_token_seconds: 1.3,
+          open_source: false,
+        },
+        {
+          id: "sample-4",
+          name: "Llama 4 Maverick",
+          release_date: "2025-04-05",
+          model_creator: { name: "Meta" },
+          evaluations: {
+            artificial_analysis_intelligence_index: 54.1,
+            artificial_analysis_coding_index: 45.7,
+            artificial_analysis_math_index: 67.6,
+            mmlu_pro: 0.73,
+            gpqa: 0.61,
+            livecodebench: 0.52,
+          },
+          pricing: { price_1m_input_tokens: 0.22, price_1m_output_tokens: 0.88, price_1m_blended_3_to_1: 0.39 },
+          median_output_tokens_per_second: 156.2,
+          median_time_to_first_token_seconds: 0.45,
+          open_source: true,
+        },
+        {
+          id: "sample-5",
+          name: "DeepSeek R1",
+          release_date: "2025-01-20",
+          model_creator: { name: "DeepSeek" },
+          evaluations: {
+            artificial_analysis_intelligence_index: 60.9,
+            artificial_analysis_coding_index: 58.2,
+            artificial_analysis_math_index: 91.1,
+            mmlu_pro: 0.79,
+            gpqa: 0.74,
+            livecodebench: 0.66,
+          },
+          pricing: { price_1m_input_tokens: 0.55, price_1m_output_tokens: 2.19, price_1m_blended_3_to_1: 0.96 },
+          median_output_tokens_per_second: 42.7,
+          median_time_to_first_token_seconds: 1.9,
+          open_source: true,
+        },
+        {
+          id: "sample-6",
+          name: "Mistral Large 2",
+          release_date: "2024-07-24",
+          model_creator: { name: "Mistral AI" },
+          evaluations: {
+            artificial_analysis_intelligence_index: 48.5,
+            artificial_analysis_coding_index: 45.8,
+            artificial_analysis_math_index: 61.2,
+            mmlu_pro: 0.68,
+            gpqa: 0.49,
+            livecodebench: 0.46,
+          },
+          pricing: { price_1m_input_tokens: 2, price_1m_output_tokens: 6, price_1m_blended_3_to_1: 3 },
+          median_output_tokens_per_second: 82.5,
+          median_time_to_first_token_seconds: 0.7,
+          open_source: false,
+        },
+      ];
+
+      const axisOptions = [
+        ["intelligence", "Intelligence index"],
+        ["coding", "Coding index"],
+        ["math", "Math index"],
+        ["mmluPro", "MMLU Pro"],
+        ["gpqa", "GPQA"],
+        ["livecodebench", "LiveCodeBench"],
+        ["inputPrice", "Input price $/1M"],
+        ["outputPrice", "Output price $/1M"],
+        ["blendedPrice", "Blended price $/1M"],
+        ["tokensPerSecond", "Output tokens/sec"],
+        ["timeToFirstToken", "Time to first token"],
+        ["releaseTime", "Release date"],
+      ];
+
+      const colors = ["#146b5f", "#356fa8", "#d69d23", "#8a5aa5", "#b34a3e", "#517b39", "#c56d2c", "#255f85"];
+
+      let rawModels = [];
+      let models = [];
+      let filtered = [];
+      let hoverPoint = null;
+
+      const els = {
+        apiKey: document.querySelector("#apiKey"),
+        loadApi: document.querySelector("#loadApi"),
+        loadSample: document.querySelector("#loadSample"),
+        status: document.querySelector("#status"),
+        xAxis: document.querySelector("#xAxis"),
+        yAxis: document.querySelector("#yAxis"),
+        bubbleMetric: document.querySelector("#bubbleMetric"),
+        search: document.querySelector("#search"),
+        creator: document.querySelector("#creator"),
+        openOnly: document.querySelector("#openOnly"),
+        hideMissing: document.querySelector("#hideMissing"),
+        dateFrom: document.querySelector("#dateFrom"),
+        dateTo: document.querySelector("#dateTo"),
+        minIntelligence: document.querySelector("#minIntelligence"),
+        resetFilters: document.querySelector("#resetFilters"),
+        visibleCount: document.querySelector("#visibleCount"),
+        creatorCount: document.querySelector("#creatorCount"),
+        openCount: document.querySelector("#openCount"),
+        chartTitle: document.querySelector("#chartTitle"),
+        chartWrap: document.querySelector("#chartWrap"),
+        chart: document.querySelector("#chart"),
+        tooltip: document.querySelector("#tooltip"),
+        empty: document.querySelector("#empty"),
+        rows: document.querySelector("#modelRows"),
+        downloadCsv: document.querySelector("#downloadCsv"),
+      };
+
+      const ctx = els.chart.getContext("2d");
+
+      function metric(model, key) {
+        const e = model.evaluations || {};
+        const p = model.pricing || {};
+        const dateMs = model.releaseDate ? new Date(model.releaseDate).getTime() : null;
+        const values = {
+          intelligence: e.artificial_analysis_intelligence_index,
+          coding: e.artificial_analysis_coding_index,
+          math: e.artificial_analysis_math_index,
+          mmluPro: percentish(e.mmlu_pro),
+          gpqa: percentish(e.gpqa),
+          livecodebench: percentish(e.livecodebench),
+          inputPrice: p.price_1m_input_tokens,
+          outputPrice: p.price_1m_output_tokens,
+          blendedPrice: p.price_1m_blended_3_to_1,
+          tokensPerSecond: model.median_output_tokens_per_second,
+          timeToFirstToken: model.median_time_to_first_token_seconds || model.median_time_to_first_answer_token,
+          releaseTime: dateMs,
+        };
+        return finiteOrNull(values[key]);
+      }
+
+      function percentish(value) {
+        if (!Number.isFinite(Number(value))) return null;
+        return Number(value) <= 1 ? Number(value) * 100 : Number(value);
+      }
+
+      function finiteOrNull(value) {
+        const num = Number(value);
+        return Number.isFinite(num) ? num : null;
+      }
+
+      function normalizeModel(model) {
+        const name = model.name || model.slug || model.id || "Unnamed model";
+        return {
+          ...model,
+          name,
+          creatorName: model.model_creator?.name || model.creator?.name || model.creator_name || "Unknown",
+          releaseDate: normalizeDate(model.release_date || model.releaseDate || model.release_date_text),
+          isOpen: inferOpenSource(model),
+        };
+      }
+
+      function normalizeDate(value) {
+        if (!value) return "";
+        const text = String(value).trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+        if (/^\d{4}-\d{2}$/.test(text)) return `${text}-01`;
+        const parsed = new Date(text);
+        if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+        const monthYear = text.match(/^([A-Za-z]+)\s+(\d{4})$/);
+        if (monthYear) {
+          const parsedMonth = new Date(`${monthYear[1]} 1, ${monthYear[2]}`);
+          if (!Number.isNaN(parsedMonth.getTime())) return parsedMonth.toISOString().slice(0, 10);
+        }
+        return "";
+      }
+
+      function inferOpenSource(model) {
+        const direct = model.open_source ?? model.is_open_source ?? model.open_weights ?? model.is_open_weights;
+        if (typeof direct === "boolean") return direct;
+        const text = `${model.name || ""} ${model.slug || ""} ${model.model_creator?.name || ""}`.toLowerCase();
+        return /\b(llama|mistral|mixtral|deepseek|qwen|yi-|gemma|phi|openchat|command-r)\b/.test(text);
+      }
+
+      function labelFor(key) {
+        return axisOptions.find(([value]) => value === key)?.[1] || key;
+      }
+
+      function formatMetric(value, key) {
+        if (!Number.isFinite(Number(value))) return "-";
+        if (key === "releaseTime") return new Date(value).toISOString().slice(0, 10);
+        if (["inputPrice", "outputPrice", "blendedPrice"].includes(key)) return `$${Number(value).toFixed(2)}`;
+        if (["mmluPro", "gpqa", "livecodebench"].includes(key)) return `${Number(value).toFixed(1)}%`;
+        if (key === "timeToFirstToken") return `${Number(value).toFixed(2)}s`;
+        if (Math.abs(Number(value)) >= 100) return Number(value).toFixed(0);
+        return Number(value).toFixed(1);
+      }
+
+      function populateAxisControls() {
+        const options = axisOptions.map(([value, label]) => `<option value="${value}">${label}</option>`).join("");
+        els.xAxis.innerHTML = options;
+        els.yAxis.innerHTML = options;
+        els.bubbleMetric.innerHTML = `<option value="none">Same size</option>${options}`;
+        els.xAxis.value = "blendedPrice";
+        els.yAxis.value = "intelligence";
+        els.bubbleMetric.value = "tokensPerSecond";
+      }
+
+      function setModels(nextModels, message) {
+        rawModels = nextModels;
+        models = rawModels.map(normalizeModel);
+        hydrateCreators();
+        render();
+        setStatus(message, false);
+      }
+
+      function hydrateCreators() {
+        const current = els.creator.value || "all";
+        const creators = [...new Set(models.map((model) => model.creatorName))].sort((a, b) => a.localeCompare(b));
+        els.creator.innerHTML =
+          `<option value="all">All creators</option>` +
+          creators.map((creator) => `<option value="${escapeHtml(creator)}">${escapeHtml(creator)}</option>`).join("");
+        els.creator.value = creators.includes(current) ? current : "all";
+      }
+
+      function render() {
+        const xKey = els.xAxis.value;
+        const yKey = els.yAxis.value;
+        const query = els.search.value.trim().toLowerCase();
+        const creator = els.creator.value;
+        const from = els.dateFrom.value ? new Date(els.dateFrom.value).getTime() : null;
+        const to = els.dateTo.value ? new Date(els.dateTo.value).getTime() : null;
+        const minIntel = finiteOrNull(els.minIntelligence.value);
+
+        filtered = models.filter((model) => {
+          const haystack = `${model.name} ${model.creatorName}`.toLowerCase();
+          const release = model.releaseDate ? new Date(model.releaseDate).getTime() : null;
+          if (query && !haystack.includes(query)) return false;
+          if (creator !== "all" && model.creatorName !== creator) return false;
+          if (els.openOnly.checked && !model.isOpen) return false;
+          if (from && (!release || release < from)) return false;
+          if (to && (!release || release > to)) return false;
+          if (minIntel !== null && (metric(model, "intelligence") ?? -Infinity) < minIntel) return false;
+          if (els.hideMissing.checked && (metric(model, xKey) === null || metric(model, yKey) === null)) return false;
+          return true;
+        });
+
+        els.visibleCount.textContent = filtered.length;
+        els.creatorCount.textContent = new Set(filtered.map((model) => model.creatorName)).size;
+        els.openCount.textContent = filtered.filter((model) => model.isOpen).length;
+        els.chartTitle.textContent = `${labelFor(els.xAxis.value)} vs ${labelFor(els.yAxis.value)}`;
+        els.empty.style.display = filtered.length ? "none" : "grid";
+
+        drawChart();
+        drawTable();
+      }
+
+      function drawChart() {
+        const ratio = window.devicePixelRatio || 1;
+        const rect = els.chartWrap.getBoundingClientRect();
+        els.chart.width = Math.max(600, Math.floor(rect.width * ratio));
+        els.chart.height = Math.max(490, Math.floor(rect.height * ratio));
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+        const width = els.chart.width / ratio;
+        const height = els.chart.height / ratio;
+        const pad = { top: 28, right: 28, bottom: 58, left: 76 };
+        ctx.clearRect(0, 0, width, height);
+
+        const xKey = els.xAxis.value;
+        const yKey = els.yAxis.value;
+        const bubbleKey = els.bubbleMetric.value;
+        const drawable = filtered
+          .map((model) => ({
+            model,
+            x: metric(model, xKey),
+            y: metric(model, yKey),
+            bubble: bubbleKey === "none" ? null : metric(model, bubbleKey),
+          }))
+          .filter((point) => point.x !== null && point.y !== null);
+
+        if (!drawable.length) return;
+
+        const xDomain = padDomain(drawable.map((point) => point.x));
+        const yDomain = padDomain(drawable.map((point) => point.y));
+        const bubbleDomain = padDomain(drawable.map((point) => point.bubble).filter((value) => value !== null));
+        const plotWidth = width - pad.left - pad.right;
+        const plotHeight = height - pad.top - pad.bottom;
+
+        const xScale = (value) => pad.left + ((value - xDomain.min) / (xDomain.max - xDomain.min || 1)) * plotWidth;
+        const yScale = (value) => pad.top + (1 - (value - yDomain.min) / (yDomain.max - yDomain.min || 1)) * plotHeight;
+        const rScale = (value) => {
+          if (value === null || bubbleKey === "none") return 7;
+          return 5 + ((value - bubbleDomain.min) / (bubbleDomain.max - bubbleDomain.min || 1)) * 13;
+        };
+
+        drawAxes({ width, height, pad, xDomain, yDomain, xKey, yKey, xScale, yScale });
+
+        const creatorIndex = new Map();
+        drawable.forEach((point) => {
+          if (!creatorIndex.has(point.model.creatorName)) creatorIndex.set(point.model.creatorName, creatorIndex.size);
+        });
+
+        hoverPoint = null;
+        const mouse = lastMouse();
+        drawable.forEach((point) => {
+          const x = xScale(point.x);
+          const y = yScale(point.y);
+          const radius = rScale(point.bubble);
+          point.screen = { x, y, radius };
+          const color = colors[creatorIndex.get(point.model.creatorName) % colors.length];
+          ctx.beginPath();
+          ctx.arc(x, y, radius, 0, Math.PI * 2);
+          ctx.fillStyle = hexToRgba(color, point.model.isOpen ? 0.86 : 0.68);
+          ctx.fill();
+          ctx.lineWidth = point.model.isOpen ? 2.5 : 1.4;
+          ctx.strokeStyle = point.model.isOpen ? "#111816" : "#ffffff";
+          ctx.stroke();
+
+          if (mouse && Math.hypot(mouse.x - x, mouse.y - y) <= radius + 5) hoverPoint = point;
+        });
+
+        if (hoverPoint) showTooltip(hoverPoint, xKey, yKey, bubbleKey);
+        else hideTooltip();
+      }
+
+      function drawAxes({ width, height, pad, xDomain, yDomain, xKey, yKey, xScale, yScale }) {
+        ctx.save();
+        ctx.strokeStyle = "#c7c3b8";
+        ctx.fillStyle = "#66716d";
+        ctx.lineWidth = 1;
+        ctx.font = "12px Inter, system-ui, sans-serif";
+
+        for (let i = 0; i <= 5; i++) {
+          const xValue = xDomain.min + ((xDomain.max - xDomain.min) * i) / 5;
+          const x = xScale(xValue);
+          ctx.beginPath();
+          ctx.moveTo(x, pad.top);
+          ctx.lineTo(x, height - pad.bottom);
+          ctx.stroke();
+          ctx.textAlign = "center";
+          ctx.fillText(formatMetric(xValue, xKey), x, height - pad.bottom + 24);
+
+          const yValue = yDomain.min + ((yDomain.max - yDomain.min) * i) / 5;
+          const y = yScale(yValue);
+          ctx.beginPath();
+          ctx.moveTo(pad.left, y);
+          ctx.lineTo(width - pad.right, y);
+          ctx.stroke();
+          ctx.textAlign = "right";
+          ctx.fillText(formatMetric(yValue, yKey), pad.left - 10, y + 4);
+        }
+
+        ctx.strokeStyle = "#1f2523";
+        ctx.beginPath();
+        ctx.moveTo(pad.left, pad.top);
+        ctx.lineTo(pad.left, height - pad.bottom);
+        ctx.lineTo(width - pad.right, height - pad.bottom);
+        ctx.stroke();
+
+        ctx.fillStyle = "#1f2523";
+        ctx.font = "700 13px Inter, system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(labelFor(xKey), pad.left + (width - pad.left - pad.right) / 2, height - 16);
+        ctx.save();
+        ctx.translate(18, pad.top + (height - pad.top - pad.bottom) / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText(labelFor(yKey), 0, 0);
+        ctx.restore();
+        ctx.restore();
+      }
+
+      function drawTable() {
+        const rows = [...filtered]
+          .sort((a, b) => (metric(b, els.yAxis.value) ?? -Infinity) - (metric(a, els.yAxis.value) ?? -Infinity))
+          .slice(0, 250)
+          .map((model) => {
+            const access = model.isOpen
+              ? `<span class="badge open">Open</span>`
+              : `<span class="badge">Closed</span>`;
+            return `<tr>
+              <td>${escapeHtml(model.name)}</td>
+              <td>${escapeHtml(model.creatorName)}</td>
+              <td>${access}</td>
+              <td>${model.releaseDate || "-"}</td>
+              <td class="numeric">${formatMetric(metric(model, "intelligence"), "intelligence")}</td>
+              <td class="numeric">${formatMetric(metric(model, "coding"), "coding")}</td>
+              <td class="numeric">${formatMetric(metric(model, "math"), "math")}</td>
+              <td class="numeric">${formatMetric(metric(model, "inputPrice"), "inputPrice")}</td>
+              <td class="numeric">${formatMetric(metric(model, "outputPrice"), "outputPrice")}</td>
+              <td class="numeric">${formatMetric(metric(model, "tokensPerSecond"), "tokensPerSecond")}</td>
+              <td class="numeric">${formatMetric(metric(model, "timeToFirstToken"), "timeToFirstToken")}</td>
+            </tr>`;
+          })
+          .join("");
+        els.rows.innerHTML =
+          rows || `<tr><td colspan="11" style="text-align:center; color: var(--muted)">No matching models</td></tr>`;
+      }
+
+      function padDomain(values) {
+        const finite = values.filter((value) => Number.isFinite(Number(value))).map(Number);
+        if (!finite.length) return { min: 0, max: 1 };
+        let min = Math.min(...finite);
+        let max = Math.max(...finite);
+        if (min === max) {
+          min -= 1;
+          max += 1;
+        }
+        const pad = (max - min) * 0.08;
+        return { min: min - pad, max: max + pad };
+      }
+
+      let mousePosition = null;
+      function lastMouse() {
+        return mousePosition;
+      }
+
+      function showTooltip(point, xKey, yKey, bubbleKey) {
+        const { model, screen } = point;
+        els.tooltip.innerHTML = `
+          <strong>${escapeHtml(model.name)}</strong>
+          ${escapeHtml(model.creatorName)} ${model.isOpen ? " | open" : ""}<br>
+          ${labelFor(xKey)}: ${formatMetric(point.x, xKey)}<br>
+          ${labelFor(yKey)}: ${formatMetric(point.y, yKey)}
+          ${bubbleKey !== "none" ? `<br>${labelFor(bubbleKey)}: ${formatMetric(point.bubble, bubbleKey)}` : ""}
+        `;
+        els.tooltip.style.left = `${screen.x}px`;
+        els.tooltip.style.top = `${screen.y}px`;
+        els.tooltip.style.opacity = "1";
+      }
+
+      function hideTooltip() {
+        els.tooltip.style.opacity = "0";
+      }
+
+      function setStatus(message, isError) {
+        els.status.textContent = message;
+        els.status.classList.toggle("error", Boolean(isError));
+      }
+
+      async function fetchApiData() {
+        const key = els.apiKey.value.trim();
+        if (!key) {
+          setStatus("Add an API key first.", true);
+          return;
+        }
+        setStatus("Fetching Artificial Analysis data...", false);
+        els.loadApi.disabled = true;
+        try {
+          const response = await fetch(apiUrl, { headers: { "x-api-key": key } });
+          if (!response.ok) throw new Error(`API returned ${response.status}`);
+          const payload = await response.json();
+          if (!Array.isArray(payload.data)) throw new Error("Response did not include a data array.");
+          setModels(payload.data, `Loaded ${payload.data.length} current LLM models from Artificial Analysis.`);
+        } catch (error) {
+          setStatus(`${error.message}. If your browser blocks CORS, use the sample data or proxy the request locally.`, true);
+        } finally {
+          els.loadApi.disabled = false;
+        }
+      }
+
+      function exportCsv() {
+        const columns = [
+          ["name", "Model"],
+          ["creatorName", "Creator"],
+          ["isOpen", "Open source"],
+          ["releaseDate", "Release date"],
+          ["intelligence", "Intelligence"],
+          ["coding", "Coding"],
+          ["math", "Math"],
+          ["inputPrice", "Input price"],
+          ["outputPrice", "Output price"],
+          ["tokensPerSecond", "Tokens/sec"],
+          ["timeToFirstToken", "TTFT"],
+        ];
+        const lines = [
+          columns.map(([, label]) => csvCell(label)).join(","),
+          ...filtered.map((model) =>
+            columns
+              .map(([key]) => {
+                if (key in model) return csvCell(model[key]);
+                return csvCell(metric(model, key));
+              })
+              .join(","),
+          ),
+        ];
+        const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "artificial-analysis-models.csv";
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function csvCell(value) {
+        const text = value === null || value === undefined ? "" : String(value);
+        return `"${text.replaceAll('"', '""')}"`;
+      }
+
+      function resetFilters() {
+        els.search.value = "";
+        els.creator.value = "all";
+        els.openOnly.checked = false;
+        els.hideMissing.checked = true;
+        els.dateFrom.value = "";
+        els.dateTo.value = "";
+        els.minIntelligence.value = "";
+        render();
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (char) => {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char];
+        });
+      }
+
+      function hexToRgba(hex, alpha) {
+        const raw = hex.replace("#", "");
+        const bigint = parseInt(raw, 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      }
+
+      [
+        els.xAxis,
+        els.yAxis,
+        els.bubbleMetric,
+        els.search,
+        els.creator,
+        els.openOnly,
+        els.hideMissing,
+        els.dateFrom,
+        els.dateTo,
+        els.minIntelligence,
+      ].forEach((control) => control.addEventListener("input", render));
+
+      els.loadApi.addEventListener("click", fetchApiData);
+      els.loadSample.addEventListener("click", () => setModels(sampleModels, "Sample data is loaded."));
+      els.resetFilters.addEventListener("click", resetFilters);
+      els.downloadCsv.addEventListener("click", exportCsv);
+      els.chartWrap.addEventListener("mousemove", (event) => {
+        const rect = els.chartWrap.getBoundingClientRect();
+        mousePosition = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+        drawChart();
+      });
+      els.chartWrap.addEventListener("mouseleave", () => {
+        mousePosition = null;
+        hideTooltip();
+        drawChart();
+      });
+      window.addEventListener("resize", drawChart);
+
+      populateAxisControls();
+      setModels(sampleModels, "Sample data is loaded. Add your API key to fetch current LLM data.");
+    </script>
+  </body>
+</html>
